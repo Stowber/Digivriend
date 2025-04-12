@@ -1,0 +1,98 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+/* Container voor vaste breedte */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header & Footer */
+.main-header,
+.main-footer {
+  background-color: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+.main-footer {
+  border-top: 1px solid #ddd;
+  border-bottom: none;
+}
+
+.main-header .container,
+.main-footer .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #F05A28; /* Primaire kleur */
+}
+
+/* Kaarten op de startpagina */
+.document-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.document-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 280px;
+  padding: 20px;
+  text-align: center;
+}
+
+.document-card h3 {
+  margin-bottom: 10px;
+}
+
+.document-card p {
+  margin-bottom: 15px;
+  color: #666;
+}
+
+.document-card.disabled {
+  opacity: 0.5;
+  pointer-events: none; /* Zodat het niet klikbaar is */
+}
+
+/* Buttons */
+.btn {
+  background-color: #F05A28;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 0.9em;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: #e14b20;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+}

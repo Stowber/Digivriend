@@ -1,0 +1,87 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Algemene body-stijl */
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  /* Titels */
+  h1, h2, legend {
+    margin-bottom: 10px;
+    color: #F05A28; /* Primaire oranje kleur */
+    font-weight: bold;
+  }
+  
+  /* Formulier */
+  form {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 20px;
+  }
+  
+  /* Fieldsets */
+  fieldset {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #fafafa;
+  }
+  
+  legend {
+    color: #F05A28;
+    font-size: 1.1em;
+    font-weight: bold;
+  }
+  
+  /* Labels & Inputs */
+  label {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  input[type="text"],
+  input[type="email"],
+  input[type="date"] {
+    width: 300px;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  input[type="checkbox"] {
+    margin-right: 5px;
+  }
+  
+  /* Knop */
+  button[type="submit"] {
+    background-color: #F05A28;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 0.95em;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+  }
+  
+  button[type="submit"]:hover {
+    background-color: #e14b20;
+  }
+  
