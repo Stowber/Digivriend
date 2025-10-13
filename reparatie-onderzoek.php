@@ -13,7 +13,7 @@
 
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
     <div class="container">
-      <a class="navbar-brand" href="index.html">Digivriend</a>
+      <a class="navbar-brand" href="index.php">Digivriend</a>
     </div>
   </nav>
 

@@ -1,3 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Security\Csrf;
+
+require __DIR__ . '/bootstrap.php';
+
+$csrfToken = Csrf::token();
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -42,25 +53,23 @@
   <button id="clearBtn" class="btn" type="button">Wissen</button>
   <button id="saveBtn" class="btn" type="button">Opslaan</button>
 
-  <!-- Form om data te versturen naar pickup-store.php -->
   <form id="signatureForm" action="pickup-store.php" method="POST" style="display: none;">
-    <input type="hidden" name="id" value="<?php echo htmlspecialchars($_GET['id'] ?? ''); ?>">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+    <input type="hidden" name="id" value="<?= htmlspecialchars((string) $id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
     <input type="hidden" name="signatureData" id="signatureData">
   </form>
 
-  <!-- Toegevoegde link om na het zetten van de handtekening 
-       (of wanneer de gebruiker wil) terug te gaan naar index.html -->
   <div style="margin-top: 20px;">
-    <a href="index.html" class="btn">Terug naar startpagina</a>
+    <a href="index.php" class="btn">Terug naar startpagina</a>
   </div>
 
-  <!-- Signature Pad library (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"
+          integrity="sha384-Pu0vQX1a+8XMGO6zkRgZNpmjDoE7YQDdyCjTiMQuuLHfoalGoVYLRNvKcJsteUms"
+          crossorigin="anonymous"></script>
   <script>
     const canvas = document.getElementById('signatureCanvas');
     const signaturePad = new SignaturePad(canvas);
 
-    // Canvas responsive maken
     function resizeCanvas() {
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       canvas.width = canvas.offsetWidth * ratio;
@@ -71,22 +80,17 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Wissen
     document.getElementById('clearBtn').addEventListener('click', () => {
       signaturePad.clear();
     });
 
-    // Opslaan
     document.getElementById('saveBtn').addEventListener('click', () => {
       if (!signaturePad.isEmpty()) {
-        // Base64 data
-        const dataURL = signaturePad.toDataURL();
-        // Plaats in hidden input
+        const dataURL = signaturePad.toDataURL('image/png');
         document.getElementById('signatureData').value = dataURL;
-        // Verstuur formulier
         document.getElementById('signatureForm').submit();
       } else {
-        alert("Handtekening is leeg. Zet eerst een handtekening.");
+        alert('Handtekening is leeg. Zet eerst een handtekening.');
       }
     });
   </script>

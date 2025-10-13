@@ -1,15 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Security\Csrf;
+
+require __DIR__ . '/bootstrap.php';
+$csrfToken = Csrf::token();
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
   <title>Ophaalbevestiging - Digivriend</title>
-  <!-- Koppel de CSS voor de ophaalbevestiging-pagina -->
   <link rel="stylesheet" href="css/ophaalbevestiging.css">
 </head>
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.html"><h1 class="logo">Digivriend</h1></a>
+      <a href="index.php"><h1 class="logo">Digivriend</h1></a>
     </div>
   </header>
 
@@ -17,21 +25,21 @@
     <h2>Ophaalbevestiging</h2>
     <p>Vul hieronder de gegevens in om een ophaalbevestiging te genereren.</p>
 
-    <!-- Formulier dat verzonden wordt naar de PHP-pagina die de PDF maakt -->
     <form action="generate-ophaalbevestiging.php" method="POST" class="document-form">
+      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <div class="form-group">
         <label for="klantnaam">Naam klant</label>
-        <input type="text" id="klantnaam" name="klantnaam" required>
+        <input type="text" id="klantnaam" name="klantnaam" maxlength="120" required>
       </div>
 
       <div class="form-group">
         <label for="merkmodel">Merk &amp; Model</label>
-        <input type="text" id="merkmodel" name="merkmodel" required>
+        <input type="text" id="merkmodel" name="merkmodel" maxlength="120" required>
       </div>
 
       <div class="form-group">
         <label for="ophaalcode">Unieke Ophaalcode</label>
-        <input type="text" id="ophaalcode" name="ophaalcode" required>
+        <input type="text" id="ophaalcode" name="ophaalcode" maxlength="32" required>
       </div>
 
       <div class="form-group">
@@ -42,7 +50,6 @@
       <button type="submit" class="btn">Genereer PDF</button>
     </form>
 
-    <!-- Toegevoegde knop (link) om naar de lijstpagina te gaan -->
     <div style="margin-top: 20px;">
         <a href="ophaalbevestigingen-list.php" class="btn">Alle Bevestigingen</a>
     </div>
@@ -50,7 +57,7 @@
 
   <footer class="main-footer">
     <div class="container">
-      <p>&copy; 2025 Digivriend. Alle rechten voorbehouden.</p>
+      <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
     </div>
   </footer>
 </body>
