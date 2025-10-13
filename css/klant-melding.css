@@ -1,126 +1,83 @@
-/* klant-melding.css */
+.hero-band {
+  background: linear-gradient(125deg, rgba(240, 90, 40, 0.95), rgba(240, 90, 40, 0.78));
+  padding: 4.5rem 0 6rem;
+  position: relative;
+  overflow: hidden;
+}
 
-/* Basis reset en body styling */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f2f5;
-    color: #333;
-    line-height: 1.6;
-  }
-  
-  /* Container voor de gehele pagina */
-  .container {
-    width: 90%;
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-  
-  /* Header styling */
-  .header {
-    background-color: #F05A28;
-    color: #fff;
-    padding: 30px 20px;
-    text-align: center;
-  }
-  .header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
-  }
-  .header p {
-    font-size: 1.2rem;
-  }
-  
-  /* Main content (formulier) */
-  main {
-    background: #fff;
-    margin: 20px auto;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Form grid: gebruik van CSS Grid voor duidelijke secties */
+.hero-band::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -55% 55%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, transparent 70%);
+  pointer-events: none;
+  transform: rotate(-10deg);
+}
+
+.page-header {
+  text-align: center;
+  display: grid;
+  gap: 0.65rem;
+  justify-items: center;
+}
+
+.page-header h1 {
+  font-size: clamp(2.2rem, 1.4vw + 1.8rem, 2.8rem);
+  color: #fff;
+}
+
+.page-header p {
+  color: rgba(255, 255, 255, 0.82);
+  max-width: 640px;
+}
+
+.page-wrapper {
+  margin-top: -3.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.form-shell {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+textarea {
+  min-height: 140px;
+}
+
+.form-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-actions button {
+  min-width: 190px;
+}
+
+@media (min-width: 980px) {
   .form-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
-  /* Secties binnen het formulier */
-  .form-section {
-    background-color: #fafafa;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+  .form-section:nth-child(3),
+  .form-section:nth-child(4),
+  .form-section:nth-child(5),
+  .form-section:nth-child(6) {
+    grid-column: span 2;
   }
-  .form-section h2 {
-    font-size: 1.75rem;
-    color: #F05A28;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 8px;
+ }
+
+@media (max-width: 640px) {
+  .page-header {
+    text-align: left;
+    justify-items: flex-start;
   }
-  
-  /* Labels en invoervelden */
-  label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-  }
-  input[type="text"],
-  input[type="email"],
-  input[type="date"],
-  textarea {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
-  }
-  textarea {
-    resize: vertical;
-  }
-  
-  /* Radio groepen */
-  .radio-group label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: normal;
-  }
-  
-  /* Actieknop */
-  .form-actions {
-    text-align: center;
-    margin-top: 20px;
-  }
-  .form-actions button {
-    background-color: #F05A28;
-    color: #fff;
-    padding: 12px 25px;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  .form-actions button:hover {
-    background-color: #e14b20;
-  }
-  
-  /* Footer */
-  .footer {
-    background-color: #333;
-    color: #fff;
-    text-align: center;
-    padding: 15px 20px;
-    margin-top: 20px;
-    font-size: 0.9rem;
-  }
-  
+} 

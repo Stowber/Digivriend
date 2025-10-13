@@ -15,4 +15,14 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 Env::load(__DIR__ . '/.env');
 
 $appConfig = AppConfig::load();
-$pdo = ConnectionFactory::make($appConfig);
+$pdo = null;
+
+try {
+    $pdo = ConnectionFactory::make($appConfig);
+} catch (RuntimeException $exception) {
+    if ($appConfig->isDebug()) {
+        throw $exception;
+    }
+
+    error_log($exception->getMessage());
+}

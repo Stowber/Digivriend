@@ -1,87 +1,68 @@
-/* Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  /* Algemene body-stijl */
-  body {
-    font-family: Arial, sans-serif;
-    background-color: #f9f9f9;
-    color: #333;
-    margin: 0;
-    padding: 20px;
-  }
-  
-  /* Titels */
-  h1, h2, legend {
-    margin-bottom: 10px;
-    color: #F05A28; /* Primaire oranje kleur */
-    font-weight: bold;
-  }
-  
-  /* Formulier */
-  form {
-    max-width: 800px;
-    margin: 0 auto;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 20px;
-  }
-  
-  /* Fieldsets */
-  fieldset {
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 15px;
-    margin-bottom: 20px;
-    background-color: #fafafa;
-  }
-  
-  legend {
-    color: #F05A28;
-    font-size: 1.1em;
-    font-weight: bold;
-  }
-  
-  /* Labels & Inputs */
-  label {
-    display: inline-block;
-    margin-bottom: 5px;
-    font-weight: bold;
-  }
-  
-  input[type="text"],
-  input[type="email"],
-  input[type="date"] {
-    width: 300px;
-    padding: 8px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  input[type="checkbox"] {
-    margin-right: 5px;
-  }
-  
-  /* Knop */
-  button[type="submit"] {
-    background-color: #F05A28;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    border-radius: 5px;
-    font-size: 0.95em;
-    font-weight: bold;
-    transition: background-color 0.2s;
-    margin-top: 10px;
-  }
-  
-  button[type="submit"]:hover {
-    background-color: #e14b20;
-  }
-  
+.page-header {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.page-header h1 {
+  font-size: clamp(2.1rem, 1.4vw + 1.8rem, 2.8rem);
+}
+
+.page-header p {
+  color: var(--color-muted);
+  max-width: 640px;
+}
+
+.form-lead {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-lead h2 {
+  font-size: 1.7rem;
+}
+
+.form-lead p {
+  color: var(--color-muted);
+}
+
+.repair-form {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.field-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field-grid--two {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.helper-text {
+  color: var(--color-muted);
+  margin-top: 0.35rem;
+}
+
+.radio-group label strong {
+  color: var(--color-text);
+}
+
+.radio-group input[type="text"] {
+  width: 120px;
+  margin-top: 0;
+  justify-self: start;
+  display: inline-block;
+  margin-left: 0.35rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.form-actions button {
+  min-width: 200px;
+}

@@ -2,203 +2,136 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Reparatie & Onderzoek Formulier</title>
-  <!-- Bootstrap 5 CSS via CDN -->
-  <link 
-    rel="stylesheet" 
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-  >
+  <title>Reparatie &amp; Onderzoek - Digivriend</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/reparatie-onderzoek.css">
 </head>
-<body class="bg-light">
-
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+<body>
+  <header class="main-header">
     <div class="container">
-      <a class="navbar-brand" href="index.php">Digivriend</a>
+      <a href="index.php" class="logo">Digivriend</a>
+      <nav class="main-nav" aria-label="Hoofd navigatie">
+        <ul>
+          <li><a href="index.php">Start</a></li>
+          <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
+          <li><a href="reparatie-onderzoek.php" aria-current="page">Reparatie &amp; Onderzoek</a></li>
+          <li><a href="data-recovery.php">Data Recovery</a></li>
+          <li><a href="klant-melding.php">Klant Melding</a></li>
+        </ul>
+      </nav>
     </div>
-  </nav>
+  </header>
 
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-lg-8">
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <h1>Reparatie &amp; Onderzoek</h1>
+        <p>Vul het toestemmingsformulier in zodat we het apparaat kunnen onderzoeken en, indien gewenst, direct kunnen repareren volgens jouw instructies.</p>
+      </div>
 
-        <!-- Card met formulier -->
-        <div class="card shadow-sm">
-          <div class="card-header bg-white border-0">
-            <h2 class="card-title text-primary">
-              Toestemmingsformulier Reparatie & Onderzoek
-            </h2>
-            <p class="text-muted mb-0">
-              Vul alle gegevens in en klik op "Genereer PDF".
-            </p>
-          </div>
-          <div class="card-body">
-            <form action="generate-reparatie-onderzoek.php" method="POST" class="row g-3">
-
-              <!-- Klantinformatie -->
-              <h4 class="text-secondary">Klantinformatie</h4>
-              <div class="col-md-6">
-                <label for="fullname" class="form-label">Voor- en Achternaam</label>
-                <input 
-                  type="text" 
-                  id="fullname" 
-                  name="fullname" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-              <div class="col-md-6">
-                <label for="address" class="form-label">Adres + Postcode</label>
-                <input 
-                  type="text" 
-                  id="address" 
-                  name="address" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-              <div class="col-md-6">
-                <label for="phone" class="form-label">Telefoonnummer</label>
-                <input 
-                  type="text" 
-                  id="phone" 
-                  name="phone" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-              <div class="col-md-6">
-                <label for="email" class="form-label">E-mail</label>
-                <input 
-                  type="email" 
-                  id="email" 
-                  name="email" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-
-              <!-- Onderzoekstoestemming -->
-              <hr class="my-4">
-              <h4 class="text-secondary">Onderzoekstoestemming</h4>
-              <p class="text-muted">
-                Hierbij geef ik, ondergetekende, toestemming aan Digivriend om onderzoek uit te voeren 
-                om de aard en omvang van de schade vast te stellen. 
-                <br>
-                <strong>Onderzoekskosten:</strong> €49,95, deze kosten zijn verschuldigd ongeacht de beslissing over verdere reparatie.
-              </p>
-
-              <!-- Reparatietoestemming (RADIO in plaats van CHECKBOX) -->
-              <hr class="my-4">
-              <h4 class="text-secondary">Reparatietoestemming (kies 1 optie)</h4>
-              <div class="col-12">
-                <div class="form-check mb-2">
-                  <input 
-                    class="form-check-input" 
-                    type="radio" 
-                    name="repairConsentOption" 
-                    id="repairConsent100"
-                    value="100"
-                    checked
-                  >
-                  <label class="form-check-label" for="repairConsent100">
-                    Ik geef toestemming aan Digivriend om reparaties uit te voeren tot een bedrag van €100 zonder verdere kennisgeving.
-                  </label>
-                </div>
-                <div class="form-check mb-2">
-                  <input 
-                    class="form-check-input" 
-                    type="radio" 
-                    name="repairConsentOption" 
-                    id="repairConsentNotify"
-                    value="notify"
-                  >
-                  <label class="form-check-label" for="repairConsentNotify">
-                    Ik wens eerst op de hoogte te worden gebracht van alle reparatiekosten, ongeacht het bedrag.
-                  </label>
-                </div>
-                <div class="form-check mb-2">
-                  <input 
-                    class="form-check-input" 
-                    type="radio" 
-                    name="repairConsentOption" 
-                    id="repairConsentCustom"
-                    value="custom"
-                  >
-                  <label class="form-check-label" for="repairConsentCustom">
-                    Ik geef toestemming aan Digivriend om noodzakelijke reparaties uit te voeren tot een bedrag van 
-                    € <input type="text" name="customAmount" class="ms-1" style="width: 100px;" placeholder="___">
-                    zonder verdere kennisgeving.
-                  </label>
-                </div>
-              </div>
-
-              <!-- Verklaring van Akkoord -->
-              <hr class="my-4">
-              <h4 class="text-secondary">Verklaring van Akkoord</h4>
-              <p class="text-muted">
-                Door het ondertekenen van dit formulier bevestig ik dat ik akkoord ga met de volledige algemene voorwaarden 
-                van Digivriend met betrekking tot onderzoek en reparatie, zoals deze ter plaatse zijn in te zien. Tevens ben ik 
-                ervan op de hoogte dat deze algemene voorwaarden op verzoek digitaal of fysiek ter beschikking kunnen worden gesteld.
-              </p>
-              <div class="col-md-6">
-                <label for="signatureName" class="form-label">Naam (ondertekenaar)</label>
-                <input 
-                  type="text" 
-                  id="signatureName" 
-                  name="signatureName" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-              <div class="col-md-6">
-                <label for="signaturePlace" class="form-label">Plaats</label>
-                <input 
-                  type="text" 
-                  id="signaturePlace" 
-                  name="signaturePlace" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-              <div class="col-md-6">
-                <label for="signatureDate" class="form-label">Datum</label>
-                <input 
-                  type="date" 
-                  id="signatureDate" 
-                  name="signatureDate" 
-                  class="form-control" 
-                  required
-                >
-              </div>
-              <div class="col-md-6">
-                <label for="signature" class="form-label">Handtekening (optioneel als tekst)</label>
-                <input 
-                  type="text" 
-                  id="signature" 
-                  name="signature" 
-                  class="form-control"
-                  placeholder="Bijv. gescande handtekening of tekst"
-                >
-              </div>
-
-              <!-- Versturen -->
-              <div class="col-12 mt-4">
-                <button type="submit" class="btn btn-primary">
-                  Genereer PDF
-                </button>
-              </div>
-
-            </form>
-          </div>
+        <section class="form-shell">
+        <div class="form-lead">
+          <h2>Toestemmingsformulier</h2>
+          <p>Controleer de gegevens zorgvuldig en geef aan welke reparatie-optie van toepassing is. Daarna ontvang je direct een PDF met alle informatie.</p>
         </div>
 
-      </div>
-    </div>
-  </div>
+              <form action="generate-reparatie-onderzoek.php" method="POST" class="repair-form">
+          <div class="form-section">
+            <h3>Klantinformatie</h3>
+            <div class="field-grid field-grid--two">
+              <div>
+                <label for="fullname">Voor- en achternaam</label>
+                <input type="text" id="fullname" name="fullname" required>
+              </div>
+              <div>
+                <label for="address">Adres + postcode</label>
+                <input type="text" id="address" name="address" required>
+              </div>
+              <div>
+                <label for="phone">Telefoonnummer</label>
+                <input type="text" id="phone" name="phone" required>
+              </div>
+              <div>
+                <label for="email">E-mailadres</label>
+                <input type="email" id="email" name="email" required>
+              </div>
+            </div>
+          </div>
 
-  <!-- Bootstrap JS (optioneel) -->
-  <script 
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
-  </script>
+              <div class="form-section">
+            <h3>Onderzoekstoestemming</h3>
+            <p class="helper-text">
+              Ik geef Digivriend toestemming om onderzoek uit te voeren naar de aard en omvang van de schade.
+              <strong>Onderzoekskosten:</strong> €49,95. Deze kosten worden altijd in rekening gebracht, ongeacht het vervolg van de reparatie.
+            </p>
+          </div>
+
+              <div class="form-section">
+            <h3>Reparatietoestemming</h3>
+            <p class="helper-text">Kies één van de onderstaande opties zodat we weten hoe we met de reparatie mogen starten.</p>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="repairConsentOption" id="repairConsent100" value="100" checked>
+                <span>
+                  <strong>Tot €100 zonder kennisgeving</strong>
+                  <span class="helper-text">Ik geef toestemming om noodzakelijke reparaties uit te voeren tot een bedrag van €100 zonder eerst contact op te nemen.</span>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="repairConsentOption" id="repairConsentNotify" value="notify">
+                <span>
+                  <strong>Altijd vooraf informeren</strong>
+                  <span class="helper-text">Ik wil voor iedere vervolgstap persoonlijk benaderd worden, ongeacht de kosten.</span>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="repairConsentOption" id="repairConsentCustom" value="custom">
+                <span>
+                  <strong>Eigen budget zonder kennisgeving</strong>
+                  <span class="helper-text">Ik geef toestemming om reparaties uit te voeren tot een bedrag van
+                    € <input type="text" name="customAmount" placeholder="bijv. 250"> zonder verdere kennisgeving.</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+               <div class="form-section">
+            <h3>Verklaring van akkoord</h3>
+            <p class="helper-text">
+              Door het ondertekenen van dit formulier ga ik akkoord met de algemene voorwaarden van Digivriend omtrent onderzoek en reparatie. Deze voorwaarden zijn ter plaatse in te zien en worden op verzoek digitaal of fysiek beschikbaar gesteld.
+            </p>
+            <div class="field-grid field-grid--two">
+              <div>
+                <label for="signatureName">Naam (ondertekenaar)</label>
+                <input type="text" id="signatureName" name="signatureName" required>
+              </div>
+               <div>
+                <label for="signaturePlace">Plaats</label>
+                <input type="text" id="signaturePlace" name="signaturePlace" required>
+              </div>
+              <div>
+                <label for="signatureDate">Datum</label>
+                <input type="date" id="signatureDate" name="signatureDate" required>
+              </div>
+              <div>
+                <label for="signature">Handtekening (optioneel als tekst)</label>
+                <input type="text" id="signature" name="signature" placeholder="Bijv. gescande handtekening of tekst">
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn">Genereer PDF</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <div class="container">
+      <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
+    </div>
+  </footer>
 </body>
 </html>

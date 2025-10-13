@@ -1,0 +1,45 @@
+.page-header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.page-header h1 {
+  font-size: clamp(2rem, 1.2vw + 1.6rem, 2.6rem);
+}
+
+.page-header p {
+  color: var(--color-muted);
+  max-width: 520px;
+}
+
+.signature-stage {
+  margin-top: 2rem;
+}
+
+.signature-board {
+  min-height: 260px;
+}
+
+.signature-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.signature-actions .btn {
+  min-width: 160px;
+}
+
+.signature-actions .btn.btn--ghost {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--color-text);
+}
+
+.signature-actions .btn.btn--ghost:hover,
+.signature-actions .btn.btn--ghost:focus {
+  background: rgba(15, 23, 42, 0.14);
+}
+
+.back-link {
+  margin-top: 1.75rem;
+}

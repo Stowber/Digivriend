@@ -1,98 +1,92 @@
-/* Reset */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+.page-intro {
+  display: grid;
+  gap: 1.15rem;
 }
 
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f9f9f9;
-  color: #333;
+.page-intro h2 {
+  font-size: clamp(2rem, 1.2vw + 1.6rem, 2.45rem);
 }
 
-/* Container voor vaste breedte */
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 20px;
+.page-intro p {
+  font-size: 1.05rem;
 }
 
-/* Header & Footer */
-.main-header,
-.main-footer {
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
-}
-
-.main-footer {
-  border-top: 1px solid #ddd;
-  border-bottom: none;
-}
-
-.main-header .container,
-.main-footer .container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.logo {
-  font-size: 1.5em;
-  font-weight: bold;
-  color: #F05A28; /* Primaire kleur */
-}
-
-/* Kaarten op de startpagina */
 .document-grid {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(1.25rem, 2vw, 2rem);
+  margin-top: 2.5rem;
 }
 
 .document-card {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  width: 280px;
-  padding: 20px;
-  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 1.9rem 1.85rem 2rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(247, 249, 252, 0.92));
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  display: grid;
+  gap: 1.1rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.document-card::before {
+  content: "";
+  position: absolute;
+  inset: auto -35% -65% 45%;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(240, 90, 40, 0.18) 0%, transparent 70%);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+.document-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(240, 90, 40, 0.08), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.document-card:hover,
+.document-card:focus-within {
+  transform: translateY(-6px);
+  box-shadow: 0 26px 60px -32px rgba(240, 90, 40, 0.65);
+}
+
+.document-card:hover::after,
+.document-card:focus-within::after {
+  opacity: 1;
 }
 
 .document-card h3 {
-  margin-bottom: 10px;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
 }
 
 .document-card p {
-  margin-bottom: 15px;
-  color: #666;
+  color: var(--color-muted);
+  font-size: 0.98rem;
+}
+
+.document-card .btn {
+  justify-self: flex-start;
+  padding-inline: 1.8rem;
 }
 
 .document-card.disabled {
-  opacity: 0.5;
-  pointer-events: none; /* Zodat het niet klikbaar is */
+  opacity: 0.55;
+  pointer-events: none;
+  filter: grayscale(0.2);
 }
 
-/* Buttons */
-.btn {
-  background-color: #F05A28;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 5px;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 0.9em;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.btn:hover {
-  background-color: #e14b20;
-}
-
-.btn:disabled {
-  cursor: not-allowed;
+@media (max-width: 640px) {
+  .page-intro {
+    text-align: left;
+  }
 }

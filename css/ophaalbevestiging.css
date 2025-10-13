@@ -1,94 +1,43 @@
-/* Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  body {
-    font-family: Arial, sans-serif;
-    background-color: #f9f9f9;
-    color: #333;
-  }
-  
-  /* Container voor vaste breedte */
-  .container {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-  
-  /* Header & Footer */
-  .main-header,
-  .main-footer {
-    background-color: #fff;
-    border-bottom: 1px solid #ddd;
-  }
-  
-  .main-footer {
-    border-top: 1px solid #ddd;
-    border-bottom: none;
-  }
-  
-  .main-header .container,
-  .main-footer .container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .logo {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #F05A28; /* Primaire kleur */
-  }
-  
-  /* Titel en formulier */
-  h2 {
-    margin-top: 20px;
-    font-size: 1.4em;
-  }
-  
-  .document-form {
-    display: flex;
+.page-header {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.page-header h2 {
+  font-size: clamp(1.9rem, 1vw + 1.5rem, 2.3rem);
+}
+
+.page-header p {
+  color: var(--color-muted);
+  max-width: 540px;
+}
+
+.document-form {
+  display: grid;
+  gap: 1.3rem;
+  margin-top: 1.5rem;
+}
+
+.form-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.document-actions .btn {
+  min-width: 180px;
+}
+
+@media (max-width: 640px) {
+  .document-actions {
     flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
+    align-items: stretch;
   }
-  
-  .form-group {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .form-group label {
-    font-weight: bold;
-    margin-bottom: 5px;
-  }
-  
-  .form-group input[type="text"],
-  .form-group input[type="date"] {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  /* Buttons */
-  .btn {
-    background-color: #F05A28;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    border-radius: 5px;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 0.9em;
-    font-weight: bold;
-    transition: background-color 0.2s;
-  }
-  
-  .btn:hover {
-    background-color: #e14b20;
-  }
+}
   

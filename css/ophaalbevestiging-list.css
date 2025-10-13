@@ -1,115 +1,50 @@
-/* Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  /* Algemene body-stijl */
-  body {
-    font-family: Arial, sans-serif;
-    background-color: #f9f9f9;
-    color: #333;
-  }
-  
-  /* Container voor vaste breedte */
-  .container {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-  
-  /* Header & Footer */
-  .main-header,
-  .main-footer {
-    background-color: #fff;
-    border-bottom: 1px solid #ddd;
-  }
-  
-  .main-footer {
-    border-top: 1px solid #ddd;
-    border-bottom: none;
-  }
-  
-  .main-header .container,
-  .main-footer .container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .logo {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #F05A28; /* Primaire kleur */
-  }
-  
-  /* Zoekbalk */
-  .search-bar {
-    margin-bottom: 10px;
-  }
-  
-  .search-bar label {
-    margin-right: 10px;
-    font-weight: bold;
-  }
-  
-  .search-bar input[type="text"] {
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  .search-bar button {
-    background-color: #F05A28;
-    color: #fff;
-    border: none;
-    padding: 7px 15px;
-    cursor: pointer;
-    border-radius: 4px;
-    margin-left: 5px;
-  }
-  
-  .search-bar button:hover {
-    background-color: #e14b20;
-  }
-  
-  /* Tabelopmaak */
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-top: 20px;
-  }
-  
-  th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
-  }
-  
-  th {
-    background-color: #f0f0f0;
-    font-weight: bold;
-  }
-  
-  /* Status-indicatie */
-  .status-opgehaald {
-    color: green;
-    font-weight: bold;
-  }
-  
-  .status-klaar {
-    color: orange;
-    font-weight: bold;
-  }
-  
-  /* Links voor acties */
-  a {
-    color: #F05A28;
-    text-decoration: none;
-  }
-  
-  a:hover {
-    text-decoration: underline;
-  }
+.page-header {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.page-header h1 {
+  font-size: clamp(2rem, 1.2vw + 1.6rem, 2.5rem);
+}
+
+.page-header p {
+  color: var(--color-muted);
+  max-width: 560px;
+}
+
+.table-shell {
+  margin-top: 2rem;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.table-actions .btn {
+  min-width: 180px;
+}
+
+.table-shell table form button {
+  padding-inline: 1.2rem;
+}
+
+.table-shell table a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.table-shell table a:hover,
+.table-shell table a:focus {
+  color: var(--color-primary-dark);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--color-muted);
+}
   

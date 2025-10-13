@@ -2,21 +2,40 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Klant Melding Formulier - Digivriend</title>
+  <title>Klantmelding - Digivriend</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Externe CSS -->
+  <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/klant-melding.css">
 </head>
 <body>
-  <header class="header">
+  <header class="main-header">
     <div class="container">
-      <h1>Klant Melding</h1>
-      <p>Vul onderstaande informatie in om een klantmelding document te genereren.</p>
+       <a href="index.php" class="logo">Digivriend</a>
+      <nav class="main-nav" aria-label="Hoofd navigatie">
+        <ul>
+          <li><a href="index.php">Start</a></li>
+          <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
+          <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
+          <li><a href="data-recovery.php">Data Recovery</a></li>
+          <li><a href="klant-melding.php" aria-current="page">Klant Melding</a></li>
+        </ul>
+      </nav>
     </div>
   </header>
   
-  <main class="container">
-    <form action="generate-klant-melding.php" method="POST" class="form-grid">
+  <section class="hero-band">
+    <div class="container">
+      <div class="page-header">
+        <h1>Klantmelding</h1>
+        <p>Leg klantgegevens, apparaatinformatie en de melding vast in één overzichtelijke PDF. Vul de velden in en genereer direct een professioneel document.</p>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <div class="container page-wrapper">
+      <form action="generate-klant-melding.php" method="POST" class="form-shell">
+        <div class="form-grid">
       <!-- Klantgegevens -->
       <section class="form-section">
         <h2>Klantgegevens</h2>
@@ -117,14 +136,18 @@
         <input type="text" id="bedragzelf" name="bedragzelf" placeholder="Bijv. 200€">
       </section>
       
-      <div class="form-actions">
-        <button type="submit">Genereer PDF</button>
-      </div>
-    </form>
+       </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn">Genereer PDF</button>
+        </div>
+      </form>
+    </div>
   </main>
-  
-  <footer class="footer">
-    <p>&copy; 2025 Digivriend. Alle rechten voorbehouden.</p>
+   <footer class="main-footer">
+    <div class="container">
+      <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
+    </div>
   </footer>
 </body>
 </html>

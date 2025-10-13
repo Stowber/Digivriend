@@ -14,54 +14,61 @@ $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
 <head>
   <meta charset="UTF-8">
   <title>Handtekening voor ophalen</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .signature-container {
-      border: 2px solid #ccc;
-      border-radius: 4px;
-      width: 400px;
-      height: 200px;
-      margin-bottom: 10px;
-      position: relative;
-    }
-    #signatureCanvas {
-      width: 100%;
-      height: 100%;
-    }
-    .btn {
-      display: inline-block;
-      background: #F05A28;
-      color: #fff;
-      padding: 8px 15px;
-      text-decoration: none;
-      border-radius: 4px;
-      margin-right: 10px;
-    }
-    .btn:hover {
-      background: #e14b20;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/pickup.css">
 </head>
 <body>
-  <h1>Apparaat ophalen - Handtekening</h1>
-  <p>Zet hieronder uw handtekening voor het ophalen van het apparaat.</p>
+  <header class="main-header">
+    <div class="container">
+      <a href="index.php" class="logo">Digivriend</a>
+      <nav class="main-nav" aria-label="Hoofd navigatie">
+        <ul>
+          <li><a href="index.php">Start</a></li>
+          <li><a href="ophaalbevestiging.php" aria-current="page">Ophaalbevestiging</a></li>
+          <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
+          <li><a href="data-recovery.php">Data Recovery</a></li>
+          <li><a href="klant-melding.php">Klant Melding</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
 
-  <div class="signature-container">
-    <canvas id="signatureCanvas"></canvas>
-  </div>
+  <main>
+    <div class="container">
+      <div class="page-header">
+        <h1>Apparaat ophalen</h1>
+        <p>Zet hieronder je handtekening om te bevestigen dat het apparaat is opgehaald.</p>
+      </div>
 
-  <button id="clearBtn" class="btn" type="button">Wissen</button>
-  <button id="saveBtn" class="btn" type="button">Opslaan</button>
+      <section class="form-shell signature-stage">
+        <div class="signature-board">
+          <canvas id="signatureCanvas"></canvas>
+        </div>
 
-  <form id="signatureForm" action="pickup-store.php" method="POST" style="display: none;">
-    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-    <input type="hidden" name="id" value="<?= htmlspecialchars((string) $id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-    <input type="hidden" name="signatureData" id="signatureData">
-  </form>
+   <div class="signature-actions button-row">
+          <button id="clearBtn" class="btn btn--ghost" type="button">Wissen</button>
+          <button id="saveBtn" class="btn" type="button">Opslaan</button>
+        </div>
 
-  <div style="margin-top: 20px;">
-    <a href="index.php" class="btn">Terug naar startpagina</a>
-  </div>
+  <form id="signatureForm" action="pickup-store.php" method="POST" hidden>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="id" value="<?= htmlspecialchars((string) $id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="signatureData" id="signatureData">
+        </form>
+
+  <div class="back-link">
+          <a href="index.php" class="btn btn--ghost">Terug naar startpagina</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <div class="container">
+      <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"
           integrity="sha384-Pu0vQX1a+8XMGO6zkRgZNpmjDoE7YQDdyCjTiMQuuLHfoalGoVYLRNvKcJsteUms"

@@ -10,15 +10,16 @@ require __DIR__ . '/bootstrap.php';
   <meta charset="UTF-8">
   <title>Digivriend - Documenten</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
   <header class="main-header">
     <div class="container">
-      <h1 class="logo">Digivriend</h1>
-      <nav class="main-nav">
+      <a href="index.php" class="logo">Digivriend</a>
+      <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
-          <li><a href="index.php">Home</a></li>
+          <li><a href="index.php" aria-current="page">Start</a></li>
           <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
@@ -29,8 +30,10 @@ require __DIR__ . '/bootstrap.php';
   </header>
 
   <main class="container">
-    <h2>Documenten Genereren</h2>
-    <p>Welkom bij Digivriend! Kies hieronder het document dat je wilt aanmaken:</p>
+    <div class="page-intro">
+      <h1>Documenten genereren</h1>
+      <p>Welkom bij Digivriend. Kies het document dat je wilt aanmaken en start meteen met het invullen van de benodigde gegevens.</p>
+    </div>
 
     <div class="document-grid">
       <div class="document-card">

@@ -1,0 +1,50 @@
+.page-header {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.page-header h1 {
+  font-size: clamp(2.1rem, 1.4vw + 1.8rem, 2.9rem);
+}
+
+.page-header p {
+  color: var(--color-muted);
+  max-width: 640px;
+}
+
+.embed-shell {
+  margin-top: 2rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.embed-shell iframe {
+  width: 100%;
+  border: none;
+  min-height: 750px;
+}
+
+.contact-card {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(247, 249, 252, 0.92));
+  box-shadow: var(--shadow-soft);
+}
+
+.contact-card p {
+  color: var(--color-muted);
+}
+
+.contact-card a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.contact-card a:hover,
+.contact-card a:focus {
+  color: var(--color-primary-dark);
+}
