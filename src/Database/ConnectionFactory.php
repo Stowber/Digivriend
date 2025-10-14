@@ -117,11 +117,23 @@ final class ConnectionFactory
         }
 
         if (str_contains($message, 'access denied') || str_contains($message, 'authentication failed')) {
-            return sprintf(
+            $baseMessage = sprintf(
                 'De database weigerde de verbinding voor gebruiker "%s". Controleer de gebruikersnaam en het wachtwoord in het .env-bestand.',
                 $config->dbUser()
             );
         }
+
+        $projectRoot = dirname(__DIR__, 2);
+            $envFile = $projectRoot . '/.env';
+            $envExample = $projectRoot . '/.env.example';
+
+            if (!is_file($envFile) && is_file($envExample)) {
+                $baseMessage .= ' Het lijkt erop dat er nog geen .env-bestand aanwezig is. Kopieer het bestand .env.example naar .env en vul daar de juiste databasegegevens in.';
+            } elseif ($config->dbUser() === 'digivriend') {
+                $baseMessage .= ' Er wordt nog gebruikgemaakt van de standaard databasegebruiker "digivriend". Pas de waarden in .env aan naar de gegevens van jouw database (of stel de variabele DB_URL in).';
+            }
+
+            return $baseMessage;
 
         if (
             str_contains($message, 'sqlstate[hy000] [2002]') ||
