@@ -34,7 +34,17 @@ final class AppConfig
 
     public function dsn(): string
     {
-        return sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $this->dbHost, $this->dbPort, $this->dbName);
+        return sprintf('%s;dbname=%s', $this->dsnWithoutDatabase(), $this->dbName);
+    }
+
+    public function dsnWithoutDatabase(): string
+    {
+        return sprintf('mysql:host=%s;port=%d;charset=utf8mb4', $this->dbHost, $this->dbPort);
+    }
+
+    public function dbName(): string
+    {
+        return $this->dbName;
     }
 
     public function dbUser(): string
