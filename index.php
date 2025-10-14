@@ -12,17 +12,53 @@ $caseRepository = new CaseRepository($pdo);
 
 $totalCustomers = (int) ($pdo->query('SELECT COUNT(*) FROM customers')->fetchColumn() ?: 0);
 $openCases = (int) ($pdo->query("SELECT COUNT(*) FROM cases WHERE status NOT IN ('opgehaald', 'gesloten')")->fetchColumn() ?: 0);
-$todayPickups = (int) ($pdo->query("SELECT COUNT(*) FROM cases WHERE type = 'pickup' AND status = 'klaar' AND DATE(JSON_EXTRACT(details, '$.datumgereed')) = CURDATE()")
-    ->fetchColumn() ?: 0);
-$waitingSince = $pdo->prepare(
-    "SELECT TIMESTAMPDIFF(DAY, JSON_UNQUOTE(JSON_EXTRACT(details, '$.datumgereed')), NOW()) AS days_waiting
+$today = (new DateTimeImmutable('today'))->setTime(0, 0);
+$todayDateString = $today->format('Y-m-d');
+$todayPickups = 0;
+$longestWaiting = 0;
+
+$readyPickupsStmt = $pdo->prepare(
+    "SELECT details
      FROM cases
-     WHERE type = 'pickup' AND status = 'klaar' AND JSON_EXTRACT(details, '$.datumgereed') IS NOT NULL
-     ORDER BY days_waiting DESC
-     LIMIT 1"
+     WHERE type = 'pickup' AND status = 'klaar' AND details IS NOT NULL"
 );
-$waitingSince->execute();
-$longestWaiting = (int) ($waitingSince->fetchColumn() ?: 0);
+$readyPickupsStmt->execute();
+
+while (($detailsJson = $readyPickupsStmt->fetchColumn()) !== false) {
+    if (!is_string($detailsJson) || trim($detailsJson) === '') {
+        continue;
+    }
+
+    $detailsData = json_decode($detailsJson, true);
+
+    if (!is_array($detailsData)) {
+        continue;
+    }
+
+    $readyDateRaw = $detailsData['datumgereed'] ?? null;
+
+    if (!is_string($readyDateRaw) || $readyDateRaw === '') {
+        continue;
+    }
+
+    $readyDate = date_create_immutable($readyDateRaw) ?: DateTimeImmutable::createFromFormat('Y-m-d', $readyDateRaw);
+
+    if (!$readyDate instanceof DateTimeImmutable) {
+        continue;
+    }
+
+    $readyDate = $readyDate->setTime(0, 0);
+
+    if ($readyDate->format('Y-m-d') === $todayDateString) {
+        $todayPickups++;
+    }
+
+    $daysWaiting = (int) $readyDate->diff($today)->format('%r%a');
+
+    if ($daysWaiting >= 0 && $daysWaiting > $longestWaiting) {
+        $longestWaiting = $daysWaiting;
+    }
+}
 
 $caseSummaryStmt = $pdo->query('SELECT type, status, COUNT(*) AS total FROM cases GROUP BY type, status');
 $caseSummary = [];
