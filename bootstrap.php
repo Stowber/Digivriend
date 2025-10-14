@@ -17,6 +17,7 @@ Env::load(__DIR__ . '/.env');
 
 $appConfig = AppConfig::load();
 $pdo = null;
+$connectionError = null;
 
 try {
     $pdo = ConnectionFactory::make($appConfig);
@@ -27,4 +28,17 @@ try {
     }
 
     error_log($exception->getMessage());
+$connectionError = $exception;
+}
+
+if (!$pdo instanceof \PDO) {
+    http_response_code(500);
+    $databaseErrorMessage = 'Er is een fout opgetreden bij het verbinden met de database.';
+
+    if ($connectionError instanceof RuntimeException && $appConfig->isDebug()) {
+        throw $connectionError;
+    }
+
+    require __DIR__ . '/templates/errors/database-error.php';
+    exit;
 }
