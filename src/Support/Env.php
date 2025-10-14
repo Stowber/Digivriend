@@ -21,25 +21,50 @@ final class Env
 
         foreach ($lines as $line) {
             $line = trim($line);
+
             if ($line === '' || str_starts_with($line, '#')) {
                 continue;
             }
 
+            $line = self::stripExportPrefix($line);
+
             [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
-            $key = trim($key);
-            $value = trim($value);
+            $key = self::stripBom(trim($key));
+            $value = self::stripBom(trim($value));
 
             if ($key === '') {
                 continue;
             }
 
-            if (str_starts_with($value, '"') && str_ends_with($value, '"')) {
+            if ($value !== '' && ((str_starts_with($value, '"') && str_ends_with($value, '"')) || (str_starts_with($value, "'") && str_ends_with($value, "'")))) {
                 $value = substr($value, 1, -1);
             }
 
             $_ENV[$key] = $value;
             putenv(sprintf('%s=%s', $key, $value));
         }
+    }
+
+    private static function stripExportPrefix(string $line): string
+    {
+        if (str_starts_with($line, 'export ')) {
+            return ltrim(substr($line, 7));
+        }
+
+        if (str_starts_with($line, 'set ')) {
+            return ltrim(substr($line, 4));
+        }
+
+        return $line;
+    }
+
+    private static function stripBom(string $value): string
+    {
+        if ($value === '') {
+            return $value;
+        }
+
+        return str_starts_with($value, "\u{FEFF}") ? substr($value, 1) : $value;
     }
 
     public static function get(string $key, mixed $default = null): mixed
