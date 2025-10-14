@@ -83,6 +83,10 @@ final class SchemaManager
             $pdo->exec($sql);
         }
 
+        self::ensureOphaalbevestigingenTable($pdo);
+        self::ensureReparatieOnderzoekTable($pdo);
+        self::ensureDataRecoveryTable($pdo);
+
         self::ensureOphaalbevestigingColumns($pdo);
         self::ensureReparatieOnderzoekColumns($pdo);
         self::ensureDataRecoveryColumns($pdo);
@@ -91,6 +95,8 @@ final class SchemaManager
 
     private static function ensureOphaalbevestigingColumns(PDO $pdo): void
     {
+        self::ensureOphaalbevestigingenTable($pdo);
+
         $alterStatements = [
             'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS klantemail VARCHAR(191) NULL AFTER klantnaam',
             'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS klanttelefoon VARCHAR(64) NULL AFTER klantemail',
@@ -101,7 +107,9 @@ final class SchemaManager
             'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
             'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
             'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT "klaar"',
-            'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS opmerkingen TEXT NULL AFTER datumgereed'
+            'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS opmerkingen TEXT NULL AFTER datumgereed',
+            'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS pickup_signature LONGTEXT NULL AFTER opmerkingen',
+            'ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS pickup_signed_at DATETIME NULL AFTER pickup_signature'
         ];
 
         foreach ($alterStatements as $sql) {
@@ -126,10 +134,27 @@ final class SchemaManager
                 }
             }
         }
+        $indexStatements = [
+            'ALTER TABLE ophaalbevestigingen ADD UNIQUE INDEX uniq_ophaalbevestigingen_ophaalcode (ophaalcode)',
+            'ALTER TABLE ophaalbevestigingen ADD INDEX idx_ophaalbevestigingen_datumgereed (datumgereed)',
+            'ALTER TABLE ophaalbevestigingen ADD INDEX idx_ophaalbevestigingen_case_reference (case_reference)'
+        ];
+
+        foreach ($indexStatements as $sql) {
+            try {
+                $pdo->exec($sql);
+            } catch (PDOException $exception) {
+                if (stripos($exception->getMessage(), 'Duplicate') === false && stripos($exception->getMessage(), 'already exists') === false) {
+                    throw $exception;
+                }
+            }
+        }
     }
 
     private static function ensureReparatieOnderzoekColumns(PDO $pdo): void
     {
+        self::ensureReparatieOnderzoekTable($pdo);
+
         $statements = [
             'ALTER TABLE reparatie_onderzoek ADD COLUMN IF NOT EXISTS device_brand VARCHAR(120) NULL AFTER email',
             'ALTER TABLE reparatie_onderzoek ADD COLUMN IF NOT EXISTS device_model VARCHAR(191) NULL AFTER device_brand',
@@ -151,6 +176,8 @@ final class SchemaManager
 
     private static function ensureDataRecoveryColumns(PDO $pdo): void
     {
+        self::ensureDataRecoveryTable($pdo);
+
         $statements = [
             'ALTER TABLE data_recovery ADD COLUMN IF NOT EXISTS case_reference VARCHAR(64) NULL AFTER id',
             'ALTER TABLE data_recovery ADD COLUMN IF NOT EXISTS device_brand VARCHAR(120) NULL AFTER email',
@@ -168,6 +195,94 @@ final class SchemaManager
                 }
             }
         }
+    }
+
+    private static function ensureOphaalbevestigingenTable(PDO $pdo): void
+    {
+        $sql = <<<SQL
+            CREATE TABLE IF NOT EXISTS ophaalbevestigingen (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                klantnaam VARCHAR(191) NOT NULL,
+                klantemail VARCHAR(191) NULL,
+                klanttelefoon VARCHAR(64) NULL,
+                merkmodel VARCHAR(191) NOT NULL,
+                apparaatmerk VARCHAR(120) NULL,
+                apparaatmodel VARCHAR(191) NULL,
+                ophaalcode VARCHAR(64) NOT NULL,
+                case_reference VARCHAR(64) NULL,
+                case_id INT UNSIGNED NULL,
+                datumgereed DATE NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'klaar',
+                opmerkingen TEXT NULL,
+                pickup_signature LONGTEXT NULL,
+                pickup_signed_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_ophaalbevestigingen_ophaalcode (ophaalcode),
+                INDEX idx_ophaalbevestigingen_case (case_id),
+                INDEX idx_ophaalbevestigingen_case_reference (case_reference),
+                INDEX idx_ophaalbevestigingen_datumgereed (datumgereed),
+                CONSTRAINT fk_ophaalbevestigingen_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL;
+
+        $pdo->exec($sql);
+    }
+
+    private static function ensureReparatieOnderzoekTable(PDO $pdo): void
+    {
+        $sql = <<<SQL
+            CREATE TABLE IF NOT EXISTS reparatie_onderzoek (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                fullname VARCHAR(191) NOT NULL,
+                address VARCHAR(255) NOT NULL,
+                phone VARCHAR(64) NOT NULL,
+                email VARCHAR(191) NOT NULL,
+                repair_consent_100 TINYINT(1) NOT NULL DEFAULT 0,
+                repair_consent_notify TINYINT(1) NOT NULL DEFAULT 0,
+                repair_consent_custom TINYINT(1) NOT NULL DEFAULT 0,
+                custom_amount VARCHAR(32) NULL,
+                signature_name VARCHAR(191) NOT NULL,
+                signature_place VARCHAR(191) NOT NULL,
+                signature_date DATE NOT NULL,
+                signature TEXT NULL,
+                device_brand VARCHAR(120) NULL,
+                device_model VARCHAR(191) NULL,
+                device_serial VARCHAR(120) NULL,
+                device_notes TEXT NULL,
+                case_reference VARCHAR(64) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL;
+
+        $pdo->exec($sql);
+    }
+
+    private static function ensureDataRecoveryTable(PDO $pdo): void
+    {
+        $sql = <<<SQL
+            CREATE TABLE IF NOT EXISTS data_recovery (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                fullname VARCHAR(191) NOT NULL,
+                address VARCHAR(255) NOT NULL,
+                postcode VARCHAR(32) NOT NULL,
+                phone VARCHAR(64) NOT NULL,
+                email VARCHAR(191) NOT NULL,
+                signature_date DATE NOT NULL,
+                signature TEXT NULL,
+                case_reference VARCHAR(64) NOT NULL,
+                device_brand VARCHAR(120) NULL,
+                device_model VARCHAR(191) NULL,
+                device_serial VARCHAR(120) NULL,
+                notes TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_data_recovery_case_reference (case_reference)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL;
+
+        $pdo->exec($sql);
     }
 
     private static function ensureDefaultUserExists(PDO $pdo): void
