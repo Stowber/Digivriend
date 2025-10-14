@@ -21,22 +21,14 @@ final class ConnectionFactory
 
         $config ??= AppConfig::load();
 
-        if (!extension_loaded('pdo_mysql')) {
-            throw new RuntimeException(
-                'De PDO MySQL-extensie (pdo_mysql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de MySQL-driver om verbinding te maken.'
-            );
-        }
+        self::assertExtensionLoaded($config->driver());
 
         try {
-             $pdo = self::createConnection($config);
+            $pdo = self::createConnection($config);
         } catch (PDOException $exception) {
-             if (self::isUnknownDatabaseError($exception)) {
-                try {
-                    self::createDatabase($config);
-                    $pdo = self::createConnection($config);
-                } catch (PDOException $innerException) {
-                    throw self::connectionException($innerException, $config);
-                }
+             if ($config->driver() === 'mysql' && self::isUnknownDatabaseError($exception)) {
+                self::createDatabase($config);
+                $pdo = self::createConnection($config);
             } else {
                 throw self::connectionException($exception, $config);
             }
@@ -46,28 +38,35 @@ final class ConnectionFactory
 
         return self::$pdo;
     }
+
     private static function createConnection(AppConfig $config): PDO
     {
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ];
+
+        if ($config->driver() === 'mysql') {
+            $options[PDO::ATTR_EMULATE_PREPARES] = false;
+        }
         return new PDO(
             $config->dsn(),
             $config->dbUser(),
             $config->dbPassword(),
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]
+            $options
         );
     }
 
     private static function createDatabase(AppConfig $config): void
     {
+        if ($config->driver() !== 'mysql') {
+            throw new RuntimeException(sprintf('Database "%s" bestaat nog niet of is niet bereikbaar.', $config->dbName()));
+        }
         $pdo = new PDO(
             $config->dsnWithoutDatabase(),
             $config->dbUser(),
             $config->dbPassword(),
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            ]
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
 
         $databaseName = str_replace('`', '``', $config->dbName());
@@ -79,13 +78,22 @@ final class ConnectionFactory
 
     private static function isUnknownDatabaseError(PDOException $exception): bool
     {
+        $sqlState = (string) ($exception->errorInfo[0] ?? $exception->getCode());
+
+        if (in_array($sqlState, ['3D000', '42000'], true)) {
+            return true;
+        }
         $errorCode = (int) ($exception->errorInfo[1] ?? 0);
 
         if ($errorCode === 1049) {
             return true;
         }
 
-        return str_contains(strtolower($exception->getMessage()), 'unknown database');
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'unknown database')
+            || str_contains($message, 'does not exist')
+            || str_contains($message, 'unknown db');
     }
 
     private static function connectionException(PDOException $exception, AppConfig $config): RuntimeException
@@ -94,7 +102,7 @@ final class ConnectionFactory
             return new RuntimeException('Kon geen verbinding maken met de database: ' . $exception->getMessage(), 0, $exception);
         }
 
-         return new RuntimeException(self::friendlyMessage($exception, $config), 0, $exception);
+        return new RuntimeException(self::friendlyMessage($exception, $config), 0, $exception);
     }
 
     private static function friendlyMessage(PDOException $exception, AppConfig $config): string
@@ -102,10 +110,13 @@ final class ConnectionFactory
         $message = strtolower($exception->getMessage());
 
         if (str_contains($message, 'could not find driver')) {
-            return 'De PDO MySQL-extensie (pdo_mysql) is niet beschikbaar. Schakel deze extensie in php.ini in of installeer de MySQL-driver.';
+            return match ($config->driver()) {
+                'pgsql' => 'De PDO PostgreSQL-extensie (pdo_pgsql) is niet beschikbaar. Schakel deze extensie in php.ini in of installeer de PostgreSQL-driver.',
+                default => 'De PDO MySQL-extensie (pdo_mysql) is niet beschikbaar. Schakel deze extensie in php.ini in of installeer de MySQL-driver.',
+            };
         }
 
-        if (str_contains($message, 'access denied')) {
+        if (str_contains($message, 'access denied') || str_contains($message, 'authentication failed')) {
             return sprintf(
                 'De database weigerde de verbinding voor gebruiker "%s". Controleer de gebruikersnaam en het wachtwoord in het .env-bestand.',
                 $config->dbUser()
@@ -115,16 +126,19 @@ final class ConnectionFactory
         if (
             str_contains($message, 'sqlstate[hy000] [2002]') ||
             str_contains($message, 'connection refused') ||
-            str_contains($message, 'server has gone away')
+            str_contains($message, 'server has gone away') ||
+            str_contains($message, 'timeout expired') ||
+            str_contains($message, 'could not translate host name')
         ) {
             return sprintf(
-                'Er kon geen verbinding worden gemaakt met MySQL op %s:%d. Controleer of de server actief is en of de host/poort juist zijn ingesteld.',
+                'Er kon geen verbinding worden gemaakt met %s op %s:%d. Controleer of de server actief is en of de host/poort juist zijn ingesteld.',
+                $config->driver() === 'pgsql' ? 'PostgreSQL' : 'MySQL',
                 $config->dbHost(),
                 $config->dbPort()
             );
         }
 
-        if (self::isUnknownDatabaseError($exception)) {
+        if ($config->driver() === 'mysql' && self::isUnknownDatabaseError($exception)) {
             return sprintf(
                 'De database "%s" bestaat nog niet of is niet bereikbaar. Controleer of de gebruiker "%s" de juiste rechten heeft om deze aan te maken.',
                 $config->dbName(),
@@ -133,5 +147,17 @@ final class ConnectionFactory
         }
 
         return 'Er is een fout opgetreden bij het verbinden met de database.';
+    }
+private static function assertExtensionLoaded(string $driver): void
+    {
+        $extension = $driver === 'pgsql' ? 'pdo_pgsql' : 'pdo_mysql';
+
+        if (!extension_loaded($extension)) {
+            $friendly = $driver === 'pgsql'
+                ? 'De PDO PostgreSQL-extensie (pdo_pgsql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de PostgreSQL-driver om verbinding te maken.'
+                : 'De PDO MySQL-extensie (pdo_mysql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de MySQL-driver om verbinding te maken.';
+
+            throw new RuntimeException($friendly);
+        }
     }
 }
