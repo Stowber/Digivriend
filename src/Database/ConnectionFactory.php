@@ -121,7 +121,6 @@ final class ConnectionFactory
                 'De database weigerde de verbinding voor gebruiker "%s". Controleer de gebruikersnaam en het wachtwoord in het .env-bestand.',
                 $config->dbUser()
             );
-        }
 
         $projectRoot = dirname(__DIR__, 2);
             $envFile = $projectRoot . '/.env';
@@ -134,6 +133,7 @@ final class ConnectionFactory
             }
 
             return $baseMessage;
+        }
 
         if (
             str_contains($message, 'sqlstate[hy000] [2002]') ||
@@ -160,7 +160,8 @@ final class ConnectionFactory
 
         return 'Er is een fout opgetreden bij het verbinden met de database.';
     }
-private static function assertExtensionLoaded(string $driver): void
+    
+    private static function assertExtensionLoaded(string $driver): void
     {
         $extension = $driver === 'pgsql' ? 'pdo_pgsql' : 'pdo_mysql';
 
