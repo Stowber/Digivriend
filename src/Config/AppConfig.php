@@ -14,6 +14,7 @@ final class AppConfig
      * @param array<string, string> $options
      */
     public function __construct(
+        private readonly string $driver,
         private readonly string $dbHost,
         private readonly int $dbPort,
         private readonly string $dbName,
