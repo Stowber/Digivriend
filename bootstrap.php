@@ -39,6 +39,14 @@ if (!$pdo instanceof \PDO) {
         throw $connectionError;
     }
 
-    require __DIR__ . '/templates/errors/database-error.php';
+    $errorTemplate = __DIR__ . '/templates/error/database-error.php';
+
+    if (!is_file($errorTemplate)) {
+        echo '<h1>Databasefout</h1>';
+        echo '<p>' . htmlspecialchars($databaseErrorMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
+        exit;
+    }
+
+    require $errorTemplate;
     exit;
 }
