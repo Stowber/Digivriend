@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Security\Csrf;
 
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/auth.php';
 $csrfToken = Csrf::token();
 ?>
 <!DOCTYPE html>
@@ -22,11 +23,13 @@ $csrfToken = Csrf::token();
       <a href="index.php" class="logo">Digivriend</a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
-          <li><a href="index.php">Start</a></li>
+          <li><a href="index.php">Dashboard</a></li>
           <li><a href="ophaalbevestiging.php" aria-current="page">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li class="main-nav__spacer" aria-hidden="true"></li>
+          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
       </nav>
     </div>
@@ -47,8 +50,24 @@ $csrfToken = Csrf::token();
         </div>
 
       <div class="form-group">
-          <label for="merkmodel">Merk &amp; Model</label>
-          <input type="text" id="merkmodel" name="merkmodel" maxlength="120" required>
+          <label for="klantemail">E-mailadres</label>
+          <input type="email" id="klantemail" name="klantemail" maxlength="120" placeholder="optioneel">
+        </div>
+
+        <div class="form-group">
+          <label for="klanttelefoon">Telefoonnummer</label>
+          <input type="text" id="klanttelefoon" name="klanttelefoon" maxlength="32" placeholder="optioneel">
+        </div>
+
+        <div class="form-split">
+          <div class="form-group">
+            <label for="apparaatmerk">Merk</label>
+            <input type="text" id="apparaatmerk" name="apparaatmerk" maxlength="120" required>
+          </div>
+          <div class="form-group">
+            <label for="apparaatmodel">Model</label>
+            <input type="text" id="apparaatmodel" name="apparaatmodel" maxlength="120" required>
+          </div>
         </div>
 
       <div class="form-group">
@@ -59,6 +78,11 @@ $csrfToken = Csrf::token();
        <div class="form-group">
           <label for="datumgereed">Datum gereed</label>
           <input type="date" id="datumgereed" name="datumgereed" required>
+        </div>
+
+        <div class="form-group">
+          <label for="opmerkingen">Interne notitie (optioneel)</label>
+          <textarea id="opmerkingen" name="opmerkingen" rows="3" placeholder="Bijvoorbeeld bijzonderheden bij afhalen"></textarea>
         </div>
 
     <div class="document-actions">

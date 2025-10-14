@@ -47,4 +47,49 @@
 .contact-card a:hover,
 .contact-card a:focus {
   color: var(--color-primary-dark);
+  }
+
+.manual-card {
+  margin-top: 2.5rem;
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 1.2rem;
+}
+
+.manual-form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.manual-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.manual-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.manual-grid input,
+.manual-grid textarea {
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+}
+
+.manual-grid textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.manual-grid__wide {
+  grid-column: 1 / -1;
 }

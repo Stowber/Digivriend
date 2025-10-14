@@ -49,6 +49,41 @@ final class InputValidator
     /**
      * @param array<string, mixed> $source
      */
+    public static function optionalEmail(array $source, string $key, int $maxLength = 255): string
+    {
+        $value = self::optionalString($source, $key, $maxLength);
+        if ($value === '') {
+            return '';
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            throw new ValidationException([$key => 'Ongeldig e-mailadres.']);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     */
+    public static function optionalPhone(array $source, string $key, int $maxLength = 32): string
+    {
+        $value = self::optionalString($source, $key, $maxLength);
+        if ($value === '') {
+            return '';
+        }
+
+        $sanitized = preg_replace('/[^\d+]/', '', $value);
+        if ($sanitized === null || $sanitized === '') {
+            throw new ValidationException([$key => 'Telefoonnummer bevat ongeldige tekens.']);
+        }
+
+        return $sanitized;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     */
     public static function requireDate(array $source, string $key): string
     {
         $value = trim((string) ($source[$key] ?? ''));

@@ -135,6 +135,10 @@ main {
   gap: 1rem;
 }
 
+.main-nav__spacer {
+  flex: 1 1 auto;
+}
+
 .main-nav a {
   font-weight: 600;
   font-size: 0.95rem;
@@ -185,6 +189,18 @@ input[type="submit"],
   box-shadow: 0 14px 34px -18px rgba(240, 90, 40, 0.9);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.btn-link {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.btn-link:hover,
+.btn-link:focus {
+  text-decoration: underline;
+}
+
 
 .btn:hover,
 .btn:focus,

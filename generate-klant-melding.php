@@ -1,92 +1,136 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
+declare(strict_types=1);
 
+use App\Exception\ValidationException;
+use App\Http\Response;
+use App\Security\Csrf;
+use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\CustomerRepository;
+use App\Support\Repositories\DeviceRepository;
+use App\Support\Repositories\NoteRepository;
+use App\Validation\InputValidator;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-// Controleer of de verplichte POST-velden aanwezig zijn
-if (
-    !isset($_POST['klantnaam'], $_POST['klantadres'], $_POST['klanttelefoon'], $_POST['klantemail'], 
-           $_POST['apparaatmerk'], $_POST['apparaatmodel'], $_POST['meldingonderwerp'], 
-           $_POST['meldingomschrijving'], $_POST['meldingdatum'], 
-           $_POST['reparatiespoed'], $_POST['magcontact'], $_POST['kostenoptie'])
-) {
-    die("Niet alle verplichte velden zijn ingevuld.");
+require __DIR__ . '/bootstrap.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    Response::error('Alleen POST-verzoeken zijn toegestaan.', 405);
 }
 
-// Haal de waarden op en escape ze
-$klantnaam           = htmlspecialchars($_POST['klantnaam']);
-$klantadres          = htmlspecialchars($_POST['klantadres']);
-$klanttelefoon       = htmlspecialchars($_POST['klanttelefoon']);
-$klantemail          = htmlspecialchars($_POST['klantemail']);
-
-$apparaatmerk        = htmlspecialchars($_POST['apparaatmerk']);
-$apparaatmodel       = htmlspecialchars($_POST['apparaatmodel']);
-$apparaatserienummer = isset($_POST['apparaatserienummer']) ? htmlspecialchars($_POST['apparaatserienummer']) : "";
-
-$meldingonderwerp    = htmlspecialchars($_POST['meldingonderwerp']);
-$meldingomschrijving = nl2br(htmlspecialchars($_POST['meldingomschrijving']));
-$meldingdatum        = htmlspecialchars($_POST['meldingdatum']);
-$opmerkingen         = isset($_POST['opmerkingen']) ? nl2br(htmlspecialchars($_POST['opmerkingen'])) : "";
-
-// Nieuwe velden
-$reparatiespoed      = htmlspecialchars($_POST['reparatiespoed']);  // standard, snel, spoed
-$magcontact          = htmlspecialchars($_POST['magcontact']);      // ja, nee
-$kostenoptie         = htmlspecialchars($_POST['kostenoptie']);     // allekosten, tot100, zelfbedrag
-$bedragzelf          = ""; // Als kostenoptie == 'zelfbedrag'
-if (isset($_POST['bedragzelf'])) {
-    $bedragzelf = htmlspecialchars($_POST['bedragzelf']);
+if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
+    Response::error('Ongeldige of ontbrekende CSRF-token.', 419);
 }
 
-// Dynamische velden
-$documentTitel = "Klant Melding";
-$bedrijfsNaam  = "Digivriend";
-$huidigeDatum  = date("d-m-Y");
-$jaartal       = date("Y");
+try {
+    $klantnaam = InputValidator::requireString($_POST, 'klantnaam', 150);
+    $klantadres = InputValidator::requireString($_POST, 'klantadres', 200);
+    $klanttelefoon = InputValidator::requirePhone($_POST, 'klanttelefoon', 32);
+    $klantemail = InputValidator::requireEmail($_POST, 'klantemail', 150);
 
-// Spoed-tekst bepalen
-switch ($reparatiespoed) {
-    case 'standard':
-        $spoedText = "Standaard (3–5 werkdagen, geen kosten)";
-        break;
-    case 'snel':
-        $spoedText = "Snel (2–3 werkdagen, +15€)";
-        break;
-    case 'spoed':
-        $spoedText = "Spoed (24 uur, +50€)";
-        break;
-    default:
-        $spoedText = "Onbekend";
+$apparaatmerk = InputValidator::requireString($_POST, 'apparaatmerk', 120);
+    $apparaatmodel = InputValidator::requireString($_POST, 'apparaatmodel', 120);
+    $apparaatserienummer = InputValidator::optionalString($_POST, 'apparaatserienummer', 120);
+
+    $meldingonderwerp = InputValidator::requireString($_POST, 'meldingonderwerp', 200);
+    $meldingomschrijving = InputValidator::requireString($_POST, 'meldingomschrijving', 2000);
+    $meldingdatum = InputValidator::requireDate($_POST, 'meldingdatum');
+    $opmerkingen = InputValidator::optionalString($_POST, 'opmerkingen', 2000);
+
+    $reparatiespoed = InputValidator::requireString($_POST, 'reparatiespoed', 20);
+    $magcontact = InputValidator::requireString($_POST, 'magcontact', 5);
+    $kostenoptie = InputValidator::requireString($_POST, 'kostenoptie', 32);
+    $bedragzelf = InputValidator::optionalString($_POST, 'bedragzelf', 32);
+} catch (ValidationException $exception) {
+    Response::error($exception->errors(), 422);
 }
 
-// Mag contact?
-$contactText = ($magcontact === 'ja') 
-    ? "Ja. Telefonisch contact met de klant is toegestaan. De partner mag de klant rechtstreeks benaderen om prijsafspraken of werkzaamheden te bespreken." 
-    : "Nee. De klant wil niet door andere partijen benaderd worden. Alleen Digivriend is bevoegd om contact op te nemen met de klant.";
+$postalCode = null;
+if (preg_match('/(\d{4}\s?[A-Z]{2})/i', $klantadres, $match)) {
+    $postalCode = strtoupper(str_replace(' ', '', $match[1]));
+}
 
-// Kostenoptie
-$kostenText = "";
+$customerRepository = new CustomerRepository($pdo);
+$deviceRepository = new DeviceRepository($pdo);
+$caseRepository = new CaseRepository($pdo);
+$noteRepository = new NoteRepository($pdo);
+
+$customer = $customerRepository->upsert(
+    $klantnaam,
+    $klantemail,
+    $klanttelefoon,
+    $klantadres,
+    $postalCode,
+    null
+);
+$device = $deviceRepository->findOrCreate((int) $customer['id'], $apparaatmerk, $apparaatmodel, $apparaatserienummer ?: null);
+$caseReference = 'MEL-' . strtoupper(bin2hex(random_bytes(3)));
+
+$details = [
+    'meldingonderwerp' => $meldingonderwerp,
+    'meldingomschrijving' => $meldingomschrijving,
+    'meldingdatum' => $meldingdatum,
+    'reparatiespoed' => $reparatiespoed,
+    'magcontact' => $magcontact,
+    'kostenoptie' => $kostenoptie,
+    'bedragzelf' => $bedragzelf,
+];
+
+$case = $caseRepository->createOrUpdate(
+    'service_request',
+    (int) $customer['id'],
+    $device['id'] ?? null,
+    'open',
+    $meldingonderwerp,
+    $caseReference,
+    $details
+);
+
+$noteRepository->add((int) $case['id'], (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), 'Nieuwe klantmelding geregistreerd.');
+$noteRepository->add((int) $case['id'], (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), 'Omschrijving: ' . $meldingomschrijving);
+
+if ($opmerkingen !== '') {
+    $noteRepository->add((int) $case['id'], (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), 'Opmerkingen: ' . $opmerkingen);
+}
+
+$documentTitel = 'Klant Melding';
+$bedrijfsNaam = 'Digivriend';
+$huidigeDatum = date('d-m-Y');
+$jaartal = date('Y');
+
+$spoedTeksten = [
+    'standard' => 'Standaard (3–5 werkdagen, geen kosten)',
+    'snel' => 'Snel (2–3 werkdagen, +15€)',
+    'spoed' => 'Spoed (24 uur, +50€)',
+];
+$contactTekst = $magcontact === 'ja'
+    ? 'Ja. Telefonisch contact met de klant is toegestaan. De partner mag de klant rechtstreeks benaderen om prijsafspraken of werkzaamheden te bespreken.'
+    : 'Nee. De klant wil niet door andere partijen benaderd worden. Alleen Digivriend is bevoegd om contact op te nemen met de klant.';
+
 switch ($kostenoptie) {
     case 'allekosten':
-        $kostenText = "Alle kosten laten weten.";
+        $kostenText = 'Alle kosten laten weten.';
         break;
     case 'tot100':
-        $kostenText = "Toestemming tot 100€ zonder kennisgeving.";
+        $kostenText = 'Toestemming tot 100€ zonder kennisgeving.';
         break;
     case 'zelfbedrag':
-        $kostenText = "Toestemming tot ".$bedragzelf." zonder kennisgeving.";
+        $kostenText = 'Toestemming tot ' . ($bedragzelf !== '' ? $bedragzelf : 'een afgesproken bedrag') . ' zonder kennisgeving.';
         break;
     default:
-        $kostenText = "Onbekende optie.";
+        $kostenText = 'Onbekende optie.';
 }
 
-// HTML-opmaak: geen flex, geen gradient
-$html = '
+$meldingOmschrijvingHtml = nl2br($meldingomschrijving);
+$opmerkingenHtml = $opmerkingen !== '' ? nl2br($opmerkingen) : '';
+
+ob_start();
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>'.$documentTitel.' - '.$bedrijfsNaam.'</title>
+  <title><?= $documentTitel ?> - <?= $bedrijfsNaam ?></title>
   <style>
     body {
       margin: 0;
@@ -133,7 +177,7 @@ $html = '
     }
     .label {
       display: inline-block;
-      width: 100px;
+      width: 120px;
       font-weight: bold;
     }
     .two-column-table {
@@ -156,83 +200,71 @@ $html = '
 </head>
 <body>
   <div class="header">
-    <h1>'.$bedrijfsNaam.'</h1>
-    <p>'.$documentTitel.' - '.$huidigeDatum.'</p>
+    <h1><?= $bedrijfsNaam ?></h1>
+    <p><?= $documentTitel ?> - <?= $huidigeDatum ?></p>
   </div>
   <div class="container">
 
-    <!-- Klant en apparaatgegevens naast elkaar -->
     <table class="two-column-table">
       <tr>
         <td>
           <div class="card">
             <h2>Klantgegevens</h2>
-            <div class="row"><span class="label">Naam:</span> '.$klantnaam.'</div>
-            <div class="row"><span class="label">Adres:</span> '.$klantadres.'</div>
-            <div class="row"><span class="label">Telefoon:</span> '.$klanttelefoon.'</div>
-            <div class="row"><span class="label">E-mail:</span> '.$klantemail.'</div>
+            <div class="row"><span class="label">Naam:</span> <?= $klantnaam ?></div>
+            <div class="row"><span class="label">Adres:</span> <?= $klantadres ?></div>
+            <div class="row"><span class="label">Telefoon:</span> <?= $klanttelefoon ?></div>
+            <div class="row"><span class="label">E-mail:</span> <?= $klantemail ?></div>
           </div>
         </td>
         <td>
           <div class="card">
             <h2>Apparaatgegevens</h2>
-            <div class="row"><span class="label">Merk:</span> '.$apparaatmerk.'</div>
-            <div class="row"><span class="label">Model:</span> '.$apparaatmodel.'</div>';
-
-if (!empty($apparaatserienummer)) {
-    $html .= '<div class="row"><span class="label">Serienr.:</span> '.$apparaatserienummer.'</div>';
-}
-
-$html .= '
+            <div class="row"><span class="label">Merk:</span> <?= $apparaatmerk ?></div>
+            <div class="row"><span class="label">Model:</span> <?= $apparaatmodel ?></div>
+            <?php if ($apparaatserienummer !== ''): ?>
+              <div class="row"><span class="label">Serienr.:</span> <?= $apparaatserienummer ?></div>
+            <?php endif; ?>
           </div>
         </td>
       </tr>
     </table>
 
-    <!-- Melding card -->
     <div class="card">
       <h2>Melding</h2>
-      <div class="row"><span class="label">Onderwerp:</span> '.$meldingonderwerp.'</div>
-      <div class="row" style="margin-top:8px;"><strong>Omschrijving:</strong><br>'.$meldingomschrijving.'</div>
-      <div class="row" style="margin-top:8px;"><span class="label">Datum:</span> '.$meldingdatum.'</div>';
-
-if (!empty($opmerkingen)) {
-    $html .= '<div class="row" style="margin-top:8px;"><strong>Opmerkingen:</strong><br>'.$opmerkingen.'</div>';
-}
-
-$html .= '
+      <div class="row"><span class="label">Onderwerp:</span> <?= $meldingonderwerp ?></div>
+      <div class="row" style="margin-top:8px;"><strong>Omschrijving:</strong><br><?= $meldingOmschrijvingHtml ?></div>
+      <div class="row" style="margin-top:8px;"><span class="label">Datum:</span> <?= $meldingdatum ?></div>
+      <?php if ($opmerkingenHtml !== ''): ?>
+        <div class="row" style="margin-top:8px;"><strong>Opmerkingen:</strong><br><?= $opmerkingenHtml ?></div>
+      <?php endif; ?>
     </div>
 
-    <!-- Nieuwe opties -->
+<div class="card">
+      <h2>Afgesproken prioriteit</h2>
+      <div class="row"><?= $spoedTeksten[$reparatiespoed] ?? 'Onbekend' ?></div>
+    </div>
+      <h2>Contactvoorkeur</h2>
+      <div class="row"><?= $contactTekst ?></div>
+    </div>
     <div class="card">
-      <h2>Reparatie Opties</h2>
-      <div class="row">
-        <span class="label">Spoed:</span> '.$spoedText.'
-      </div>
-      <div class="row">
-        <span class="label">Contact:</span> '.$contactText.'
-      </div>
-      <div class="row">
-        <strong>Kosten:</strong> '.$kostenText.'
-      </div>
+      <h2>Kostenafspraak</h2>
+      <div class="row"><?= $kostenText ?></div>
     </div>
 
   </div>
   <div class="footer">
-    &copy; '.$jaartal.' '.$bedrijfsNaam.'. Alle rechten voorbehouden.
+    <p>&copy; <?= $jaartal ?> <?= $bedrijfsNaam ?> - Referentie: <?= $caseReference ?></p>
   </div>
 </body>
 </html>
-';
+<?php
+$html = (string) ob_get_clean();
 
-// Dompdf configureren
 $options = new Options();
 $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
-
-// Bestandsnaam genereren
-$filename = "Klant-Melding[".$huidigeDatum."][".time()."].pdf";
-$dompdf->stream($filename, ["Attachment" => true]);
+$filename = sprintf('Klantmelding[%s][%s].pdf', $huidigeDatum, $caseReference);
+$dompdf->stream($filename, ['Attachment' => true]);

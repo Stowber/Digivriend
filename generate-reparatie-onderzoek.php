@@ -1,78 +1,141 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-require 'database.php'; // Jouw PDO-connectie
+declare(strict_types=1);
 
+use App\Exception\ValidationException;
+use App\Http\Response;
+use App\Security\Csrf;
+use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\CustomerRepository;
+use App\Support\Repositories\DeviceRepository;
+use App\Support\Repositories\NoteRepository;
+use App\Validation\InputValidator;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-// 1. Controleer of de benodigde POST-variabelen aanwezig zijn
-if (
-    !isset($_POST['fullname'], $_POST['address'], $_POST['phone'], $_POST['email'], 
-           $_POST['signatureName'], $_POST['signaturePlace'], $_POST['signatureDate'])
-) {
-    die("Niet alle verplichte velden zijn ingevuld.");
+require __DIR__ . '/bootstrap.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    Response::error('Alleen POST-verzoeken zijn toegestaan.', 405);
 }
 
-// 2. Haal de waarden op
-$fullname         = htmlspecialchars($_POST['fullname']);
-$address          = htmlspecialchars($_POST['address']);
-$phone            = htmlspecialchars($_POST['phone']);
-$email            = htmlspecialchars($_POST['email']);
+if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
+    Response::error('Ongeldige of ontbrekende CSRF-token.', 419);
+}
 
-$repairConsent100   = isset($_POST['repairConsent100']) ? 1 : 0;
-$repairConsentNotify = isset($_POST['repairConsentNotify']) ? 1 : 0;
-$repairConsentCustom = isset($_POST['repairConsentCustom']) ? 1 : 0;
-$customAmount        = isset($_POST['customAmount']) ? htmlspecialchars($_POST['customAmount']) : "";
-
-$signatureName  = htmlspecialchars($_POST['signatureName']);
-$signaturePlace = htmlspecialchars($_POST['signaturePlace']);
-$signatureDate  = htmlspecialchars($_POST['signatureDate']);
-$signature      = isset($_POST['signature']) ? htmlspecialchars($_POST['signature']) : "";
-
-// 3. Database (optioneel)
 try {
-    $stmt = $pdo->prepare("
-        INSERT INTO reparatie_onderzoek (
+    $fullname = InputValidator::requireString($_POST, 'fullname', 150);
+    $address = InputValidator::requireString($_POST, 'address', 200);
+    $phone = InputValidator::requirePhone($_POST, 'phone', 32);
+    $email = InputValidator::requireEmail($_POST, 'email', 150);
+
+    $deviceBrand = InputValidator::requireString($_POST, 'deviceBrand', 120);
+    $deviceModel = InputValidator::requireString($_POST, 'deviceModel', 150);
+    $deviceSerial = InputValidator::optionalString($_POST, 'deviceSerial', 120);
+    $deviceNotes = InputValidator::optionalString($_POST, 'deviceNotes', 500);
+
+    $repairConsentOption = InputValidator::requireString($_POST, 'repairConsentOption', 20);
+    $customAmount = InputValidator::optionalString($_POST, 'customAmount', 32);
+
+    $signatureName = InputValidator::requireString($_POST, 'signatureName', 150);
+    $signaturePlace = InputValidator::requireString($_POST, 'signaturePlace', 120);
+    $signatureDate = InputValidator::requireDate($_POST, 'signatureDate');
+    $signature = InputValidator::optionalString($_POST, 'signature', 255);
+} catch (ValidationException $exception) {
+    Response::error($exception->errors(), 422);
+}
+
+$consentFlags = [
+    'repairConsent100' => $repairConsentOption === '100' ? 1 : 0,
+    'repairConsentNotify' => $repairConsentOption === 'notify' ? 1 : 0,
+    'repairConsentCustom' => $repairConsentOption === 'custom' ? 1 : 0,
+];
+
+try {
+    $statement = $pdo->prepare(
+        'INSERT INTO reparatie_onderzoek (
             fullname, address, phone, email,
             repair_consent_100, repair_consent_notify, repair_consent_custom, custom_amount,
-            signature_name, signature_place, signature_date, signature
+            signature_name, signature_place, signature_date, signature,
+            device_brand, device_model, device_serial, device_notes, case_reference
         ) VALUES (
             :fullname, :address, :phone, :email,
             :c100, :cNotify, :cCustom, :cAmount,
-            :sigName, :sigPlace, :sigDate, :sig
-        )
-    ");
-    $stmt->execute([
-        'fullname'  => $fullname,
-        'address'   => $address,
-        'phone'     => $phone,
-        'email'     => $email,
-        'c100'      => $repairConsent100,
-        'cNotify'   => $repairConsentNotify,
-        'cCustom'   => $repairConsentCustom,
-        'cAmount'   => $customAmount,
-        'sigName'   => $signatureName,
-        'sigPlace'  => $signaturePlace,
-        'sigDate'   => $signatureDate,
-        'sig'       => $signature
+            :sigName, :sigPlace, :sigDate, :sig,
+            :deviceBrand, :deviceModel, :deviceSerial, :deviceNotes, :caseReference
+        )'
+    );
+    $caseReference = 'REP-' . strtoupper(bin2hex(random_bytes(3)));
+    $statement->execute([
+        'fullname' => $fullname,
+        'address' => $address,
+        'phone' => $phone,
+        'email' => $email,
+        'c100' => $consentFlags['repairConsent100'],
+        'cNotify' => $consentFlags['repairConsentNotify'],
+        'cCustom' => $consentFlags['repairConsentCustom'],
+        'cAmount' => $customAmount ?: null,
+        'sigName' => $signatureName,
+        'sigPlace' => $signaturePlace,
+        'sigDate' => $signatureDate,
+        'sig' => $signature ?: null,
+        'deviceBrand' => $deviceBrand,
+        'deviceModel' => $deviceModel,
+        'deviceSerial' => $deviceSerial ?: null,
+        'deviceNotes' => $deviceNotes ?: null,
+        'caseReference' => $caseReference,
     ]);
-    $insertId = $pdo->lastInsertId();
-} catch (PDOException $e) {
-    die("Fout bij opslaan in de database: " . $e->getMessage());
+    $insertId = (int) $pdo->lastInsertId();
+} catch (\PDOException $exception) {
+    Response::error('Fout bij opslaan in de database.', 500);
 }
 
-// 4. Stel dynamische velden in voor PDF
-$documentTitel = "Toestemmingsformulier Reparatie & Onderzoek";
-$bedrijfsNaam  = "Digivriend";
-$huidigeDatum  = date("d-m-Y");
+$customerRepository = new CustomerRepository($pdo);
+$deviceRepository = new DeviceRepository($pdo);
+$caseRepository = new CaseRepository($pdo);
+$noteRepository = new NoteRepository($pdo);
 
-// 5. HTML-sjabloon (Dompdf)
-$html = '
+$customer = $customerRepository->upsert($fullname, $email, $phone, $address);
+$device = $deviceRepository->findOrCreate((int) $customer['id'], $deviceBrand, $deviceModel, $deviceSerial ?: null);
+
+$details = [
+    'repair_consent_option' => $repairConsentOption,
+    'custom_amount' => $customAmount,
+    'signature_place' => $signaturePlace,
+    'signature_date' => $signatureDate,
+    'device_notes' => $deviceNotes,
+];
+
+$case = $caseRepository->createOrUpdate(
+    'repair_request',
+    (int) $customer['id'],
+    $device['id'] ?? null,
+    'in_behandeling',
+    'Reparatie & Onderzoek toestemmingsformulier',
+    $caseReference,
+    $details
+);
+
+$noteRepository->add((int) $case['id'], (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), 'Formulier voor reparatie & onderzoek geregistreerd.');
+$noteRepository->add((int) $case['id'], (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), 'Voorkeur: ' . $repairConsentOption . ($customAmount !== '' ? ' (' . $customAmount . ')' : ''));
+
+$documentTitel = 'Toestemmingsformulier Reparatie & Onderzoek';
+$bedrijfsNaam = 'Digivriend';
+$huidigeDatum = date('d-m-Y');
+
+$consentText = match ($repairConsentOption) {
+    '100' => 'Reparaties tot €100 zonder kennisgeving.',
+    'notify' => 'Eerst op de hoogte gebracht worden van alle reparatiekosten.',
+    'custom' => 'Eigen budget zonder kennisgeving tot ' . ($customAmount !== '' ? $customAmount : 'het opgegeven bedrag') . '.',
+    default => 'Geen voorkeur opgegeven.',
+};
+
+ob_start();
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>'.$documentTitel.'</title>
+    <title><?= $documentTitel ?></title>
     <style>
         body {
             font-family: "Helvetica", sans-serif;
@@ -85,7 +148,7 @@ $html = '
             margin: 40px;
         }
         .header {
-            background-color: #0d6efd; /* Bootstrap primary */
+            background-color: #0d6efd;
             color: #fff;
             padding: 20px;
             margin-bottom: 20px;
@@ -123,14 +186,6 @@ $html = '
             font-size: 1.1em;
             color: #0d6efd;
         }
-        .checkmark {
-            color: #198754; /* Bootstrap success */
-            font-weight: bold;
-        }
-        .crossmark {
-            color: #dc3545; /* Bootstrap danger */
-            font-weight: bold;
-        }
         .footer {
             margin: 30px 20px;
             padding-top: 10px;
@@ -141,104 +196,75 @@ $html = '
     </style>
 </head>
 <body>
-
     <div class="header">
-        <h1>'.$bedrijfsNaam.'</h1>
+        <h1><?= $bedrijfsNaam ?></h1>
         <p>De Ganskuijl 103B, 3817 EZ Amersfoort | +31 (0)33 785 4284 | www.digivriend.nl</p>
     </div>
 
     <div class="content">
         <div class="title-block">
-            <h2>'.$documentTitel.'</h2>
-            <p>Gegenereerd op: '.date("d-m-Y").'</p>
+           <h2><?= $documentTitel ?></h2>
+            <p>Gegenereerd op: <?= date('d-m-Y') ?> · Referentie: <?= $caseReference ?></p>
         </div>
 
-        <!-- Klantinformatie -->
         <div class="info-section">
             <h3>Klantinformatie</h3>
-            <p><strong>Naam:</strong> '.$fullname.'</p>
-            <p><strong>Adres + Postcode:</strong> '.$address.'</p>
-            <p><strong>Telefoonnummer:</strong> '.$phone.'</p>
-            <p><strong>E-mail:</strong> '.$email.'</p>
+            <p><strong>Naam:</strong> <?= $fullname ?></p>
+            <p><strong>Adres + Postcode:</strong> <?= $address ?></p>
+            <p><strong>Telefoonnummer:</strong> <?= $phone ?></p>
+            <p><strong>E-mail:</strong> <?= $email ?></p>
         </div>
 
-        <!-- Onderzoekstoestemming -->
+        <div class="info-section">
+            <h3>Apparaatgegevens</h3>
+            <p><strong>Merk:</strong> <?= $deviceBrand ?></p>
+            <p><strong>Model:</strong> <?= $deviceModel ?></p>
+            <?php if ($deviceSerial !== ''): ?>
+                <p><strong>Serienummer:</strong> <?= $deviceSerial ?></p>
+            <?php endif; ?>
+            <?php if ($deviceNotes !== ''): ?>
+                <p><strong>Opmerkingen:</strong> <?= $deviceNotes ?></p>
+            <?php endif; ?>
+        </div>
+
         <div class="info-section">
             <h3>Onderzoekstoestemming</h3>
             <p>
-                Hierbij geef ik, ondergetekende, toestemming aan Digivriend om onderzoek uit te voeren 
-                om de aard en omvang van de schade vast te stellen. 
+                Hierbij geef ik, ondergetekende, toestemming aan Digivriend om onderzoek uit te voeren om de aard en omvang van de schade vast te stellen. 
                 <br><br>
-                <strong>Onderzoekskosten:</strong> €49,95, deze kosten zijn verschuldigd ongeacht 
-                de beslissing over verdere reparatie.
+                <strong>Onderzoekskosten:</strong> €49,95, deze kosten zijn verschuldigd ongeacht de beslissing over verdere reparatie.
             </p>
         </div>
 
-        <!-- Reparatietoestemming -->
         <div class="info-section">
             <h3>Reparatietoestemming</h3>
-            <p>Aanvinken indien van toepassing:</p>
-            <ul>
-                <li>'.
-                    ($repairConsent100 
-                      ? '<span class="checkmark">&#10003;</span>' 
-                      : '<span class="crossmark">&#10060;</span>'
-                    ).' 
-                    Reparaties tot €100 zonder kennisgeving.
-                </li>
-                <li>'.
-                    ($repairConsentNotify
-                      ? '<span class="checkmark">&#10003;</span>' 
-                      : '<span class="crossmark">&#10060;</span>'
-                    ).' 
-                    Eerst op de hoogte gebracht worden van alle reparatiekosten.
-                </li>
-                <li>'.
-                    ($repairConsentCustom
-                      ? '<span class="checkmark">&#10003;</span>' 
-                      : '<span class="crossmark">&#10060;</span>'
-                    ).'
-                    Reparaties tot €'.($customAmount ?: '___').' zonder verdere kennisgeving.
-                </li>
-            </ul>
+            <p><?= $consentText ?></p>
         </div>
 
-        <!-- Verklaring van Akkoord -->
         <div class="info-section">
-            <h3>Verklaring van Akkoord</h3>
-            <p>
-                Door het ondertekenen van dit formulier bevestig ik dat ik akkoord ga met de 
-                volledige algemene voorwaarden van Digivriend met betrekking tot onderzoek 
-                en reparatie, zoals deze ter plaatse zijn in te zien. Tevens ben ik ervan 
-                op de hoogte dat deze algemene voorwaarden op verzoek digitaal of fysiek 
-                ter beschikking kunnen worden gesteld.
-            </p>
-            <br>
-            <p><strong>Naam (ondertekenaar):</strong> '.$signatureName.'</p>
-            <p><strong>Plaats:</strong> '.$signaturePlace.'</p>
-            <p><strong>Datum:</strong> '.$signatureDate.'</p>
-            <p><strong>Handtekening:</strong> '.$signature.'</p>
+            <h3>Ondertekening</h3>
+            <p><strong>Naam:</strong> <?= $signatureName ?></p>
+            <p><strong>Plaats:</strong> <?= $signaturePlace ?></p>
+            <p><strong>Datum:</strong> <?= $signatureDate ?></p>
+            <?php if ($signature !== ''): ?>
+                <p><strong>Handtekening:</strong> <?= $signature ?></p>
+            <?php endif; ?>
         </div>
-
-        <p>Bedankt voor het kiezen van <strong>'.$bedrijfsNaam.'</strong>!</p>
     </div>
 
     <div class="footer">
-        <p>&copy; '.$bedrijfsNaam.' - Alle rechten voorbehouden.</p>
+        <p>&copy; <?= date('Y') ?> <?= $bedrijfsNaam ?>. Alle rechten voorbehouden.</p>
     </div>
 </body>
 </html>
-';
+<?php
+$html = (string) ob_get_clean();
 
-// 6. Dompdf
 $options = new Options();
 $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
-
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
-
-// Bestandsnaam: "Reparatie-Onderzoek[DD-MM-YYYY][ID].pdf"
-$filename = "Reparatie-Onderzoek[{$huidigeDatum}][{$insertId}].pdf";
-$dompdf->stream($filename, ["Attachment" => true]);
+$filename = sprintf('ReparatieOnderzoek[%s][%d].pdf', $huidigeDatum, $insertId);
+$dompdf->stream($filename, ['Attachment' => true]);

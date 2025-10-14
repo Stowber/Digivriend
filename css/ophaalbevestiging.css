@@ -18,6 +18,12 @@
   margin-top: 1.5rem;
 }
 
+.form-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
 .form-group {
   display: grid;
   gap: 0.5rem;

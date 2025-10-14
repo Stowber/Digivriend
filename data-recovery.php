@@ -1,3 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Security\Csrf;
+
+require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/auth.php';
+
+$csrfToken = Csrf::token();
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -13,11 +24,13 @@
       <a href="index.php" class="logo">Digivriend</a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
-          <li><a href="index.php">Start</a></li>
+          <li><a href="index.php">Dashboard</a></li>
           <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php" aria-current="page">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li class="main-nav__spacer" aria-hidden="true"></li>
+          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
       </nav>
     </div>
@@ -37,6 +50,60 @@
     <div class="contact-card">
         <p>Vragen over data recovery? Mail naar <a href="mailto:contact@digivriend.nl">contact@digivriend.nl</a> of bel <strong>+31 (0)33 785 4284</strong>.</p>
       </div>
+      <section class="manual-card">
+        <h2>Handmatig case registreren</h2>
+        <p>Leg een data-recoveryaanvraag vast in de interne database om voortgang en communicatie te volgen.</p>
+        <form action="generate-data-recovery.php" method="POST" class="manual-form">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <div class="manual-grid">
+            <label>
+              <span>Volledige naam</span>
+              <input type="text" name="fullname" required>
+            </label>
+            <label>
+              <span>Adres</span>
+              <input type="text" name="address" required>
+            </label>
+            <label>
+              <span>Postcode</span>
+              <input type="text" name="postcode" required>
+            </label>
+            <label>
+              <span>Telefoonnummer</span>
+              <input type="text" name="phone" required>
+            </label>
+            <label>
+              <span>E-mailadres</span>
+              <input type="email" name="email" required>
+            </label>
+            <label>
+              <span>Referentie/Zoho-nummer</span>
+              <input type="text" name="caseReference" placeholder="Bijv. Zoho ID">
+            </label>
+            <label>
+              <span>Apparaat merk</span>
+              <input type="text" name="deviceBrand">
+            </label>
+            <label>
+              <span>Apparaat model</span>
+              <input type="text" name="deviceModel">
+            </label>
+            <label>
+              <span>Serienummer</span>
+              <input type="text" name="deviceSerial">
+            </label>
+            <label>
+              <span>Datum akkoord</span>
+              <input type="date" name="signatureDate" required>
+            </label>
+            <label class="manual-grid__wide">
+              <span>Opmerkingen</span>
+              <textarea name="notes" rows="3" placeholder="Belangrijke details of bijzonderheden"></textarea>
+            </label>
+          </div>
+          <button type="submit" class="btn">Registreren en PDF maken</button>
+        </form>
+      </section>
     </div>
   </main>
 

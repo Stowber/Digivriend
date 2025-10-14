@@ -4,6 +4,10 @@ declare(strict_types=1);
 use App\Exception\ValidationException;
 use App\Http\Response;
 use App\Security\Csrf;
+use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\CustomerRepository;
+use App\Support\Repositories\DeviceRepository;
+use App\Support\Repositories\NoteRepository;
 use App\Support\View;
 use App\Validation\InputValidator;
 use Dompdf\Dompdf;
@@ -20,29 +24,73 @@ if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
 }
 
 try {
-     $klantnaam = InputValidator::requireString($_POST, 'klantnaam', 120);
-    $merkmodel = InputValidator::requireString($_POST, 'merkmodel', 120);
+    $klantnaam = InputValidator::requireString($_POST, 'klantnaam', 120);
+    $klantemail = InputValidator::optionalEmail($_POST, 'klantemail', 120);
+    $klanttelefoon = InputValidator::optionalPhone($_POST, 'klanttelefoon', 32);
+    $apparaatmerk = InputValidator::requireString($_POST, 'apparaatmerk', 120);
+    $apparaatmodel = InputValidator::requireString($_POST, 'apparaatmodel', 120);
     $ophaalcode = InputValidator::requireString($_POST, 'ophaalcode', 32);
     $datumgereed = InputValidator::requireDate($_POST, 'datumgereed');
+    $opmerkingen = InputValidator::optionalString($_POST, 'opmerkingen', 500);
 } catch (ValidationException $exception) {
     Response::error($exception->errors(), 422);
 }
 
+$merkmodel = trim($apparaatmerk . ' ' . $apparaatmodel);
+
 try {
     $statement = $pdo->prepare(
-        'INSERT INTO ophaalbevestigingen (klantnaam, merkmodel, ophaalcode, datumgereed) VALUES (:klantnaam, :merkmodel, :ophaalcode, :datumgereed)'
+        'INSERT INTO ophaalbevestigingen (klantnaam, klantemail, klanttelefoon, merkmodel, apparaatmerk, apparaatmodel, ophaalcode, case_reference, datumgereed, status, opmerkingen)
+         VALUES (:klantnaam, :klantemail, :klanttelefoon, :merkmodel, :apparaatmerk, :apparaatmodel, :ophaalcode, :case_reference, :datumgereed, :status, :opmerkingen)'
     );
     $statement->execute([
         'klantnaam' => $klantnaam,
+        'klantemail' => $klantemail ?: null,
+        'klanttelefoon' => $klanttelefoon ?: null,
         'merkmodel' => $merkmodel,
+        'apparaatmerk' => $apparaatmerk,
+        'apparaatmodel' => $apparaatmodel,
         'ophaalcode' => $ophaalcode,
+        'case_reference' => $ophaalcode,
         'datumgereed' => $datumgereed,
+        'status' => 'klaar',
+        'opmerkingen' => $opmerkingen ?: null,
     ]);
 
         $insertId = (int) $pdo->lastInsertId();
 } catch (\PDOException $exception) {
     Response::error('Opslaan van de ophaalbevestiging is mislukt.', 500);
 }
+
+$customerRepository = new CustomerRepository($pdo);
+$deviceRepository = new DeviceRepository($pdo);
+$caseRepository = new CaseRepository($pdo);
+$noteRepository = new NoteRepository($pdo);
+
+$customer = $customerRepository->upsert($klantnaam, $klantemail ?: null, $klanttelefoon ?: null);
+$device = $deviceRepository->findOrCreate((int) $customer['id'], $apparaatmerk, $apparaatmodel);
+$case = $caseRepository->createOrUpdate(
+    'pickup',
+    (int) $customer['id'],
+    $device['id'] ?? null,
+    'klaar',
+    sprintf('Ophaalbevestiging %s', $ophaalcode),
+    $ophaalcode,
+    [
+        'datumgereed' => $datumgereed,
+        'opmerkingen' => $opmerkingen,
+    ]
+);
+
+if ($opmerkingen !== '') {
+    $noteRepository->add((int) $case['id'], (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), $opmerkingen);
+}
+
+$updateStatement = $pdo->prepare('UPDATE ophaalbevestigingen SET case_id = :case_id WHERE id = :id');
+$updateStatement->execute([
+    'case_id' => (int) $case['id'],
+    'id' => $insertId,
+]);
 
 $documentTitel = 'Ophaalbevestiging';
 $bedrijfsNaam = 'Digivriend';

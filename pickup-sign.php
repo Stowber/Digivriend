@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Security\Csrf;
 
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/auth.php';
 
 $csrfToken = Csrf::token();
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
@@ -24,11 +25,13 @@ $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
       <a href="index.php" class="logo">Digivriend</a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
-          <li><a href="index.php">Start</a></li>
+          <li><a href="index.php">Dashboard</a></li>
           <li><a href="ophaalbevestiging.php" aria-current="page">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li class="main-nav__spacer" aria-hidden="true"></li>
+          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
       </nav>
     </div>

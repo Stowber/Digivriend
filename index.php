@@ -2,16 +2,67 @@
 
 declare(strict_types=1);
 
+use App\Support\Repositories\CaseRepository;
+
+
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/auth.php';
+
+$caseRepository = new CaseRepository($pdo);
+
+$totalCustomers = (int) ($pdo->query('SELECT COUNT(*) FROM customers')->fetchColumn() ?: 0);
+$openCases = (int) ($pdo->query("SELECT COUNT(*) FROM cases WHERE status NOT IN ('opgehaald', 'gesloten')")->fetchColumn() ?: 0);
+$todayPickups = (int) ($pdo->query("SELECT COUNT(*) FROM cases WHERE type = 'pickup' AND status = 'klaar' AND DATE(JSON_EXTRACT(details, '$.datumgereed')) = CURDATE()")
+    ->fetchColumn() ?: 0);
+$waitingSince = $pdo->prepare(
+    "SELECT TIMESTAMPDIFF(DAY, JSON_UNQUOTE(JSON_EXTRACT(details, '$.datumgereed')), NOW()) AS days_waiting
+     FROM cases
+     WHERE type = 'pickup' AND status = 'klaar' AND JSON_EXTRACT(details, '$.datumgereed') IS NOT NULL
+     ORDER BY days_waiting DESC
+     LIMIT 1"
+);
+$waitingSince->execute();
+$longestWaiting = (int) ($waitingSince->fetchColumn() ?: 0);
+
+$caseSummaryStmt = $pdo->query('SELECT type, status, COUNT(*) AS total FROM cases GROUP BY type, status');
+$caseSummary = [];
+foreach ($caseSummaryStmt->fetchAll() as $row) {
+    $caseSummary[$row['type']][$row['status']] = (int) $row['total'];
+}
+
+$pickupsStatement = $pdo->prepare(
+    "SELECT c.*, cust.full_name, cust.phone, cust.email, ob.datumgereed, ob.ophaalcode
+     FROM cases c
+     INNER JOIN customers cust ON cust.id = c.customer_id
+     LEFT JOIN ophaalbevestigingen ob ON ob.ophaalcode = c.reference_code
+     WHERE c.type = 'pickup' AND c.status = 'klaar'
+     ORDER BY ob.datumgereed ASC, c.updated_at DESC
+     LIMIT 5"
+);
+$pickupsStatement->execute();
+$upcomingPickups = $pickupsStatement->fetchAll() ?: [];
+
+$recentCases = $caseRepository->recentCases(6);
+
+$notesStatement = $pdo->query(
+    "SELECT n.*, c.summary, cust.full_name
+     FROM notes n
+     INNER JOIN cases c ON c.id = n.case_id
+     INNER JOIN customers cust ON cust.id = n.customer_id
+     ORDER BY n.created_at DESC
+     LIMIT 5"
+);
+$recentNotes = $notesStatement->fetchAll() ?: [];
+
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Digivriend - Documenten</title>
+  <title>Digivriend - Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
   <header class="main-header">
@@ -19,47 +70,161 @@ require __DIR__ . '/bootstrap.php';
       <a href="index.php" class="logo">Digivriend</a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
-          <li><a href="index.php" aria-current="page">Start</a></li>
+          <li><a href="index.php" aria-current="page">Dashboard</a></li>
           <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li class="main-nav__spacer" aria-hidden="true"></li>
+          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
       </nav>
     </div>
   </header>
 
-  <main class="container">
-    <div class="page-intro">
-      <h1>Documenten genereren</h1>
-      <p>Welkom bij Digivriend. Kies het document dat je wilt aanmaken en start meteen met het invullen van de benodigde gegevens.</p>
-    </div>
+  <main class="container dashboard">
+    <section class="dashboard__intro">
+      <div>
+        <h1>Operationeel overzicht</h1>
+        <p>Monitor lopende cases, openstaande ophaalbevestigingen en de laatste activiteiten van klanten in één blik.</p>
+      </div>
+      <div class="dashboard__quick-actions">
+        <a class="btn" href="ophaalbevestiging.php">Nieuwe ophaalbevestiging</a>
+        <a class="btn btn--ghost" href="klant-melding.php">Nieuwe klantmelding</a>
+      </div>
+    </section>
 
-    <div class="document-grid">
-      <div class="document-card">
-        <h3>Ophaalbevestiging</h3>
-        <p>Maak een ophaalbevestiging voor een gerepareerd apparaat.</p>
-        <a href="ophaalbevestiging.php" class="btn">Genereer</a>
+    <section class="dashboard__stats">
+      <article class="stat-card">
+        <h2>Totaal klanten</h2>
+        <p class="stat-card__value"><?= number_format($totalCustomers, 0, ',', '.') ?></p>
+        <span class="stat-card__hint">Unieke klantprofielen in de database</span>
+      </article>
+      <article class="stat-card">
+        <h2>Actieve cases</h2>
+        <p class="stat-card__value"><?= number_format($openCases, 0, ',', '.') ?></p>
+        <span class="stat-card__hint">Cases die nog aandacht vereisen</span>
+      </article>
+      <article class="stat-card">
+        <h2>Ophaal vandaag</h2>
+        <p class="stat-card__value"><?= number_format($todayPickups, 0, ',', '.') ?></p>
+        <span class="stat-card__hint">Klaar voor overdracht op <?= date('d-m-Y') ?></span>
+      </article>
+      <article class="stat-card">
+        <h2>Langste wachttijd</h2>
+        <p class="stat-card__value"><?= $longestWaiting > 0 ? $longestWaiting . ' dagen' : '—' ?></p>
+        <span class="stat-card__hint">Sinds datum gereed</span>
+      </article>
+    </section>
+
+    <section class="dashboard__grid">
+      <div class="dashboard__panel">
+        <header class="dashboard__panel-header">
+          <h2>Openstaande ophaalbevestigingen</h2>
+          <a href="ophaalbevestigingen-list.php" class="btn-link">Bekijk alle</a>
+        </header>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Klant</th>
+              <th>Code</th>
+              <th>Datum gereed</th>
+              <th>Contact</th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php if (empty($upcomingPickups)): ?>
+            <tr>
+              <td colspan="4" class="empty-state">Geen openstaande bevestigingen.</td>
+            </tr>
+          <?php else: ?>
+            <?php foreach ($upcomingPickups as $pickup): ?>
+              <tr>
+                <td>
+                  <strong><?= htmlspecialchars((string) $pickup['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong><br>
+                  <span class="muted">Status: <?= htmlspecialchars((string) $pickup['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                </td>
+                <td><?= htmlspecialchars((string) ($pickup['ophaalcode'] ?? $pickup['reference_code']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars((string) ($pickup['datumgereed'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                <td>
+                  <?php if (!empty($pickup['phone'])): ?>
+                    <div class="muted">Tel: <?= htmlspecialchars((string) $pickup['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                  <?php endif; ?>
+                  <?php if (!empty($pickup['email'])): ?>
+                    <div class="muted">E-mail: <?= htmlspecialchars((string) $pickup['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                  <?php endif; ?>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          <?php endif; ?>
+          </tbody>
+        </table>
+
+      <div class="dashboard__panel">
+        <header class="dashboard__panel-header">
+          <h2>Case verdeling</h2>
+        </header>
+        <div class="case-summary">
+          <?php if (empty($caseSummary)): ?>
+            <p class="empty-state">Nog geen cases aangemaakt.</p>
+          <?php else: ?>
+            <?php foreach ($caseSummary as $type => $statuses): ?>
+              <article class="case-summary__item">
+                <h3><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $type)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <ul>
+                  <?php foreach ($statuses as $status => $count): ?>
+                    <li><span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><strong><?= (int) $count ?></strong></li>
+                  <?php endforeach; ?>
+                </ul>
+              </article>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
+      </div>
+      </section>
+
+      <section class="dashboard__grid">
+      <div class="dashboard__panel">
+        <header class="dashboard__panel-header">
+          <h2>Laatste cases</h2>
+        </header>
+        <ul class="timeline">
+          <?php if (empty($recentCases)): ?>
+            <li class="empty-state">Nog geen cases geregistreerd.</li>
+          <?php else: ?>
+            <?php foreach ($recentCases as $case): ?>
+              <li>
+                <div class="timeline__title"><?= htmlspecialchars((string) ($case['summary'] ?? ucfirst((string) $case['type'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <div class="timeline__meta">Type: <?= htmlspecialchars((string) $case['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · Status: <?= htmlspecialchars((string) $case['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $case['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <a class="btn-link" href="case.php?id=<?= (int) $case['id'] ?>">Bekijk case</a>
+              </li>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </ul>
       </div>
 
-      <div class="document-card">
-        <h3>Reparatie &amp; Onderzoek</h3>
-        <p>Laat je klanten een toestemmingsformulier ondertekenen voor Reparatie en Onderzoek!</p>
-        <a href="reparatie-onderzoek.php" class="btn">Genereer</a>
+      <div class="dashboard__panel">
+        <header class="dashboard__panel-header">
+          <h2>Recente notities</h2>
+        </header>
+        <ul class="notes">
+          <?php if (empty($recentNotes)): ?>
+            <li class="empty-state">Er zijn nog geen notities toegevoegd.</li>
+          <?php else: ?>
+            <?php foreach ($recentNotes as $note): ?>
+              <li>
+                <div class="notes__header">
+                  <strong><?= htmlspecialchars((string) $note['author'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <span class="muted"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $note['created_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                </div>
+                <div class="notes__body"><?= nl2br(htmlspecialchars((string) $note['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
+                <div class="notes__footer">Case: <a href="case.php?id=<?= (int) $note['case_id'] ?>"><?= htmlspecialchars((string) ($note['summary'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a> · Klant: <?= htmlspecialchars((string) $note['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </li>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </ul>
       </div>
-
-      <div class="document-card">
-        <h3>Data Recovery</h3>
-        <p>Algemene voorwaarden en Data Recovery formulier nodig? Klik hier!</p>
-        <a href="data-recovery.php" class="btn">Genereer</a>
-      </div>
-
-      <div class="document-card">
-        <h3>Klant Melding</h3>
-        <p>Maak een klantmelding met alle relevante klant- en apparaatgegevens en een omschrijving van de melding.</p>
-        <a href="klant-melding.php" class="btn">Genereer</a>
-      </div>
-    </div>
+    </section>
   </main>
 
   <footer class="main-footer">

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Config\AppConfig;
 use App\Database\ConnectionFactory;
+use App\Database\SchemaManager;
 use App\Support\Env;
 
 require __DIR__ . '/vendor/autoload.php';
@@ -19,6 +20,7 @@ $pdo = null;
 
 try {
     $pdo = ConnectionFactory::make($appConfig);
+    SchemaManager::migrate($pdo);
 } catch (RuntimeException $exception) {
     if ($appConfig->isDebug()) {
         throw $exception;

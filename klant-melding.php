@@ -1,3 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Security\Csrf;
+
+require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/auth.php';
+
+$csrfToken = Csrf::token();
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -10,14 +21,16 @@
 <body>
   <header class="main-header">
     <div class="container">
-       <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo">Digivriend</a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
-          <li><a href="index.php">Start</a></li>
+          <li><a href="index.php">Dashboard</a></li>
           <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php" aria-current="page">Klant Melding</a></li>
+          <li class="main-nav__spacer" aria-hidden="true"></li>
+          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
       </nav>
     </div>
@@ -35,6 +48,7 @@
   <main>
     <div class="container page-wrapper">
       <form action="generate-klant-melding.php" method="POST" class="form-shell">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <div class="form-grid">
       <!-- Klantgegevens -->
       <section class="form-section">

@@ -4,6 +4,9 @@ declare(strict_types=1);
 use App\Exception\ValidationException;
 use App\Http\Response;
 use App\Security\Csrf;
+use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\CustomerRepository;
+use App\Support\Repositories\NoteRepository;
 use App\Validation\InputValidator;
 
 require __DIR__ . '/bootstrap.php';
@@ -39,13 +42,33 @@ if ($decodedSignature === false || strlen($decodedSignature) > 200_000) {
 
 try {
     $statement = $pdo->prepare(
-        'UPDATE ophaalbevestigingen SET pickup_signature = :signature, status = :status WHERE id = :id'
+        'UPDATE ophaalbevestigingen SET pickup_signature = :signature, status = :status, updated_at = NOW() WHERE id = :id'
     );
     $statement->execute([
         'signature' => $signatureData,
         'status' => 'opgehaald',
         'id' => (int) $idValue,
     ]);
+    $fetchStatement = $pdo->prepare('SELECT case_id, klantnaam FROM ophaalbevestigingen WHERE id = :id');
+    $fetchStatement->execute(['id' => (int) $idValue]);
+    $ophaalRecord = $fetchStatement->fetch();
+
+    if ($ophaalRecord) {
+        $caseId = isset($ophaalRecord['case_id']) ? (int) $ophaalRecord['case_id'] : null;
+        if ($caseId) {
+            $caseRepository = new CaseRepository($pdo);
+            $noteRepository = new NoteRepository($pdo);
+            $caseRepository->updateStatus($caseId, 'opgehaald');
+            $customerRepository = new CustomerRepository($pdo);
+            $case = $caseRepository->findById($caseId);
+            if ($case !== null) {
+                $customer = $customerRepository->findById((int) $case['customer_id']);
+                if ($customer !== null) {
+                    $noteRepository->add($caseId, (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), sprintf('Ophaalbevestiging ondertekend door %s.', (string) $ophaalRecord['klantnaam']));
+                }
+            }
+        }
+    }
 } catch (\PDOException $exception) {
     Response::error('Opslaan van de handtekening is mislukt.', 500);
 }
