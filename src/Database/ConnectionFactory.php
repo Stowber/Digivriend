@@ -26,7 +26,7 @@ final class ConnectionFactory
         try {
             $pdo = self::createConnection($config);
         } catch (PDOException $exception) {
-             if ($config->driver() === 'mysql' && self::isUnknownDatabaseError($exception)) {
+            if ($config->driver() === 'mysql' && self::isUnknownDatabaseError($exception)) {
                 self::createDatabase($config);
                 $pdo = self::createConnection($config);
             } else {
@@ -49,12 +49,32 @@ final class ConnectionFactory
         if ($config->driver() === 'mysql') {
             $options[PDO::ATTR_EMULATE_PREPARES] = false;
         }
-        return new PDO(
+        if ($config->driver() === 'sqlite') {
+            $sqlitePath = $config->sqlitePath();
+
+            if ($sqlitePath === null || $sqlitePath === '') {
+                throw new RuntimeException('SQLite database pad is niet geconfigureerd.');
+            }
+
+            $directory = dirname($sqlitePath);
+
+            if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+                throw new RuntimeException(sprintf('Kan de SQLite map "%s" niet aanmaken.', $directory));
+            }
+        }
+
+        $pdo = new PDO(
             $config->dsn(),
             $config->dbUser(),
             $config->dbPassword(),
             $options
         );
+
+        if ($config->driver() === 'sqlite') {
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        }
+
+        return $pdo;
     }
 
     private static function createDatabase(AppConfig $config): void
@@ -112,6 +132,7 @@ final class ConnectionFactory
         if (str_contains($message, 'could not find driver')) {
             return match ($config->driver()) {
                 'pgsql' => 'De PDO PostgreSQL-extensie (pdo_pgsql) is niet beschikbaar. Schakel deze extensie in php.ini in of installeer de PostgreSQL-driver.',
+                'sqlite' => 'De PDO SQLite-extensie (pdo_sqlite) is niet beschikbaar. Schakel deze extensie in php.ini in om SQLite te gebruiken.',
                 default => 'De PDO MySQL-extensie (pdo_mysql) is niet beschikbaar. Schakel deze extensie in php.ini in of installeer de MySQL-driver.',
             };
         }
@@ -122,7 +143,7 @@ final class ConnectionFactory
                 $config->dbUser()
             );
 
-        $projectRoot = dirname(__DIR__, 2);
+            $projectRoot = dirname(__DIR__, 2);
             $envFile = $projectRoot . '/.env';
             $envExample = $projectRoot . '/.env.example';
 
@@ -140,14 +161,20 @@ final class ConnectionFactory
             str_contains($message, 'connection refused') ||
             str_contains($message, 'server has gone away') ||
             str_contains($message, 'timeout expired') ||
-            str_contains($message, 'could not translate host name')
+            str_contains($message, 'could not translate host name') ||
+            str_contains($message, 'php_network_getaddresses')
         ) {
+            $databaseName = $config->driver() === 'pgsql' ? 'PostgreSQL' : 'MySQL';
             return sprintf(
                 'Er kon geen verbinding worden gemaakt met %s op %s:%d. Controleer of de server actief is en of de host/poort juist zijn ingesteld.',
-                $config->driver() === 'pgsql' ? 'PostgreSQL' : 'MySQL',
+                $databaseName,
                 $config->dbHost(),
                 $config->dbPort()
             );
+        }
+
+        if ($config->driver() === 'sqlite' && (str_contains($message, 'unable to open database file') || str_contains($message, 'attempt to write a readonly database'))) {
+            return 'De SQLite database kon niet worden geopend. Controleer of het pad uit het .env-bestand bestaat en of PHP schrijfrechten heeft.';
         }
 
         if ($config->driver() === 'mysql' && self::isUnknownDatabaseError($exception)) {
@@ -160,15 +187,21 @@ final class ConnectionFactory
 
         return 'Er is een fout opgetreden bij het verbinden met de database.';
     }
-    
+
     private static function assertExtensionLoaded(string $driver): void
     {
-        $extension = $driver === 'pgsql' ? 'pdo_pgsql' : 'pdo_mysql';
+        $extension = match ($driver) {
+            'pgsql' => 'pdo_pgsql',
+            'sqlite' => 'pdo_sqlite',
+            default => 'pdo_mysql',
+        };
 
         if (!extension_loaded($extension)) {
-            $friendly = $driver === 'pgsql'
-                ? 'De PDO PostgreSQL-extensie (pdo_pgsql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de PostgreSQL-driver om verbinding te maken.'
-                : 'De PDO MySQL-extensie (pdo_mysql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de MySQL-driver om verbinding te maken.';
+            $friendly = match ($driver) {
+                'pgsql' => 'De PDO PostgreSQL-extensie (pdo_pgsql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de PostgreSQL-driver om verbinding te maken.',
+                'sqlite' => 'De PDO SQLite-extensie (pdo_sqlite) is niet ingeschakeld. Schakel deze extensie in php.ini in om SQLite te gebruiken.',
+                default => 'De PDO MySQL-extensie (pdo_mysql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de MySQL-driver om verbinding te maken.',
+            };
 
             throw new RuntimeException($friendly);
         }

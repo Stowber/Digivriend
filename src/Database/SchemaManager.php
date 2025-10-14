@@ -13,9 +13,11 @@ final class SchemaManager
     public static function migrate(PDO $pdo): void
     {
         $driver = self::databaseDriver($pdo);
-        $statements = $driver === 'pgsql'
-            ? self::postgresBaseStatements()
-            : self::mysqlBaseStatements();
+        $statements = match ($driver) {
+            'pgsql' => self::postgresBaseStatements(),
+            'sqlite' => self::sqliteBaseStatements(),
+            default => self::mysqlBaseStatements(),
+        };
 
         foreach ($statements as $sql) {
             $pdo->exec($sql);
@@ -111,7 +113,87 @@ final class SchemaManager
         ];
     }
 
-        private static function postgresBaseStatements(): array
+        private static function sqliteBaseStatements(): array
+    {
+        return [
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                full_name TEXT NOT NULL,
+                email TEXT NULL,
+                phone TEXT NULL,
+                address TEXT NULL,
+                postal_code TEXT NULL,
+                city TEXT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_interaction_at TEXT NULL
+            )
+            SQL,
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers(email)',
+            'CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)',
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                brand TEXT NULL,
+                model TEXT NULL,
+                serial_number TEXT NULL,
+                notes TEXT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_devices_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+                CONSTRAINT uniq_device_customer_serial UNIQUE (customer_id, serial_number)
+            )
+            SQL,
+            'CREATE INDEX IF NOT EXISTS idx_devices_customer ON devices(customer_id)',
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS cases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                device_id INTEGER NULL,
+                type TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                reference_code TEXT NULL,
+                summary TEXT NULL,
+                details TEXT NULL,
+                opened_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                closed_at TEXT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_cases_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+                CONSTRAINT fk_cases_devices FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+            )
+            SQL,
+            'CREATE INDEX IF NOT EXISTS idx_cases_customer ON cases(customer_id)',
+            'CREATE INDEX IF NOT EXISTS idx_cases_reference ON cases(reference_code)',
+            'CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status)',
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                case_id INTEGER NOT NULL,
+                customer_id INTEGER NOT NULL,
+                author TEXT NOT NULL,
+                body TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_notes_cases FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                CONSTRAINT fk_notes_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            )
+            SQL,
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'staff',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            SQL,
+        ];
+    }
+
+    private static function postgresBaseStatements(): array
     {
         return [
             <<<SQL
@@ -249,6 +331,39 @@ final class SchemaManager
             }
             return;
         }
+        if ($driver === 'sqlite') {
+            $columns = [
+                ['klantemail', 'TEXT'],
+                ['klanttelefoon', 'TEXT'],
+                ['apparaatmerk', 'TEXT'],
+                ['apparaatmodel', 'TEXT'],
+                ['case_reference', 'TEXT'],
+                ['case_id', 'INTEGER'],
+                ['created_at', 'TEXT DEFAULT CURRENT_TIMESTAMP'],
+                ['updated_at', 'TEXT DEFAULT CURRENT_TIMESTAMP'],
+                ['status', "TEXT NOT NULL DEFAULT 'klaar'"],
+                ['opmerkingen', 'TEXT'],
+                ['pickup_signature', 'TEXT'],
+                ['pickup_signed_at', 'TEXT'],
+            ];
+
+            foreach ($columns as [$name, $definition]) {
+                self::addSqliteColumnIfMissing($pdo, 'ophaalbevestigingen', $name, $definition);
+            }
+
+            $indexes = [
+                'CREATE UNIQUE INDEX IF NOT EXISTS idx_ophaalbevestigingen_ophaalcode ON ophaalbevestigingen(ophaalcode)',
+                'CREATE INDEX IF NOT EXISTS idx_ophaalbevestigingen_case ON ophaalbevestigingen(case_id)',
+                'CREATE INDEX IF NOT EXISTS idx_ophaalbevestigingen_case_reference ON ophaalbevestigingen(case_reference)',
+                'CREATE INDEX IF NOT EXISTS idx_ophaalbevestigingen_datumgereed ON ophaalbevestigingen(datumgereed)',
+            ];
+
+            foreach ($indexes as $sql) {
+                $pdo->exec($sql);
+            }
+
+            return;
+        }
 
         $columns = [
             "ALTER TABLE ophaalbevestigingen ADD COLUMN klantemail VARCHAR(191) NULL AFTER klantnaam",
@@ -308,6 +423,21 @@ final class SchemaManager
 
             return;
         }
+        if ($driver === 'sqlite') {
+            $columns = [
+                ['device_brand', 'TEXT'],
+                ['device_model', 'TEXT'],
+                ['device_serial', 'TEXT'],
+                ['device_notes', 'TEXT'],
+                ['case_reference', 'TEXT'],
+            ];
+
+            foreach ($columns as [$name, $definition]) {
+                self::addSqliteColumnIfMissing($pdo, 'reparatie_onderzoek', $name, $definition);
+            }
+
+            return;
+        }
 
         $statements = [
             'ALTER TABLE reparatie_onderzoek ADD COLUMN device_brand VARCHAR(120) NULL AFTER email',
@@ -343,7 +473,21 @@ final class SchemaManager
 
             return;
         }
+        if ($driver === 'sqlite') {
+            $columns = [
+                ['case_reference', 'TEXT'],
+                ['device_brand', 'TEXT'],
+                ['device_model', 'TEXT'],
+                ['device_serial', 'TEXT'],
+                ['notes', 'TEXT'],
+            ];
 
+            foreach ($columns as [$name, $definition]) {
+                self::addSqliteColumnIfMissing($pdo, 'data_recovery', $name, $definition);
+            }
+
+            return;
+        }
 
         $statements = [
             'ALTER TABLE data_recovery ADD COLUMN case_reference VARCHAR(64) NULL AFTER id',
@@ -360,7 +504,9 @@ final class SchemaManager
 
     private static function ensureOphaalbevestigingenTable(PDO $pdo): void
     {
-        if (self::databaseDriver($pdo) === 'pgsql') {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
             $sql = <<<SQL
                 CREATE TABLE IF NOT EXISTS ophaalbevestigingen (
                     id SERIAL PRIMARY KEY,
@@ -382,6 +528,45 @@ final class SchemaManager
                     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     CONSTRAINT uniq_ophaalbevestigingen_ophaalcode UNIQUE (ophaalcode),
                     CONSTRAINT fk_ophaalbevestigingen_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            $indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_ophaalbevestigingen_case ON ophaalbevestigingen(case_id)',
+                'CREATE INDEX IF NOT EXISTS idx_ophaalbevestigingen_case_reference ON ophaalbevestigingen(case_reference)',
+                'CREATE INDEX IF NOT EXISTS idx_ophaalbevestigingen_datumgereed ON ophaalbevestigingen(datumgereed)'
+            ];
+
+            foreach ($indexes as $statement) {
+                $pdo->exec($statement);
+            }
+
+            return;
+        }
+        if ($driver === 'sqlite') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS ophaalbevestigingen (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    klantnaam TEXT NOT NULL,
+                    klantemail TEXT NULL,
+                    klanttelefoon TEXT NULL,
+                    merkmodel TEXT NOT NULL,
+                    apparaatmerk TEXT NULL,
+                    apparaatmodel TEXT NULL,
+                    ophaalcode TEXT NOT NULL,
+                    case_reference TEXT NULL,
+                    case_id INTEGER NULL,
+                    datumgereed TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'klaar',
+                    opmerkingen TEXT NULL,
+                    pickup_signature TEXT NULL,
+                    pickup_signed_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_ophaalbevestigingen_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    CONSTRAINT uniq_ophaalbevestigingen_ophaalcode UNIQUE (ophaalcode)
                 )
             SQL;
 
@@ -431,7 +616,9 @@ final class SchemaManager
 
     private static function ensureReparatieOnderzoekTable(PDO $pdo): void
     {
-        if (self::databaseDriver($pdo) === 'pgsql') {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
             $sql = <<<SQL
                 CREATE TABLE IF NOT EXISTS reparatie_onderzoek (
                     id SERIAL PRIMARY KEY,
@@ -454,6 +641,36 @@ final class SchemaManager
                     case_reference VARCHAR(64) NULL,
                     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            return;
+        }
+        if ($driver === 'sqlite') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS reparatie_onderzoek (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fullname TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    phone TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    repair_consent_100 INTEGER NOT NULL DEFAULT 0,
+                    repair_consent_notify INTEGER NOT NULL DEFAULT 0,
+                    repair_consent_custom INTEGER NOT NULL DEFAULT 0,
+                    custom_amount TEXT NULL,
+                    signature_name TEXT NOT NULL,
+                    signature_place TEXT NOT NULL,
+                    signature_date TEXT NOT NULL,
+                    signature TEXT NULL,
+                    device_brand TEXT NULL,
+                    device_model TEXT NULL,
+                    device_serial TEXT NULL,
+                    device_notes TEXT NULL,
+                    case_reference TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             SQL;
 
@@ -491,7 +708,9 @@ final class SchemaManager
 
     private static function ensureDataRecoveryTable(PDO $pdo): void
     {
-        if (self::databaseDriver($pdo) === 'pgsql') {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
             $sql = <<<SQL
                 CREATE TABLE IF NOT EXISTS data_recovery (
                     id SERIAL PRIMARY KEY,
@@ -509,6 +728,32 @@ final class SchemaManager
                     notes TEXT NULL,
                     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uniq_data_recovery_case_reference UNIQUE (case_reference)
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            return;
+        }
+        if ($driver === 'sqlite') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS data_recovery (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fullname TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    postcode TEXT NOT NULL,
+                    phone TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    signature_date TEXT NOT NULL,
+                    signature TEXT NULL,
+                    case_reference TEXT NOT NULL,
+                    device_brand TEXT NULL,
+                    device_model TEXT NULL,
+                    device_serial TEXT NULL,
+                    notes TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     CONSTRAINT uniq_data_recovery_case_reference UNIQUE (case_reference)
                 )
             SQL;
@@ -562,7 +807,47 @@ final class SchemaManager
             'role' => $defaultRole,
         ]);
     }
-private static function databaseDriver(PDO $pdo): string
+private static function addSqliteColumnIfMissing(PDO $pdo, string $table, string $column, string $definition): void
+    {
+        if (self::sqliteColumnExists($pdo, $table, $column)) {
+            return;
+        }
+
+        $tableName = self::quoteSqliteIdentifier($table);
+        $columnName = self::quoteSqliteIdentifier($column);
+
+        $pdo->exec(sprintf(
+            'ALTER TABLE %s ADD COLUMN %s %s',
+            $tableName,
+            $columnName,
+            $definition
+        ));
+    }
+
+    private static function sqliteColumnExists(PDO $pdo, string $table, string $column): bool
+    {
+        $tableName = self::quoteSqliteIdentifier($table);
+        $statement = $pdo->query(sprintf('PRAGMA table_info(%s)', $tableName));
+
+        if ($statement === false) {
+            return false;
+        }
+
+        while ($info = $statement->fetch(PDO::FETCH_ASSOC)) {
+            if (isset($info['name']) && strtolower((string) $info['name']) === strtolower($column)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function quoteSqliteIdentifier(string $identifier): string
+    {
+        return '"' . str_replace('"', '""', $identifier) . '"';
+    }
+
+    private static function databaseDriver(PDO $pdo): string
     {
         return strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
     }

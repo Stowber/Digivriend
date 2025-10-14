@@ -21,7 +21,8 @@ final class AppConfig
         private readonly string $dbUser,
         private readonly string $dbPassword,
         private readonly bool $debug,
-        private readonly array $options
+        private readonly array $options,
+        private readonly ?string $sqlitePath = null
     ) {
     }
 
@@ -32,20 +33,35 @@ final class AppConfig
         $url = (string) Env::get('DB_URL', '');
         $fromUrl = $url !== '' ? self::parseDatabaseUrl($url) : [];
 
-        $driver = $fromUrl['driver'] ?? strtolower((string) self::env(['DB_DRIVER', 'DB_CONNECTION'], 'mysql'));
+        $driver = $fromUrl['driver'] ?? strtolower((string) self::env(['DB_DRIVER', 'DB_CONNECTION'], 'sqlite'));
         $driver = self::normaliseDriver($driver);
 
-        if (!in_array($driver, ['mysql', 'pgsql'], true)) {
+        if (!in_array($driver, ['mysql', 'pgsql', 'sqlite'], true)) {
             throw new RuntimeException(sprintf('Unsupported database driver "%s" configured.', $driver));
         }
 
+        $sqlitePath = null;
         $defaultPort = $driver === 'pgsql' ? 5432 : 3306;
 
-        $host = $fromUrl['host'] ?? (string) self::env(['DB_HOST', 'DB_HOSTNAME'], '127.0.0.1');
-        $port = (int) ($fromUrl['port'] ?? self::env(['DB_PORT', 'DB_PORT_NUMBER'], $defaultPort));
-        $database = $fromUrl['database'] ?? (string) self::env(['DB_NAME', 'DB_DATABASE'], 'digivriend');
-        $user = $fromUrl['user'] ?? (string) self::env(['DB_USER', 'DB_USERNAME'], 'digivriend');
-        $password = $fromUrl['password'] ?? (string) self::env(['DB_PASSWORD', 'DB_PASS'], '');
+        if ($driver === 'sqlite') {
+            $projectRoot = dirname(__DIR__, 2);
+            $databaseFromEnv = (string) self::env(['DB_PATH', 'DB_DATABASE', 'DB_NAME'], 'digivriend.sqlite');
+            $databaseFromUrl = $fromUrl['database'] ?? null;
+            $database = $databaseFromUrl ?? $databaseFromEnv;
+
+            $sqlitePath = self::resolveSqlitePath($database, $projectRoot);
+
+            $host = 'localhost';
+            $port = 0;
+            $user = 'sqlite';
+            $password = '';
+        } else {
+            $host = $fromUrl['host'] ?? (string) self::env(['DB_HOST', 'DB_HOSTNAME'], '127.0.0.1');
+            $port = (int) ($fromUrl['port'] ?? self::env(['DB_PORT', 'DB_PORT_NUMBER'], $defaultPort));
+            $database = $fromUrl['database'] ?? (string) self::env(['DB_NAME', 'DB_DATABASE'], 'digivriend');
+            $user = $fromUrl['user'] ?? (string) self::env(['DB_USER', 'DB_USERNAME'], 'digivriend');
+            $password = $fromUrl['password'] ?? (string) self::env(['DB_PASSWORD', 'DB_PASS'], '');
+        }
         $debug = (bool) self::env(['APP_DEBUG'], false);
 
         $options = $fromUrl['options'] ?? [];
@@ -59,7 +75,8 @@ final class AppConfig
             $user,
             $password,
             $debug,
-            $options
+            $options,
+            $sqlitePath
         );
     }
 
@@ -80,6 +97,13 @@ final class AppConfig
 
     public function dsnForDatabase(?string $database): string
     {
+        if ($this->driver === 'sqlite') {
+            if ($this->sqlitePath === null || $this->sqlitePath === '') {
+                throw new RuntimeException('SQLite database pad is niet geconfigureerd.');
+            }
+
+            return sprintf('sqlite:%s', $this->sqlitePath);
+        }
         $dsn = sprintf('%s:host=%s;port=%d', $this->driver, $this->dbHost, $this->dbPort);
 
         if ($database !== null) {
@@ -106,6 +130,11 @@ final class AppConfig
     public function dbPassword(): string
     {
         return $this->dbPassword;
+    }
+
+    public function sqlitePath(): ?string
+    {
+        return $this->sqlitePath;
     }
 
     public function dbHost(): string
@@ -190,6 +219,7 @@ final class AppConfig
         $defaults = match ($driver) {
             'mysql' => ['charset' => 'utf8mb4'],
             'pgsql' => [],
+            'sqlite' => [],
             default => [],
         };
 
@@ -201,7 +231,27 @@ final class AppConfig
         return match (strtolower($driver)) {
             'mysql' => 'mysql',
             'pgsql', 'postgres', 'postgresql' => 'pgsql',
+            'sqlite', 'sqlite3' => 'sqlite',
             default => strtolower($driver),
         };
+    }
+
+    private static function resolveSqlitePath(string $database, string $projectRoot): string
+    {
+        $database = trim($database);
+
+        if ($database === '') {
+            $database = 'digivriend.sqlite';
+        }
+
+        $isAbsolute = str_starts_with($database, DIRECTORY_SEPARATOR)
+            || preg_match('/^[A-Za-z]:[\\\\\/]/', $database) === 1;
+
+        if (!$isAbsolute) {
+            $storagePath = $projectRoot . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'database';
+            return $storagePath . DIRECTORY_SEPARATOR . $database;
+        }
+
+        return $database;
     }
 }
