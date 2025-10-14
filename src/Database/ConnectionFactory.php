@@ -63,10 +63,13 @@ final class ConnectionFactory
             }
         }
 
+        $username = $config->driver() === 'sqlite' ? null : $config->dbUser();
+        $password = $config->driver() === 'sqlite' ? null : $config->dbPassword();
+
         $pdo = new PDO(
             $config->dsn(),
-            $config->dbUser(),
-            $config->dbPassword(),
+            $username,
+            $password,
             $options
         );
 
