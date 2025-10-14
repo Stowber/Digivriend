@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Repositories;
 
+use App\Support\Clock;
 use PDO;
 
 final class CustomerRepository
@@ -35,8 +36,11 @@ final class CustomerRepository
 
     public function touch(int $customerId): void
     {
-        $statement = $this->pdo->prepare('UPDATE customers SET last_interaction_at = NOW() WHERE id = :id');
-        $statement->execute(['id' => $customerId]);
+        $statement = $this->pdo->prepare('UPDATE customers SET last_interaction_at = :last_interaction_at WHERE id = :id');
+        $statement->execute([
+            'id' => $customerId,
+            'last_interaction_at' => Clock::nowFormatted(),
+        ]);
     }
 
     public function findById(int $customerId): ?array
@@ -59,7 +63,7 @@ final class CustomerRepository
     ): void {
         $statement = $this->pdo->prepare(
             'INSERT INTO customers (full_name, email, phone, address, postal_code, city, last_interaction_at)
-             VALUES (:full_name, :email, :phone, :address, :postal_code, :city, NOW())'
+             VALUES (:full_name, :email, :phone, :address, :postal_code, :city, :last_interaction_at)'
         );
 
         $statement->execute([
@@ -69,6 +73,7 @@ final class CustomerRepository
             'address' => $address ?: null,
             'postal_code' => $postalCode ?: null,
             'city' => $city ?: null,
+            'last_interaction_at' => Clock::nowFormatted(),
         ]);
     }
 
@@ -89,7 +94,7 @@ final class CustomerRepository
                  address = COALESCE(:address, address),
                  postal_code = COALESCE(:postal_code, postal_code),
                  city = COALESCE(:city, city),
-                 last_interaction_at = NOW()
+                 last_interaction_at = :last_interaction_at
              WHERE id = :id'
         );
 
@@ -101,6 +106,7 @@ final class CustomerRepository
             'address' => $address ?: null,
             'postal_code' => $postalCode ?: null,
             'city' => $city ?: null,
+            'last_interaction_at' => Clock::nowFormatted(),
         ]);
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 use App\Exception\ValidationException;
 use App\Http\Response;
 use App\Security\Csrf;
+use App\Support\Clock;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Repositories\NoteRepository;
@@ -42,12 +43,13 @@ if ($decodedSignature === false || strlen($decodedSignature) > 200_000) {
 
 try {
     $statement = $pdo->prepare(
-        'UPDATE ophaalbevestigingen SET pickup_signature = :signature, status = :status, updated_at = NOW() WHERE id = :id'
+        'UPDATE ophaalbevestigingen SET pickup_signature = :signature, status = :status, updated_at = :updated_at WHERE id = :id'
     );
     $statement->execute([
         'signature' => $signatureData,
         'status' => 'opgehaald',
         'id' => (int) $idValue,
+        'updated_at' => Clock::nowFormatted(),
     ]);
     $fetchStatement = $pdo->prepare('SELECT case_id, klantnaam FROM ophaalbevestigingen WHERE id = :id');
     $fetchStatement->execute(['id' => (int) $idValue]);

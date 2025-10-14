@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Repositories;
 
+use App\Support\Clock;
 use PDO;
 
 final class CaseRepository
@@ -51,13 +52,17 @@ final class CaseRepository
     }
 
     public function updateStatus(int $caseId, string $status): void
-    {
+    {   
+        $shouldClose = in_array($status, ['opgehaald', 'gesloten'], true);
+
         $statement = $this->pdo->prepare(
-            'UPDATE cases SET status = :status, closed_at = CASE WHEN :status IN ("opgehaald", "gesloten") THEN NOW() ELSE closed_at END WHERE id = :id'
+            'UPDATE cases SET status = :status, closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END WHERE id = :id'
         );
         $statement->execute([
             'status' => $status,
             'id' => $caseId,
+            'should_close' => $shouldClose ? 1 : 0,
+            'closed_at' => $shouldClose ? Clock::nowFormatted() : null,
         ]);
     }
 
