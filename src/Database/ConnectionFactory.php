@@ -21,6 +21,12 @@ final class ConnectionFactory
 
         $config ??= AppConfig::load();
 
+        if (!extension_loaded('pdo_mysql')) {
+            throw new RuntimeException(
+                'De PDO MySQL-extensie (pdo_mysql) is niet ingeschakeld. Schakel deze extensie in php.ini in of installeer de MySQL-driver om verbinding te maken.'
+            );
+        }
+
         try {
              $pdo = self::createConnection($config);
         } catch (PDOException $exception) {
@@ -88,6 +94,44 @@ final class ConnectionFactory
             return new RuntimeException('Kon geen verbinding maken met de database: ' . $exception->getMessage(), 0, $exception);
         }
 
-        return new RuntimeException('Er is een fout opgetreden bij het verbinden met de database.', 0, $exception);
+         return new RuntimeException(self::friendlyMessage($exception, $config), 0, $exception);
+    }
+
+    private static function friendlyMessage(PDOException $exception, AppConfig $config): string
+    {
+        $message = strtolower($exception->getMessage());
+
+        if (str_contains($message, 'could not find driver')) {
+            return 'De PDO MySQL-extensie (pdo_mysql) is niet beschikbaar. Schakel deze extensie in php.ini in of installeer de MySQL-driver.';
+        }
+
+        if (str_contains($message, 'access denied')) {
+            return sprintf(
+                'De database weigerde de verbinding voor gebruiker "%s". Controleer de gebruikersnaam en het wachtwoord in het .env-bestand.',
+                $config->dbUser()
+            );
+        }
+
+        if (
+            str_contains($message, 'sqlstate[hy000] [2002]') ||
+            str_contains($message, 'connection refused') ||
+            str_contains($message, 'server has gone away')
+        ) {
+            return sprintf(
+                'Er kon geen verbinding worden gemaakt met MySQL op %s:%d. Controleer of de server actief is en of de host/poort juist zijn ingesteld.',
+                $config->dbHost(),
+                $config->dbPort()
+            );
+        }
+
+        if (self::isUnknownDatabaseError($exception)) {
+            return sprintf(
+                'De database "%s" bestaat nog niet of is niet bereikbaar. Controleer of de gebruiker "%s" de juiste rechten heeft om deze aan te maken.',
+                $config->dbName(),
+                $config->dbUser()
+            );
+        }
+
+        return 'Er is een fout opgetreden bij het verbinden met de database.';
     }
 }

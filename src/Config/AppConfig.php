@@ -57,6 +57,16 @@ final class AppConfig
         return $this->dbPassword;
     }
 
+    public function dbHost(): string
+    {
+        return $this->dbHost;
+    }
+
+    public function dbPort(): int
+    {
+        return $this->dbPort;
+    }
+
     public function isDebug(): bool
     {
         return $this->debug;

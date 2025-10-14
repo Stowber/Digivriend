@@ -28,12 +28,19 @@ try {
     }
 
     error_log($exception->getMessage());
-$connectionError = $exception;
+    $connectionError = $exception;
 }
 
 if (!$pdo instanceof \PDO) {
     http_response_code(500);
     $databaseErrorMessage = 'Er is een fout opgetreden bij het verbinden met de database.';
+
+     if ($connectionError instanceof RuntimeException) {
+        $trimmedMessage = trim($connectionError->getMessage());
+        if ($trimmedMessage !== '') {
+            $databaseErrorMessage = $trimmedMessage;
+        }
+    }
 
     if ($connectionError instanceof RuntimeException && $appConfig->isDebug()) {
         throw $connectionError;
