@@ -21,7 +21,13 @@ $csrfToken = Csrf::token();
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+        <span class="logo__mark" aria-hidden="true">DV</span>
+        <span class="logo__text">
+          <span class="logo__title">Digivriend</span>
+          <span class="logo__subtitle">Serviceplatform</span>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php">Dashboard</a></li>
@@ -29,6 +35,7 @@ $csrfToken = Csrf::token();
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php" aria-current="page">Klant Melding</a></li>
+          <li><a href="documents.php">Documenten</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>

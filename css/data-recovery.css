@@ -92,4 +92,50 @@
 
 .manual-grid__wide {
   grid-column: 1 / -1;
+  }
+
+.partner-sync {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 1rem;
+}
+
+.partner-sync ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.partner-sync__form {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.alert {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+}
+
+.alert--success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.alert--error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.alert ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
 }

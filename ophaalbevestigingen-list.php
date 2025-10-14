@@ -65,7 +65,13 @@ try {
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+        <span class="logo__mark" aria-hidden="true">DV</span>
+        <span class="logo__text">
+          <span class="logo__title">Digivriend</span>
+          <span class="logo__subtitle">Serviceplatform</span>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php">Dashboard</a></li>

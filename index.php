@@ -14,6 +14,12 @@ $totalCustomers = (int) ($pdo->query('SELECT COUNT(*) FROM customers')->fetchCol
 $openCases = (int) ($pdo->query("SELECT COUNT(*) FROM cases WHERE status NOT IN ('opgehaald', 'gesloten')")->fetchColumn() ?: 0);
 $today = (new DateTimeImmutable('today'))->setTime(0, 0);
 $todayDateString = $today->format('Y-m-d');
+$typeFilter = filter_input(INPUT_GET, 'type', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'all';
+$periodParam = filter_input(INPUT_GET, 'period', FILTER_SANITIZE_NUMBER_INT);
+$periodOptions = [7, 30, 90];
+$periodDays = in_array((int) $periodParam, $periodOptions, true) ? (int) $periodParam : 30;
+$periodStart = $today->sub(new DateInterval('P' . max($periodDays - 1, 0) . 'D'))->setTime(0, 0);
+$periodStartString = $periodStart->format('Y-m-d 00:00:00');
 $todayPickups = 0;
 $longestWaiting = 0;
 
@@ -66,6 +72,76 @@ foreach ($caseSummaryStmt->fetchAll() as $row) {
     $caseSummary[$row['type']][$row['status']] = (int) $row['total'];
 }
 
+$distinctTypes = $pdo->query('SELECT DISTINCT type FROM cases ORDER BY type')->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+$casesInPeriodSql = 'SELECT COUNT(*) FROM cases WHERE updated_at >= :since';
+$casesCompletedSql = "SELECT COUNT(*) FROM cases WHERE updated_at >= :since AND status IN ('opgehaald','gesloten')";
+if ($typeFilter !== 'all') {
+    $casesInPeriodSql .= ' AND type = :type';
+    $casesCompletedSql .= ' AND type = :type';
+}
+
+$casesInPeriodStatement = $pdo->prepare($casesInPeriodSql);
+$casesInPeriodStatement->bindValue('since', $periodStartString);
+if ($typeFilter !== 'all') {
+    $casesInPeriodStatement->bindValue('type', $typeFilter);
+}
+$casesInPeriodStatement->execute();
+$casesInPeriod = (int) $casesInPeriodStatement->fetchColumn();
+
+$casesCompletedStatement = $pdo->prepare($casesCompletedSql);
+$casesCompletedStatement->bindValue('since', $periodStartString);
+if ($typeFilter !== 'all') {
+    $casesCompletedStatement->bindValue('type', $typeFilter);
+}
+$casesCompletedStatement->execute();
+$casesCompleted = (int) $casesCompletedStatement->fetchColumn();
+
+$notificationsByChannelStatement = $pdo->prepare('SELECT channel, COUNT(*) AS total FROM notifications WHERE sent_at >= :since GROUP BY channel');
+$notificationsByChannelStatement->execute(['since' => $periodStartString]);
+$notificationsByChannel = [];
+foreach ($notificationsByChannelStatement->fetchAll() ?: [] as $notificationRow) {
+    $notificationsByChannel[$notificationRow['channel']] = (int) $notificationRow['total'];
+}
+
+$pendingNotifications = (int) ($pdo->query("SELECT COUNT(*) FROM ophaalbevestigingen WHERE status = 'klaar' AND (notified_ready_at IS NULL OR notified_ready_at = '')")?->fetchColumn() ?: 0);
+
+$leadStatement = $pdo->query('SELECT datumgereed, pickup_signed_at FROM ophaalbevestigingen WHERE pickup_signed_at IS NOT NULL');
+$leadDurations = [];
+if ($leadStatement) {
+    while ($leadRow = $leadStatement->fetch()) {
+        $ready = !empty($leadRow['datumgereed']) ? date_create_immutable((string) $leadRow['datumgereed']) : null;
+        $picked = !empty($leadRow['pickup_signed_at']) ? date_create_immutable((string) $leadRow['pickup_signed_at']) : null;
+        if ($ready instanceof DateTimeInterface && $picked instanceof DateTimeInterface) {
+            $leadDurations[] = max(0, (int) $ready->diff($picked)->format('%a'));
+        }
+    }
+}
+$averageLeadTime = $leadDurations !== [] ? round(array_sum($leadDurations) / count($leadDurations), 1) : null;
+
+$trendStatementSql = 'SELECT updated_at FROM cases WHERE updated_at >= :since';
+if ($typeFilter !== 'all') {
+    $trendStatementSql .= ' AND type = :type';
+}
+$trendStatement = $pdo->prepare($trendStatementSql);
+$trendStatement->bindValue('since', $periodStartString);
+if ($typeFilter !== 'all') {
+    $trendStatement->bindValue('type', $typeFilter);
+}
+$trendStatement->execute();
+$trendData = [];
+while ($trendRow = $trendStatement->fetch()) {
+    $day = date_create_immutable((string) $trendRow['updated_at']);
+    if (!$day instanceof DateTimeImmutable) {
+        continue;
+    }
+    $key = $day->format('Y-m-d');
+    $trendData[$key] = ($trendData[$key] ?? 0) + 1;
+}
+ksort($trendData);
+
+$recentCases = $caseRepository->recentCases(6, $typeFilter !== 'all' ? $typeFilter : null, $periodStartString);
+
 $pickupsStatement = $pdo->prepare(
     "SELECT c.*, cust.full_name, cust.phone, cust.email, ob.datumgereed, ob.ophaalcode
      FROM cases c
@@ -77,8 +153,6 @@ $pickupsStatement = $pdo->prepare(
 );
 $pickupsStatement->execute();
 $upcomingPickups = $pickupsStatement->fetchAll() ?: [];
-
-$recentCases = $caseRepository->recentCases(6);
 
 $notesStatement = $pdo->query(
     "SELECT n.*, c.summary, cust.full_name
@@ -103,7 +177,13 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+        <span class="logo__mark" aria-hidden="true">DV</span>
+        <span class="logo__text">
+          <span class="logo__title">Digivriend</span>
+          <span class="logo__subtitle">Serviceplatform</span>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php" aria-current="page">Dashboard</a></li>
@@ -111,6 +191,7 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li><a href="documents.php">Documenten</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
@@ -129,6 +210,27 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
         <a class="btn btn--ghost" href="klant-melding.php">Nieuwe klantmelding</a>
       </div>
     </section>
+
+    <form method="GET" class="dashboard__filters" aria-label="Dashboardfilters">
+      <div class="dashboard__filter">
+        <label for="type">Case type</label>
+        <select id="type" name="type">
+          <option value="all"<?= $typeFilter === 'all' ? ' selected' : '' ?>>Alle typen</option>
+          <?php foreach ($distinctTypes as $typeOption): ?>
+            <option value="<?= htmlspecialchars((string) $typeOption, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $typeFilter === $typeOption ? ' selected' : '' ?>><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $typeOption)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="dashboard__filter">
+        <label for="period">Periode</label>
+        <select id="period" name="period">
+          <?php foreach ($periodOptions as $option): ?>
+            <option value="<?= $option ?>"<?= $periodDays === $option ? ' selected' : '' ?>>Laatste <?= $option ?> dagen</option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <button type="submit" class="btn">Filter toepassen</button>
+    </form>
 
     <section class="dashboard__stats">
       <article class="stat-card">
@@ -150,6 +252,21 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
         <h2>Langste wachttijd</h2>
         <p class="stat-card__value"><?= $longestWaiting > 0 ? $longestWaiting . ' dagen' : '—' ?></p>
         <span class="stat-card__hint">Sinds datum gereed</span>
+      </article>
+      <article class="stat-card">
+        <h2>Cases deze periode</h2>
+        <p class="stat-card__value"><?= number_format($casesInPeriod, 0, ',', '.') ?></p>
+        <span class="stat-card__hint">Vanaf <?= htmlspecialchars($periodStart->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+      </article>
+      <article class="stat-card">
+        <h2>Gem. doorlooptijd</h2>
+        <p class="stat-card__value"><?= $averageLeadTime !== null ? $averageLeadTime . ' dagen' : '—' ?></p>
+        <span class="stat-card__hint">Van gereed tot opgehaald</span>
+      </article>
+      <article class="stat-card">
+        <h2>Open meldingen</h2>
+        <p class="stat-card__value"><?= number_format($pendingNotifications, 0, ',', '.') ?></p>
+        <span class="stat-card__hint">Nog te informeren klanten</span>
       </article>
     </section>
 
@@ -218,6 +335,49 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
         </div>
       </div>
       </section>
+
+      <section class="dashboard__grid">
+      <div class="dashboard__panel">
+        <header class="dashboard__panel-header">
+          <h2>Activiteit laatste <?= (int) $periodDays ?> dagen</h2>
+        </header>
+        <div class="trend-list">
+          <?php if (empty($trendData)): ?>
+            <p class="empty-state">Geen case-activiteit in deze periode.</p>
+          <?php else: ?>
+            <ul>
+              <?php foreach ($trendData as $dateKey => $value): ?>
+                <li>
+                  <span><?= htmlspecialchars(date('d-m-Y', strtotime($dateKey)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  <strong><?= (int) $value ?></strong>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="dashboard__panel">
+        <header class="dashboard__panel-header">
+          <h2>Verstuurde meldingen</h2>
+        </header>
+        <ul class="notifications-summary">
+          <?php if (empty($notificationsByChannel)): ?>
+            <li class="empty-state">Nog geen meldingen verzonden in deze periode.</li>
+          <?php else: ?>
+            <?php foreach ($notificationsByChannel as $channel => $count): ?>
+              <li>
+                <span><?= htmlspecialchars(strtoupper((string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <strong><?= (int) $count ?></strong>
+              </li>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </ul>
+        <div class="notifications-summary__footer">
+          <span>Afgeronde cases: <strong><?= number_format($casesCompleted, 0, ',', '.') ?></strong></span>
+        </div>
+      </div>
+    </section>
 
       <section class="dashboard__grid">
       <div class="dashboard__panel">

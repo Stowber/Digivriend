@@ -3,8 +3,12 @@ declare(strict_types=1);
 
 use App\Exception\ValidationException;
 use App\Http\Response;
+use App\Security\Auth;
 use App\Security\Csrf;
+use App\Support\Audit\AuditLogger;
 use App\Support\Clock;
+use App\Support\Documents\DocumentRepository;
+use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Repositories\NoteRepository;
@@ -43,15 +47,16 @@ if ($decodedSignature === false || strlen($decodedSignature) > 200_000) {
 
 try {
     $statement = $pdo->prepare(
-        'UPDATE ophaalbevestigingen SET pickup_signature = :signature, status = :status, updated_at = :updated_at WHERE id = :id'
+        'UPDATE ophaalbevestigingen SET pickup_signature = :signature, pickup_signed_at = :pickup_signed_at, status = :status, updated_at = :updated_at WHERE id = :id'
     );
     $statement->execute([
         'signature' => $signatureData,
         'status' => 'opgehaald',
         'id' => (int) $idValue,
         'updated_at' => Clock::nowFormatted(),
+        'pickup_signed_at' => Clock::nowFormatted(),
     ]);
-    $fetchStatement = $pdo->prepare('SELECT case_id, klantnaam FROM ophaalbevestigingen WHERE id = :id');
+    $fetchStatement = $pdo->prepare('SELECT case_id, klantnaam, klantemail, klanttelefoon, ophaalcode FROM ophaalbevestigingen WHERE id = :id');
     $fetchStatement->execute(['id' => (int) $idValue]);
     $ophaalRecord = $fetchStatement->fetch();
 
@@ -60,6 +65,9 @@ try {
         if ($caseId) {
             $caseRepository = new CaseRepository($pdo);
             $noteRepository = new NoteRepository($pdo);
+            $notificationService = new NotificationService($pdo);
+            $documentRepository = new DocumentRepository($pdo);
+            $auditLogger = new AuditLogger($pdo);
             $caseRepository->updateStatus($caseId, 'opgehaald');
             $customerRepository = new CustomerRepository($pdo);
             $case = $caseRepository->findById($caseId);
@@ -67,6 +75,73 @@ try {
                 $customer = $customerRepository->findById((int) $case['customer_id']);
                 if ($customer !== null) {
                     $noteRepository->add($caseId, (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), sprintf('Ophaalbevestiging ondertekend door %s.', (string) $ophaalRecord['klantnaam']));
+                    $signatureDir = __DIR__ . '/storage/documents/signatures';
+                    if (!is_dir($signatureDir)) {
+                        mkdir($signatureDir, 0775, true);
+                    }
+
+                    $signatureFilename = sprintf('pickup-signature-%s-%s.png', $idValue, date('YmdHis'));
+                    file_put_contents($signatureDir . '/' . $signatureFilename, $decodedSignature);
+
+                    $documentRepository->store(
+                        $caseId,
+                        'pickup_signature',
+                        'storage/documents/signatures/' . $signatureFilename,
+                        [
+                            'klantnaam' => $ophaalRecord['klantnaam'],
+                            'ophaalcode' => $ophaalRecord['ophaalcode'] ?? null,
+                        ]
+                    );
+
+                    $notifiedAt = null;
+                    if (!empty($ophaalRecord['klantemail'])) {
+                        $notificationService->sendPickupConfirmation(
+                            $caseId,
+                            (int) $customer['id'],
+                            (string) $ophaalRecord['klantemail'],
+                            [
+                                'customer_name' => $ophaalRecord['klantnaam'],
+                                'pickup_code' => $ophaalRecord['ophaalcode'] ?? '',
+                                'pickup_date' => date('d-m-Y'),
+                            ]
+                        );
+                        $notifiedAt = Clock::nowFormatted();
+                    }
+
+                    if (!empty($ophaalRecord['klanttelefoon'])) {
+                        $notificationService->sendSms(
+                            $caseId,
+                            (int) $customer['id'],
+                            (string) $ophaalRecord['klanttelefoon'],
+                            [
+                                'body' => sprintf('Bedankt voor uw bezoek! Code %s is opgehaald.', $ophaalRecord['ophaalcode'] ?? ''),
+                                'subject' => 'Pickup bevestigd',
+                            ]
+                        );
+                        $notifiedAt = $notifiedAt ?? Clock::nowFormatted();
+                    }
+
+                    if ($notifiedAt !== null) {
+                        $readyStatement = $pdo->prepare('UPDATE ophaalbevestigingen SET notified_collected_at = :notified WHERE id = :id');
+                        $readyStatement->execute([
+                            'notified' => $notifiedAt,
+                            'id' => (int) $idValue,
+                        ]);
+                    }
+
+                    $auditLogger->log(
+                        $caseId,
+                        Auth::id(),
+                        Auth::username(),
+                        'pickup_signed',
+                        [
+                            'ophaalcode' => $ophaalRecord['ophaalcode'] ?? null,
+                            'notifications' => [
+                                'email' => !empty($ophaalRecord['klantemail']),
+                                'sms' => !empty($ophaalRecord['klanttelefoon']),
+                            ],
+                        ]
+                    );
                 }
             }
         }

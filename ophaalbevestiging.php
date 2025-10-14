@@ -20,7 +20,13 @@ $csrfToken = Csrf::token();
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+        <span class="logo__mark" aria-hidden="true">DV</span>
+        <span class="logo__text">
+          <span class="logo__title">Digivriend</span>
+          <span class="logo__subtitle">Serviceplatform</span>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php">Dashboard</a></li>
@@ -28,6 +34,7 @@ $csrfToken = Csrf::token();
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li><a href="documents.php">Documenten</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
@@ -80,10 +87,37 @@ $csrfToken = Csrf::token();
           <input type="date" id="datumgereed" name="datumgereed" required>
         </div>
 
+        <div class="form-split">
+          <div class="form-group">
+            <label for="pickup_scheduled_at">Afspraakdatum (optioneel)</label>
+            <input type="datetime-local" id="pickup_scheduled_at" name="pickup_scheduled_at">
+          </div>
+          <div class="form-group">
+            <label for="pickup_window">Afhaalvenster</label>
+            <input type="text" id="pickup_window" name="pickup_window" maxlength="120" placeholder="Bijv. tussen 10:00 en 12:00">
+          </div>
+        </div>
+
         <div class="form-group">
           <label for="opmerkingen">Interne notitie (optioneel)</label>
           <textarea id="opmerkingen" name="opmerkingen" rows="3" placeholder="Bijvoorbeeld bijzonderheden bij afhalen"></textarea>
         </div>
+
+        <fieldset class="form-group">
+          <legend>Automatische communicatie</legend>
+          <label class="form-checkbox">
+            <input type="checkbox" name="notify_email" value="1" checked>
+            <span>Verstuur direct een e-mail zodra de bevestiging is aangemaakt</span>
+          </label>
+          <label class="form-checkbox">
+            <input type="checkbox" name="notify_sms" value="1">
+            <span>Verstuur ook een sms naar het opgegeven telefoonnummer</span>
+          </label>
+          <label class="form-group form-group--stacked" for="sms_template">
+            <span>SMS-tekst (optioneel)</span>
+            <textarea id="sms_template" name="sms_template" rows="2" placeholder="Hoi! Uw apparaat staat klaar bij Digivriend. Code: 123456."></textarea>
+          </label>
+        </fieldset>
 
     <div class="document-actions">
           <button type="submit" class="btn">Genereer PDF</button>

@@ -4,6 +4,22 @@ declare(strict_types=1);
 
 use App\Security\Csrf;
 
+$inboxDir = __DIR__ . '/storage/data-recovery/inbox';
+if (!is_dir($inboxDir)) {
+    mkdir($inboxDir, 0775, true);
+}
+
+$pendingImports = array_map('basename', glob($inboxDir . '/*.json') ?: []);
+$importedCount = filter_input(INPUT_GET, 'imported', FILTER_VALIDATE_INT) ?: 0;
+$importErrorsRaw = filter_input(INPUT_GET, 'errors', FILTER_UNSAFE_RAW);
+$importErrors = [];
+if (is_string($importErrorsRaw) && $importErrorsRaw !== '') {
+    $decoded = json_decode(urldecode($importErrorsRaw), true);
+    if (is_array($decoded)) {
+        $importErrors = $decoded;
+    }
+}
+
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 
@@ -21,7 +37,13 @@ $csrfToken = Csrf::token();
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+        <span class="logo__mark" aria-hidden="true">DV</span>
+        <span class="logo__text">
+          <span class="logo__title">Digivriend</span>
+          <span class="logo__subtitle">Serviceplatform</span>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php">Dashboard</a></li>
@@ -29,6 +51,7 @@ $csrfToken = Csrf::token();
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php" aria-current="page">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li><a href="documents.php">Documenten</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
@@ -41,7 +64,39 @@ $csrfToken = Csrf::token();
       <div class="page-header">
         <h1>Data Recovery</h1>
         <p>Start een nieuwe datarecovery-aanvraag via ons partnerformulier. Vul alle velden in, zodat onze specialisten direct met je case aan de slag kunnen.</p>
+    </div>
+
+    <?php if ($importedCount > 0): ?>
+      <div class="alert alert--success">Succesvol <?= (int) $importedCount ?> partneraanvraag/aanvragen geïmporteerd.</div>
+    <?php endif; ?>
+    <?php if (!empty($importErrors)): ?>
+      <div class="alert alert--error">
+        <strong>Waarschuwing:</strong>
+        <ul>
+          <?php foreach ($importErrors as $errorMessage): ?>
+            <li><?= htmlspecialchars((string) $errorMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <?php endforeach; ?>
+        </ul>
       </div>
+      <?php endif; ?>
+
+    <section class="partner-sync">
+      <h2>Partnerinbox</h2>
+      <p class="muted">Bestanden in <code>storage/data-recovery/inbox</code> worden automatisch verwerkt tot cases.</p>
+      <?php if (empty($pendingImports)): ?>
+        <p class="muted">Geen wachtende partnerbestanden.</p>
+      <?php else: ?>
+        <ul>
+          <?php foreach ($pendingImports as $fileName): ?>
+            <li><?= htmlspecialchars($fileName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <?php endforeach; ?>
+        </ul>
+        <form action="data-recovery-sync.php" method="POST" class="partner-sync__form">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <button type="submit" class="btn">Importeer partneraanvragen</button>
+        </form>
+      <?php endif; ?>
+    </section>
 
   <div class="embed-shell">
         <div id="zf_div_NjvRlJCeWk-6kWpDnNOiviDvjs0WoTznjCUgcSCEIgw"></div>

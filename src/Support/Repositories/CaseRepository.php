@@ -104,9 +104,31 @@ final class CaseRepository
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function recentCases(int $limit = 10): array
+    public function recentCases(int $limit = 10, ?string $type = null, ?string $since = null): array
     {
-        $statement = $this->pdo->prepare('SELECT * FROM cases ORDER BY updated_at DESC LIMIT :limit');
+        $sql = 'SELECT * FROM cases';
+        $conditions = [];
+        $parameters = [];
+
+        if ($type !== null && $type !== '' && $type !== 'all') {
+            $conditions[] = 'type = :type';
+            $parameters[':type'] = $type;
+        }
+
+        if ($since !== null && $since !== '') {
+            $conditions[] = 'updated_at >= :since';
+            $parameters[':since'] = $since;
+        }
+
+        if ($conditions !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+
+        $sql .= ' ORDER BY updated_at DESC LIMIT :limit';
+        $statement = $this->pdo->prepare($sql);
+        foreach ($parameters as $placeholder => $value) {
+            $statement->bindValue($placeholder, $value);
+        }
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 

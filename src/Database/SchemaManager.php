@@ -26,10 +26,15 @@ final class SchemaManager
         self::ensureOphaalbevestigingenTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
         self::ensureDataRecoveryTable($pdo);
+        self::ensureNotificationTable($pdo);
+        self::ensureCaseChecklistsTables($pdo);
+        self::ensureCaseAuditLogTable($pdo);
+        self::ensureDocumentsTable($pdo);
 
         self::ensureOphaalbevestigingColumns($pdo);
         self::ensureReparatieOnderzoekColumns($pdo);
         self::ensureDataRecoveryColumns($pdo);
+        self::ensureOphaalbevestigingEnhancements($pdo);
         self::ensureDefaultUserExists($pdo);
     }
 
@@ -786,6 +791,337 @@ final class SchemaManager
         $pdo->exec($sql);
     }
 
+    private static function ensureNotificationTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NULL,
+                    customer_id INT NULL,
+                    channel VARCHAR(32) NOT NULL,
+                    recipient VARCHAR(191) NOT NULL,
+                    subject VARCHAR(191) NULL,
+                    body TEXT NOT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'queued',
+                    error TEXT NULL,
+                    sent_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_notifications_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_notifications_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NULL,
+                    customer_id INTEGER NULL,
+                    channel TEXT NOT NULL,
+                    recipient TEXT NOT NULL,
+                    subject TEXT NULL,
+                    body TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'queued',
+                    error TEXT NULL,
+                    sent_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL;
+
+            $pdo->exec($sql);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status)');
+
+            return;
+        }
+
+        $sql = <<<SQL
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NULL,
+                customer_id INT UNSIGNED NULL,
+                channel VARCHAR(32) NOT NULL,
+                recipient VARCHAR(191) NOT NULL,
+                subject VARCHAR(191) NULL,
+                body TEXT NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'queued',
+                error TEXT NULL,
+                sent_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_notifications_status (status),
+                CONSTRAINT fk_notifications_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                CONSTRAINT fk_notifications_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL;
+
+        $pdo->exec($sql);
+    }
+
+    private static function ensureCaseChecklistsTables(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_checklists (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NOT NULL,
+                    title VARCHAR(191) NOT NULL,
+                    assigned_to VARCHAR(120) NULL,
+                    due_at DATE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_case_checklists_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
+                )
+            SQL);
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_checklist_items (
+                    id SERIAL PRIMARY KEY,
+                    checklist_id INT NOT NULL,
+                    description VARCHAR(255) NOT NULL,
+                    is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+                    completed_by VARCHAR(120) NULL,
+                    completed_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_checklist_items_checklist FOREIGN KEY (checklist_id) REFERENCES case_checklists(id) ON DELETE CASCADE
+                )
+            SQL);
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_checklists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    assigned_to TEXT NULL,
+                    due_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL);
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_checklist_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    checklist_id INTEGER NOT NULL,
+                    description TEXT NOT NULL,
+                    is_completed INTEGER NOT NULL DEFAULT 0,
+                    completed_by TEXT NULL,
+                    completed_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL);
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_checklist_items_checklist ON case_checklist_items(checklist_id)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS case_checklists (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NOT NULL,
+                title VARCHAR(191) NOT NULL,
+                assigned_to VARCHAR(120) NULL,
+                due_at DATE NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_case_checklists_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS case_checklist_items (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                checklist_id INT UNSIGNED NOT NULL,
+                description VARCHAR(255) NOT NULL,
+                is_completed TINYINT(1) NOT NULL DEFAULT 0,
+                completed_by VARCHAR(120) NULL,
+                completed_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_checklist_items_checklist (checklist_id),
+                CONSTRAINT fk_case_checklist_items_checklist FOREIGN KEY (checklist_id) REFERENCES case_checklists(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureCaseAuditLogTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS case_audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NOT NULL,
+                    user_id INT NULL,
+                    username VARCHAR(120) NOT NULL,
+                    action VARCHAR(191) NOT NULL,
+                    context JSON NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_case_audit_logs_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_case_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS case_audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NOT NULL,
+                    user_id INTEGER NULL,
+                    username TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    context TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            return;
+        }
+
+        $sql = <<<SQL
+            CREATE TABLE IF NOT EXISTS case_audit_logs (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NOT NULL,
+                user_id INT UNSIGNED NULL,
+                username VARCHAR(120) NOT NULL,
+                action VARCHAR(191) NOT NULL,
+                context JSON NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_case_audit_logs_case (case_id),
+                CONSTRAINT fk_case_audit_logs_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                CONSTRAINT fk_case_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL;
+
+        $pdo->exec($sql);
+    }
+
+    private static function ensureDocumentsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS documents (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NULL,
+                    type VARCHAR(64) NOT NULL,
+                    file_path VARCHAR(255) NOT NULL,
+                    metadata JSON NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_documents_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL
+                )
+            SQL;
+
+            $pdo->exec($sql);
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_documents_type ON documents(type)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $sql = <<<SQL
+                CREATE TABLE IF NOT EXISTS documents (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NULL,
+                    type TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    metadata TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL;
+
+            $pdo->exec($sql);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_documents_type ON documents(type)');
+
+            return;
+        }
+
+        $sql = <<<SQL
+            CREATE TABLE IF NOT EXISTS documents (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NULL,
+                type VARCHAR(64) NOT NULL,
+                file_path VARCHAR(255) NOT NULL,
+                metadata JSON NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_documents_type (type),
+                CONSTRAINT fk_documents_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL;
+
+        $pdo->exec($sql);
+    }
+
+    private static function ensureOphaalbevestigingEnhancements(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $statements = [
+                "ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS notified_ready_at TIMESTAMP WITHOUT TIME ZONE",
+                "ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS notified_collected_at TIMESTAMP WITHOUT TIME ZONE",
+                "ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS pickup_scheduled_at TIMESTAMP WITHOUT TIME ZONE",
+                "ALTER TABLE ophaalbevestigingen ADD COLUMN IF NOT EXISTS pickup_window VARCHAR(120)"
+            ];
+
+            foreach ($statements as $sql) {
+                $pdo->exec($sql);
+            }
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $columns = [
+                ['notified_ready_at', 'TEXT'],
+                ['notified_collected_at', 'TEXT'],
+                ['pickup_scheduled_at', 'TEXT'],
+                ['pickup_window', 'TEXT'],
+            ];
+
+            foreach ($columns as [$name, $definition]) {
+                self::addSqliteColumnIfMissing($pdo, 'ophaalbevestigingen', $name, $definition);
+            }
+
+            return;
+        }
+
+        $statements = [
+            "ALTER TABLE ophaalbevestigingen ADD COLUMN notified_ready_at DATETIME NULL AFTER status",
+            "ALTER TABLE ophaalbevestigingen ADD COLUMN notified_collected_at DATETIME NULL AFTER notified_ready_at",
+            "ALTER TABLE ophaalbevestigingen ADD COLUMN pickup_scheduled_at DATETIME NULL AFTER notified_collected_at",
+            "ALTER TABLE ophaalbevestigingen ADD COLUMN pickup_window VARCHAR(120) NULL AFTER pickup_scheduled_at"
+        ];
+
+        foreach ($statements as $sql) {
+            self::executeIgnoringDuplicates($pdo, $sql, ['duplicate column', 'already exists']);
+        }
+    }
+
     private static function ensureDefaultUserExists(PDO $pdo): void
     {
         $defaultUsername = (string) Env::get('APP_ADMIN_USER', 'admin');
@@ -807,7 +1143,8 @@ final class SchemaManager
             'role' => $defaultRole,
         ]);
     }
-private static function addSqliteColumnIfMissing(PDO $pdo, string $table, string $column, string $definition): void
+    
+    private static function addSqliteColumnIfMissing(PDO $pdo, string $table, string $column, string $definition): void
     {
         if (self::sqliteColumnExists($pdo, $table, $column)) {
             return;

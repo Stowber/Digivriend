@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Exception\ValidationException;
 use App\Http\Response;
+use App\Security\Auth;
 use App\Security\Csrf;
+use App\Support\Audit\AuditLogger;
+use App\Support\Checklist\ChecklistRepository;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\NoteRepository;
 use App\Validation\InputValidator;
@@ -19,6 +22,8 @@ if ($caseId === null || $caseId === false) {
 
 $caseRepository = new CaseRepository($pdo);
 $noteRepository = new NoteRepository($pdo);
+$checklistRepository = new ChecklistRepository($pdo);
+$auditLogger = new AuditLogger($pdo);
 
 $case = $caseRepository->findById((int) $caseId);
 if ($case === null) {
@@ -48,6 +53,7 @@ if (!empty($caseRecord['details'])) {
 }
 
 $errors = [];
+$checklistErrors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -55,16 +61,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new ValidationException(['general' => 'Ongeldige sessie, probeer opnieuw.']);
         }
 
-        $body = InputValidator::requireString($_POST, 'body', 2000);
-        $noteRepository->add((int) $caseId, (int) $caseRecord['customer_id'], (string) ($_SESSION['username'] ?? 'Systeem'), $body);
+        $action = $_POST['action'] ?? 'add-note';
+
+        switch ($action) {
+            case 'add-note':
+                $body = InputValidator::requireString($_POST, 'body', 2000);
+                $noteRepository->add((int) $caseId, (int) $caseRecord['customer_id'], Auth::username(), $body);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'note_added', ['body' => $body]);
+                break;
+            case 'add-checklist':
+                $title = InputValidator::requireString($_POST, 'title', 160);
+                $assignedTo = InputValidator::optionalString($_POST, 'assigned_to', 120);
+                $dueDateRaw = trim((string) ($_POST['due_date'] ?? ''));
+                $dueDate = null;
+                if ($dueDateRaw !== '') {
+                    $dueDateInstance = date_create_immutable($dueDateRaw);
+                    if (!$dueDateInstance instanceof \DateTimeImmutable) {
+                        throw new ValidationException(['due_date' => 'Ongeldige datum opgegeven.']);
+                    }
+                    $dueDate = $dueDateInstance->format('Y-m-d');
+                }
+                $newChecklistId = $checklistRepository->createChecklist((int) $caseId, $title, $assignedTo !== '' ? $assignedTo : null, $dueDate);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'checklist_created', ['checklist_id' => $newChecklistId, 'title' => $title]);
+                break;
+            case 'add-checklist-item':
+                $checklistId = filter_var($_POST['checklist_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$checklistId) {
+                    throw new ValidationException(['checklist_id' => 'Ongeldige checklist.']);
+                }
+                $description = InputValidator::requireString($_POST, 'description', 255);
+                $checklistRepository->addItem((int) $checklistId, $description);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'checklist_item_added', ['checklist_id' => (int) $checklistId]);
+                break;
+            case 'toggle-checklist-item':
+                $itemId = filter_var($_POST['item_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$itemId) {
+                    throw new ValidationException(['item_id' => 'Ongeldig item.']);
+                }
+                $completed = isset($_POST['completed']) && $_POST['completed'] === '1';
+                $checklistRepository->toggleItem((int) $itemId, $completed, Auth::username());
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'checklist_item_toggled', ['item_id' => (int) $itemId, 'completed' => $completed]);
+                break;
+            case 'remove-checklist':
+                $checklistId = filter_var($_POST['checklist_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$checklistId) {
+                    throw new ValidationException(['checklist_id' => 'Ongeldige checklist.']);
+                }
+                $checklistRepository->removeChecklist((int) $checklistId);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'checklist_removed', ['checklist_id' => (int) $checklistId]);
+                break;
+            default:
+                throw new ValidationException(['general' => 'Onbekende actie.']);
+        }
         Response::redirect('case.php?id=' . (int) $caseId);
     } catch (ValidationException $exception) {
         $errors = $exception->errors();
+        if (isset($errors['title']) || isset($errors['assigned_to']) || isset($errors['due_date']) || isset($errors['checklist_id'])) {
+            $checklistErrors = $errors;
+        }
     }
 }
 
 $notes = $noteRepository->forCase((int) $caseId);
 $csrfToken = Csrf::token();
+$checklists = $checklistRepository->forCase((int) $caseId);
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -78,7 +138,13 @@ $csrfToken = Csrf::token();
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo">Digivriend</a>
+      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+        <span class="logo__mark" aria-hidden="true">DV</span>
+        <span class="logo__text">
+          <span class="logo__title">Digivriend</span>
+          <span class="logo__subtitle">Serviceplatform</span>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php">Dashboard</a></li>
@@ -86,6 +152,7 @@ $csrfToken = Csrf::token();
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+           <li><a href="documents.php">Documenten</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
@@ -152,6 +219,99 @@ $csrfToken = Csrf::token();
       </article>
     </section>
 
+    <section class="checklists-section">
+      <header class="checklists-header">
+        <h2>Checklist workflow</h2>
+      </header>
+      <div class="checklists-grid">
+        <article class="checklist-card checklist-card--new">
+          <h3>Nieuwe checklist</h3>
+          <?php if (!empty($checklistErrors['general'])): ?>
+            <div class="alert alert--error"><?= htmlspecialchars((string) $checklistErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+          <?php endif; ?>
+          <form method="POST" class="checklist-form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="add-checklist">
+            <label>
+              <span>Titel</span>
+              <input type="text" name="title" maxlength="160" required>
+              <?php if (!empty($checklistErrors['title'])): ?><small class="form-error"><?= htmlspecialchars((string) $checklistErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label>
+              <span>Toegewezen aan</span>
+              <input type="text" name="assigned_to" maxlength="120" placeholder="Bijv. Technicus Jan">
+              <?php if (!empty($checklistErrors['assigned_to'])): ?><small class="form-error"><?= htmlspecialchars((string) $checklistErrors['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label>
+              <span>Deadline</span>
+              <input type="date" name="due_date">
+              <?php if (!empty($checklistErrors['due_date'])): ?><small class="form-error"><?= htmlspecialchars((string) $checklistErrors['due_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <button type="submit" class="btn">Checklist toevoegen</button>
+          </form>
+        </article>
+
+        <?php if (empty($checklists)): ?>
+          <article class="checklist-card checklist-card--empty">
+            <p class="muted">Nog geen checklist aangemaakt voor deze case.</p>
+          </article>
+        <?php else: ?>
+          <?php foreach ($checklists as $checklist): ?>
+            <article class="checklist-card">
+              <header class="checklist-card__header">
+                <div>
+                  <h3><?= htmlspecialchars((string) $checklist['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                  <div class="muted">
+                    <?php if (!empty($checklist['assigned_to'])): ?>Toegewezen aan <?= htmlspecialchars((string) $checklist['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+                    <?php if (!empty($checklist['due_at'])): ?> · Deadline <?= htmlspecialchars(date('d-m-Y', strtotime((string) $checklist['due_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+                  </div>
+                </div>
+                <form method="POST">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="action" value="remove-checklist">
+                  <input type="hidden" name="checklist_id" value="<?= (int) $checklist['id'] ?>">
+                  <button type="submit" class="btn btn--ghost" onclick="return confirm('Checklist verwijderen?')">Verwijder</button>
+                </form>
+              </header>
+
+              <ul class="checklist-items">
+                <?php if (empty($checklist['items'])): ?>
+                  <li class="muted">Nog geen stappen toegevoegd.</li>
+                <?php else: ?>
+                  <?php foreach ($checklist['items'] as $item): ?>
+                    <li class="checklist-item <?= (int) $item['is_completed'] === 1 ? 'checklist-item--done' : '' ?>">
+                      <div>
+                        <strong><?= htmlspecialchars((string) $item['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                        <?php if ((int) $item['is_completed'] === 1): ?>
+                          <div class="muted">Voltooid door <?= htmlspecialchars((string) ($item['completed_by'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> op <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $item['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                        <?php endif; ?>
+                      </div>
+                      <form method="POST">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                        <input type="hidden" name="action" value="toggle-checklist-item">
+                        <input type="hidden" name="item_id" value="<?= (int) $item['id'] ?>">
+                        <input type="hidden" name="completed" value="<?= (int) $item['is_completed'] === 1 ? '0' : '1' ?>">
+                        <button type="submit" class="btn btn--ghost btn--small"><?= (int) $item['is_completed'] === 1 ? 'Markeer open' : 'Markeer voltooid' ?></button>
+                      </form>
+                    </li>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </ul>
+
+              <form method="POST" class="checklist-item-form">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="add-checklist-item">
+                <input type="hidden" name="checklist_id" value="<?= (int) $checklist['id'] ?>">
+                <label class="sr-only" for="item-<?= (int) $checklist['id'] ?>">Nieuwe stap</label>
+                <input id="item-<?= (int) $checklist['id'] ?>" type="text" name="description" maxlength="255" placeholder="Voeg een stap toe" required>
+                <button type="submit" class="btn btn--ghost">Stap toevoegen</button>
+              </form>
+            </article>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </div>
+    </section>
+
     <section class="notes-section">
       <div class="notes-header">
         <h2>Notities</h2>
@@ -181,8 +341,10 @@ $csrfToken = Csrf::token();
           <?php endif; ?>
           <form method="POST">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+             <input type="hidden" name="action" value="add-note">
             <label for="body">Notitie</label>
             <textarea name="body" id="body" rows="5" required></textarea>
+            <?php if (!empty($errors['body'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
             <button type="submit" class="btn">Opslaan</button>
           </form>
         </div>

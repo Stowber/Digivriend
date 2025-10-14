@@ -102,6 +102,24 @@ final class InputValidator
     /**
      * @param array<string, mixed> $source
      */
+    public static function optionalDateTime(array $source, string $key): string
+    {
+        $value = trim((string) ($source[$key] ?? ''));
+        if ($value === '') {
+            return '';
+        }
+
+        $date = date_create_immutable($value);
+        if (!$date) {
+            throw new ValidationException([$key => 'Ongeldige datum/tijd opgegeven.']);
+        }
+
+        return $date->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     */
     public static function requireEmail(array $source, string $key, int $maxLength = 255): string
     {
         $value = self::requireString($source, $key, $maxLength);

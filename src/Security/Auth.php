@@ -51,4 +51,42 @@ final class Auth
 
         return isset($_SESSION['user_id']);
     }
+
+    public static function id(): ?int
+    {
+        if (!self::check()) {
+            return null;
+        }
+
+        return isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
+    }
+
+    public static function username(): string
+    {
+        if (!self::check()) {
+            return 'Onbekend';
+        }
+
+        return (string) ($_SESSION['username'] ?? 'Onbekend');
+    }
+
+    public static function role(): string
+    {
+        if (!self::check()) {
+            return 'gast';
+        }
+
+        return (string) ($_SESSION['role'] ?? 'gast');
+    }
+
+    public static function authorize(array $allowedRoles): bool
+    {
+        $role = self::role();
+
+        if ($allowedRoles === []) {
+            return true;
+        }
+
+        return in_array($role, $allowedRoles, true);
+    }
 }

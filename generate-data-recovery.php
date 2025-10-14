@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Exception\ValidationException;
 use App\Http\Response;
+use App\Security\Auth;
 use App\Security\Csrf;
+use App\Support\Audit\AuditLogger;
+use App\Support\Documents\DocumentRepository;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Repositories\DeviceRepository;
@@ -77,6 +80,8 @@ $customerRepository = new CustomerRepository($pdo);
 $deviceRepository = new DeviceRepository($pdo);
 $caseRepository = new CaseRepository($pdo);
 $noteRepository = new NoteRepository($pdo);
+$documentRepository = new DocumentRepository($pdo);
+$auditLogger = new AuditLogger($pdo);
 
 $customer = $customerRepository->upsert($fullname, $email, $phone, $address, $postcode);
 $device = $deviceRepository->findOrCreate((int) $customer['id'], $deviceBrand ?: null, $deviceModel ?: null, $deviceSerial ?: null);
@@ -270,4 +275,24 @@ $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
 $filename = sprintf('DataRecovery[%s][%d].pdf', $huidigeDatum, $insertId);
+$pdfContent = $dompdf->output();
+
+$documentDirectory = __DIR__ . '/storage/documents';
+if (!is_dir($documentDirectory)) {
+    mkdir($documentDirectory, 0775, true);
+}
+
+$storagePath = sprintf('storage/documents/%s', $filename);
+file_put_contents(__DIR__ . '/' . $storagePath, $pdfContent);
+
+$documentRepository->store(
+    (int) $case['id'],
+    'data_recovery',
+    $storagePath,
+    [
+        'klantnaam' => $fullname,
+        'case_reference' => $generatedReference,
+    ]
+);
+
 $dompdf->stream($filename, ['Attachment' => true]);
