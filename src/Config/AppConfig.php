@@ -23,12 +23,12 @@ final class AppConfig
         Env::load(__DIR__ . '/../../.env');
 
         return new self(
-            (string) Env::get('DB_HOST', '127.0.0.1'),
-            (int) Env::get('DB_PORT', 3306),
-            (string) Env::get('DB_NAME', 'digivriend'),
-            (string) Env::get('DB_USER', 'digivriend'),
-            (string) Env::get('DB_PASSWORD', ''),
-            (bool) Env::get('APP_DEBUG', false)
+             (string) self::env(['DB_HOST', 'DB_HOSTNAME'], '127.0.0.1'),
+            (int) self::env(['DB_PORT', 'DB_PORT_NUMBER'], 3306),
+            (string) self::env(['DB_NAME', 'DB_DATABASE'], 'digivriend'),
+            (string) self::env(['DB_USER', 'DB_USERNAME'], 'digivriend'),
+            (string) self::env(['DB_PASSWORD', 'DB_PASS'], ''),
+            (bool) self::env(['APP_DEBUG'], false)
         );
     }
 
@@ -70,5 +70,20 @@ final class AppConfig
     public function isDebug(): bool
     {
         return $this->debug;
+    }
+/**
+     * Retrieve the first configured environment value for the provided keys.
+     */
+    private static function env(array $keys, mixed $default = null): mixed
+    {
+        foreach ($keys as $key) {
+            $value = Env::get($key, null);
+
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return $default;
     }
 }
