@@ -1542,13 +1542,18 @@ final class SchemaManager
                 self::addSqliteColumnIfMissing($pdo, 'device_components', $name, $definition);
             }
 
-            $indexes = [
-                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)',
-                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)',
-            ];
+            if (self::sqliteColumnExists($pdo, 'device_components', 'warranty_expires_at')) {
+                self::executeIgnoringMissingColumns(
+                    $pdo,
+                    'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)'
+                );
+            }
 
-            foreach ($indexes as $sql) {
-                $pdo->exec($sql);
+            if (self::sqliteColumnExists($pdo, 'device_components', 'maintenance_interval_days')) {
+                self::executeIgnoringMissingColumns(
+                    $pdo,
+                    'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)'
+                );
             }
 
             return;
@@ -1758,6 +1763,17 @@ final class SchemaManager
             $pdo->exec($sql);
         } catch (PDOException $exception) {
             if (!self::containsKeyword($exception, $keywords)) {
+                throw $exception;
+            }
+        }
+    }
+
+    private static function executeIgnoringMissingColumns(PDO $pdo, string $sql): void
+    {
+        try {
+            $pdo->exec($sql);
+        } catch (PDOException $exception) {
+            if (!self::containsKeyword($exception, ['no such column'])) {
                 throw $exception;
             }
         }
