@@ -21,7 +21,8 @@ final class DeviceRepository
         $existing = $this->findExisting($customerId, $brand, $model, $serialNumber);
 
         if ($existing !== null) {
-            return $existing;
+            $this->ensureBarcode((int) $existing['id']);
+            return $this->findById((int) $existing['id']);
         }
 
         $statement = $this->pdo->prepare(
@@ -34,7 +35,100 @@ final class DeviceRepository
             'serial_number' => $serialNumber ?: null,
         ]);
 
-        return $this->findExisting($customerId, $brand, $model, $serialNumber);
+        $deviceId = (int) $this->pdo->lastInsertId();
+        $this->ensureBarcode($deviceId);
+
+        return $this->findById($deviceId);
+    }
+
+    public function findById(int $deviceId): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM devices WHERE id = :id');
+        $statement->execute(['id' => $deviceId]);
+        $device = $statement->fetch();
+
+        return $device !== false ? $device : null;
+    }
+
+    public function findByBarcode(string $barcode): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM devices WHERE barcode = :barcode');
+        $statement->execute(['barcode' => $barcode]);
+        $device = $statement->fetch();
+
+        return $device !== false ? $device : null;
+    }
+
+    public function findWithCustomer(int $deviceId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT d.*, c.full_name, c.email, c.phone, c.address, c.postal_code, c.city
+             FROM devices d
+             INNER JOIN customers c ON c.id = d.customer_id
+             WHERE d.id = :id'
+        );
+        $statement->execute(['id' => $deviceId]);
+        $record = $statement->fetch();
+
+        return $record !== false ? $record : null;
+    }
+
+    public function findWithCustomerByBarcode(string $barcode): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT d.*, c.full_name, c.email, c.phone, c.address, c.postal_code, c.city
+             FROM devices d
+             INNER JOIN customers c ON c.id = d.customer_id
+             WHERE d.barcode = :barcode'
+        );
+        $statement->execute(['barcode' => $barcode]);
+        $record = $statement->fetch();
+
+        return $record !== false ? $record : null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function recentDevices(int $limit = 10): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT d.*, c.full_name
+             FROM devices d
+             INNER JOIN customers c ON c.id = d.customer_id
+             ORDER BY d.created_at DESC
+             LIMIT :limit'
+        );
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll() ?: [];
+    }
+
+    public function ensureBarcode(int $deviceId): string
+    {
+        $device = $this->findById($deviceId);
+
+        if ($device === null) {
+            return '';
+        }
+
+        $current = (string) ($device['barcode'] ?? '');
+        if ($current !== '') {
+            return $current;
+        }
+
+        do {
+            $candidate = $this->generateDeviceBarcodeValue();
+        } while ($this->barcodeExists($candidate));
+
+        $statement = $this->pdo->prepare('UPDATE devices SET barcode = :barcode WHERE id = :id');
+        $statement->execute([
+            'id' => $deviceId,
+            'barcode' => $candidate,
+        ]);
+
+        return $candidate;
     }
 
     private function findExisting(
@@ -73,5 +167,21 @@ final class DeviceRepository
         }
 
         return null;
+    }
+
+    private function barcodeExists(string $barcode): bool
+    {
+        $statement = $this->pdo->prepare('SELECT COUNT(*) FROM devices WHERE barcode = :barcode');
+        $statement->execute(['barcode' => $barcode]);
+
+        return (int) $statement->fetchColumn() > 0;
+    }
+
+    private function generateDeviceBarcodeValue(): string
+    {
+        $datePart = (new \DateTimeImmutable())->format('ymd');
+        $random = strtoupper(bin2hex(random_bytes(3)));
+
+        return 'DV' . $datePart . $random;
     }
 }

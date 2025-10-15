@@ -30,12 +30,21 @@ final class SchemaManager
         self::ensureCaseChecklistsTables($pdo);
         self::ensureCaseAuditLogTable($pdo);
         self::ensureDocumentsTable($pdo);
+        self::ensureDeviceEnhancements($pdo);
 
         self::ensureOphaalbevestigingColumns($pdo);
         self::ensureReparatieOnderzoekColumns($pdo);
         self::ensureDataRecoveryColumns($pdo);
         self::ensureOphaalbevestigingEnhancements($pdo);
         self::ensureDefaultUserExists($pdo);
+    }
+
+    private static function ensureDeviceEnhancements(PDO $pdo): void
+    {
+        self::ensureDeviceBarcodeColumn($pdo);
+        self::ensureDevicePhotosTable($pdo);
+        self::ensureRepairEventsTable($pdo);
+        self::populateMissingDeviceBarcodes($pdo);
     }
 
     private static function mysqlBaseStatements(): array
@@ -1121,6 +1130,191 @@ final class SchemaManager
             self::executeIgnoringDuplicates($pdo, $sql, ['duplicate column', 'already exists']);
         }
     }
+
+    private static function ensureDeviceBarcodeColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec('ALTER TABLE devices ADD COLUMN IF NOT EXISTS barcode VARCHAR(64)');
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_devices_barcode ON devices(barcode)');
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'devices', 'barcode', 'TEXT');
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_barcode ON devices(barcode)');
+            return;
+        }
+
+        $statements = [
+            "ALTER TABLE devices ADD COLUMN barcode VARCHAR(64) NULL AFTER serial_number",
+            'ALTER TABLE devices ADD UNIQUE INDEX uniq_devices_barcode (barcode)',
+        ];
+
+        foreach ($statements as $index => $sql) {
+            $keywords = $index === 0 ? ['duplicate column', 'already exists'] : ['duplicate', 'already exists'];
+            self::executeIgnoringDuplicates($pdo, $sql, $keywords);
+        }
+    }
+
+    private static function ensureDevicePhotosTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS device_photos (
+                    id SERIAL PRIMARY KEY,
+                    device_id INTEGER NOT NULL,
+                    orientation VARCHAR(32) NOT NULL,
+                    file_path VARCHAR(255) NOT NULL,
+                    captured_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_device_photos_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_photos_device ON device_photos(device_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_photos_orientation ON device_photos(device_id, orientation)');
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS device_photos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id INTEGER NOT NULL,
+                    orientation TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    captured_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_device_photos_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_photos_device ON device_photos(device_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_photos_orientation ON device_photos(device_id, orientation)');
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS device_photos (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                device_id INT UNSIGNED NOT NULL,
+                orientation VARCHAR(32) NOT NULL,
+                file_path VARCHAR(255) NOT NULL,
+                captured_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_device_photos_device (device_id),
+                INDEX idx_device_photos_orientation (device_id, orientation),
+                CONSTRAINT fk_device_photos_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureRepairEventsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS repair_events (
+                    id SERIAL PRIMARY KEY,
+                    case_id INTEGER NULL,
+                    device_id INTEGER NOT NULL,
+                    event_type VARCHAR(64) NOT NULL,
+                    description TEXT NOT NULL,
+                    performed_by VARCHAR(120) NOT NULL,
+                    performed_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    metadata JSONB NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_repair_events_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_repair_events_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_repair_events_device ON repair_events(device_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_repair_events_case ON repair_events(case_id)');
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS repair_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NULL,
+                    device_id INTEGER NOT NULL,
+                    event_type TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    performed_by TEXT NOT NULL,
+                    performed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    metadata TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_repair_events_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_repair_events_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_repair_events_device ON repair_events(device_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_repair_events_case ON repair_events(case_id)');
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS repair_events (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NULL,
+                device_id INT UNSIGNED NOT NULL,
+                event_type VARCHAR(64) NOT NULL,
+                description TEXT NOT NULL,
+                performed_by VARCHAR(120) NOT NULL,
+                performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                metadata JSON NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_repair_events_device (device_id),
+                INDEX idx_repair_events_case (case_id),
+                CONSTRAINT fk_repair_events_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                CONSTRAINT fk_repair_events_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function populateMissingDeviceBarcodes(PDO $pdo): void
+    {
+        $statement = $pdo->query("SELECT id FROM devices WHERE barcode IS NULL OR barcode = ''");
+
+        if ($statement === false) {
+            return;
+        }
+
+        $update = $pdo->prepare('UPDATE devices SET barcode = :barcode WHERE id = :id');
+
+        while (($deviceId = $statement->fetchColumn()) !== false) {
+            $barcode = self::generateUniqueDeviceBarcode($pdo);
+            $update->execute([
+                'id' => (int) $deviceId,
+                'barcode' => $barcode,
+            ]);
+        }
+    }
+
+    private static function generateUniqueDeviceBarcode(PDO $pdo): string
+    {
+        do {
+            $candidate = self::generateDeviceBarcodeValue();
+            $check = $pdo->prepare('SELECT COUNT(*) FROM devices WHERE barcode = :barcode');
+            $check->execute(['barcode' => $candidate]);
+            $exists = (int) $check->fetchColumn() > 0;
+        } while ($exists);
+
+        return $candidate;
+    }
+
+    private static function generateDeviceBarcodeValue(): string
+    {
+        $datePart = (new \DateTimeImmutable())->format('ymd');
+        $random = strtoupper(bin2hex(random_bytes(3)));
+
+        return 'DV' . $datePart . $random;
+    }
+
 
     private static function ensureDefaultUserExists(PDO $pdo): void
     {

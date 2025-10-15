@@ -31,6 +31,7 @@ $csrfToken = Csrf::token();
       <nav class="main-nav" aria-label="Hoofd navigatie">
         <ul>
           <li><a href="index.php">Dashboard</a></li>
+          <li><a href="devices.php">Klanten &amp; apparaten</a></li>
           <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
           <li><a href="reparatie-onderzoek.php" aria-current="page">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
