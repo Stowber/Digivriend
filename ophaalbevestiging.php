@@ -3,10 +3,22 @@
 declare(strict_types=1);
 
 use App\Security\Csrf;
+use App\Support\Codes\PickupCodeGenerator;
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 $csrfToken = Csrf::token();
+
+$generatedPickupCode = '';
+$pickupCodeReadOnly = false;
+
+try {
+    $pickupCodeGenerator = new PickupCodeGenerator($pdo);
+    $generatedPickupCode = $pickupCodeGenerator->generate();
+    $pickupCodeReadOnly = true;
+} catch (\RuntimeException $exception) {
+    $pickupCodeReadOnly = false;
+}
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -79,7 +91,23 @@ $csrfToken = Csrf::token();
 
       <div class="form-group">
           <label for="ophaalcode">Unieke ophaalcode</label>
-          <input type="text" id="ophaalcode" name="ophaalcode" maxlength="32" required>
+          <input
+            type="text"
+            id="ophaalcode"
+            name="ophaalcode"
+            maxlength="32"
+            inputmode="numeric"
+            autocomplete="off"
+            value="<?= htmlspecialchars($generatedPickupCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            <?= $pickupCodeReadOnly ? 'readonly' : '' ?>
+            required
+          >
+          <small>
+            <?= $pickupCodeReadOnly
+                ? 'De code wordt automatisch gegenereerd bij het openen van dit formulier.'
+                : 'Kon geen automatische code genereren. Vul handmatig een unieke code in.';
+            ?>
+          </small>
         </div>
 
        <div class="form-group">

@@ -6,6 +6,7 @@ use App\Http\Response;
 use App\Security\Csrf;
 use App\Security\Auth;
 use App\Support\Audit\AuditLogger;
+use App\Support\Codes\PickupCodeGenerator;
 use App\Support\Documents\DocumentRepository;
 use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\CaseRepository;
@@ -41,6 +42,14 @@ try {
     $smsTemplate = InputValidator::optionalString($_POST, 'sms_template', 200);
 } catch (ValidationException $exception) {
     Response::error($exception->errors(), 422);
+}
+
+$pickupCodeGenerator = new PickupCodeGenerator($pdo);
+
+try {
+    $ophaalcode = $pickupCodeGenerator->generate($ophaalcode);
+} catch (\RuntimeException $exception) {
+    Response::error($exception->getMessage(), 500);
 }
 
 $notifyEmail = isset($_POST['notify_email']);
