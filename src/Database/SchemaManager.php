@@ -46,6 +46,7 @@ final class SchemaManager
         self::ensureDevicePhotosTable($pdo);
         self::ensureRepairEventsTable($pdo);
         self::ensureDeviceComponentsTable($pdo);
+        self::ensureDeviceComponentEnhancements($pdo);
         self::populateMissingDeviceBarcodes($pdo);
     }
 
@@ -1250,6 +1251,15 @@ final class SchemaManager
                     serial_number VARCHAR(120) NULL,
                     specifications TEXT NULL,
                     notes TEXT NULL,
+                    asset_tag VARCHAR(120) NULL,
+                    supplier VARCHAR(191) NULL,
+                    purchase_reference VARCHAR(191) NULL,
+                    purchase_cost VARCHAR(64) NULL,
+                    inventory_location VARCHAR(191) NULL,
+                    condition_status VARCHAR(64) NULL,
+                    warranty_expires_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    maintenance_interval_days INTEGER NULL,
+                    last_audited_at TIMESTAMP WITHOUT TIME ZONE NULL,
                     installed_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     removed_at TIMESTAMP WITHOUT TIME ZONE NULL,
                     removal_reason TEXT NULL,
@@ -1262,6 +1272,8 @@ final class SchemaManager
             SQL);
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)');
             return;
         }
 
@@ -1277,6 +1289,15 @@ final class SchemaManager
                     serial_number TEXT NULL,
                     specifications TEXT NULL,
                     notes TEXT NULL,
+                    asset_tag TEXT NULL,
+                    supplier TEXT NULL,
+                    purchase_reference TEXT NULL,
+                    purchase_cost TEXT NULL,
+                    inventory_location TEXT NULL,
+                    condition_status TEXT NULL,
+                    warranty_expires_at TEXT NULL,
+                    maintenance_interval_days INTEGER NULL,
+                    last_audited_at TEXT NULL,
                     installed_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     removed_at TEXT NULL,
                     removal_reason TEXT NULL,
@@ -1289,6 +1310,8 @@ final class SchemaManager
             SQL);
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)');
             return;
         }
 
@@ -1303,6 +1326,15 @@ final class SchemaManager
                 serial_number VARCHAR(120) NULL,
                 specifications TEXT NULL,
                 notes TEXT NULL,
+                asset_tag VARCHAR(120) NULL,
+                supplier VARCHAR(191) NULL,
+                purchase_reference VARCHAR(191) NULL,
+                purchase_cost VARCHAR(64) NULL,
+                inventory_location VARCHAR(191) NULL,
+                condition_status VARCHAR(64) NULL,
+                warranty_expires_at DATETIME NULL,
+                maintenance_interval_days INT NULL,
+                last_audited_at DATETIME NULL,
                 installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 removed_at DATETIME NULL,
                 removal_reason TEXT NULL,
@@ -1311,10 +1343,100 @@ final class SchemaManager
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_device_components_device (device_id),
                 INDEX idx_device_components_status (device_id, removed_at),
+                INDEX idx_device_components_warranty (device_id, warranty_expires_at),
+                INDEX idx_device_components_maintenance (device_id, maintenance_interval_days),
                 CONSTRAINT fk_device_components_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
                 CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
+    }
+
+    private static function ensureDeviceComponentEnhancements(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $columns = [
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS asset_tag VARCHAR(120)",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS supplier VARCHAR(191)",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS purchase_reference VARCHAR(191)",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS purchase_cost VARCHAR(64)",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS inventory_location VARCHAR(191)",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS condition_status VARCHAR(64)",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS warranty_expires_at TIMESTAMP WITHOUT TIME ZONE",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS maintenance_interval_days INTEGER",
+                "ALTER TABLE device_components ADD COLUMN IF NOT EXISTS last_audited_at TIMESTAMP WITHOUT TIME ZONE"
+            ];
+
+            foreach ($columns as $sql) {
+                $pdo->exec($sql);
+            }
+
+            $indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)'
+            ];
+
+            foreach ($indexes as $sql) {
+                $pdo->exec($sql);
+            }
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $columns = [
+                ['asset_tag', 'TEXT'],
+                ['supplier', 'TEXT'],
+                ['purchase_reference', 'TEXT'],
+                ['purchase_cost', 'TEXT'],
+                ['inventory_location', 'TEXT'],
+                ['condition_status', 'TEXT'],
+                ['warranty_expires_at', 'TEXT'],
+                ['maintenance_interval_days', 'INTEGER'],
+                ['last_audited_at', 'TEXT'],
+            ];
+
+            foreach ($columns as [$name, $definition]) {
+                self::addSqliteColumnIfMissing($pdo, 'device_components', $name, $definition);
+            }
+
+            $indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)',
+            ];
+
+            foreach ($indexes as $sql) {
+                $pdo->exec($sql);
+            }
+
+            return;
+        }
+
+        $columns = [
+            "ALTER TABLE device_components ADD COLUMN asset_tag VARCHAR(120) NULL AFTER notes",
+            "ALTER TABLE device_components ADD COLUMN supplier VARCHAR(191) NULL AFTER asset_tag",
+            "ALTER TABLE device_components ADD COLUMN purchase_reference VARCHAR(191) NULL AFTER supplier",
+            "ALTER TABLE device_components ADD COLUMN purchase_cost VARCHAR(64) NULL AFTER purchase_reference",
+            "ALTER TABLE device_components ADD COLUMN inventory_location VARCHAR(191) NULL AFTER purchase_cost",
+            "ALTER TABLE device_components ADD COLUMN condition_status VARCHAR(64) NULL AFTER inventory_location",
+            "ALTER TABLE device_components ADD COLUMN warranty_expires_at DATETIME NULL AFTER condition_status",
+            "ALTER TABLE device_components ADD COLUMN maintenance_interval_days INT NULL AFTER warranty_expires_at",
+            "ALTER TABLE device_components ADD COLUMN last_audited_at DATETIME NULL AFTER maintenance_interval_days"
+        ];
+
+        foreach ($columns as $sql) {
+            self::executeIgnoringDuplicates($pdo, $sql, ['duplicate column']);
+        }
+
+        $indexes = [
+            'ALTER TABLE device_components ADD INDEX idx_device_components_warranty (device_id, warranty_expires_at)',
+            'ALTER TABLE device_components ADD INDEX idx_device_components_maintenance (device_id, maintenance_interval_days)'
+        ];
+
+        foreach ($indexes as $sql) {
+            self::executeIgnoringDuplicates($pdo, $sql, ['duplicate', 'already exists']);
+        }
     }
 
     private static function ensureRepairEventsTable(PDO $pdo): void

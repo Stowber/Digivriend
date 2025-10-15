@@ -27,6 +27,38 @@ final class DeviceComponentRepository
         return $statement->fetchAll() ?: [];
     }
 
+    public function distinctValues(int $limit = 20): array
+    {
+        $limit = max(1, $limit);
+
+        $columns = [
+            'component_name',
+            'manufacturer',
+            'model',
+            'supplier',
+            'inventory_location',
+        ];
+
+        $values = [];
+
+        foreach ($columns as $column) {
+            $statement = $this->pdo->prepare(
+                "SELECT DISTINCT {$column} FROM device_components WHERE {$column} IS NOT NULL AND {$column} <> '' ORDER BY {$column} ASC LIMIT :limit"
+            );
+            $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $statement->execute();
+
+            $columnValues = [];
+            while (($value = $statement->fetchColumn()) !== false) {
+                $columnValues[] = (string) $value;
+            }
+
+            $values[$column] = $columnValues;
+        }
+
+        return $values;
+    }
+
     public function find(int $componentId): ?array
     {
         $statement = $this->pdo->prepare('SELECT * FROM device_components WHERE id = :id');
@@ -45,11 +77,20 @@ final class DeviceComponentRepository
         ?string $serialNumber,
         ?string $specifications,
         ?string $notes,
-        ?string $installedAt = null
+        ?string $installedAt = null,
+        ?string $assetTag = null,
+        ?string $supplier = null,
+        ?string $purchaseReference = null,
+        ?string $purchaseCost = null,
+        ?string $inventoryLocation = null,
+        ?string $conditionStatus = null,
+        ?string $warrantyExpiresAt = null,
+        ?int $maintenanceIntervalDays = null,
+        ?string $lastAuditedAt = null
     ): int {
         $statement = $this->pdo->prepare(
-            'INSERT INTO device_components (device_id, category, component_name, manufacturer, model, serial_number, specifications, notes, installed_at, created_at, updated_at)
-             VALUES (:device_id, :category, :component_name, :manufacturer, :model, :serial_number, :specifications, :notes, :installed_at, :created_at, :updated_at)'
+            'INSERT INTO device_components (device_id, category, component_name, manufacturer, model, serial_number, specifications, notes, installed_at, asset_tag, supplier, purchase_reference, purchase_cost, inventory_location, condition_status, warranty_expires_at, maintenance_interval_days, last_audited_at, created_at, updated_at)
+             VALUES (:device_id, :category, :component_name, :manufacturer, :model, :serial_number, :specifications, :notes, :installed_at, :asset_tag, :supplier, :purchase_reference, :purchase_cost, :inventory_location, :condition_status, :warranty_expires_at, :maintenance_interval_days, :last_audited_at, :created_at, :updated_at)'
         );
 
         $now = Clock::nowFormatted();
@@ -64,6 +105,15 @@ final class DeviceComponentRepository
             'specifications' => $specifications ?: null,
             'notes' => $notes ?: null,
             'installed_at' => $installedAt ?: $now,
+            'asset_tag' => $assetTag ?: null,
+            'supplier' => $supplier ?: null,
+            'purchase_reference' => $purchaseReference ?: null,
+            'purchase_cost' => $purchaseCost ?: null,
+            'inventory_location' => $inventoryLocation ?: null,
+            'condition_status' => $conditionStatus ?: null,
+            'warranty_expires_at' => $warrantyExpiresAt ?: null,
+            'maintenance_interval_days' => $maintenanceIntervalDays,
+            'last_audited_at' => $lastAuditedAt ?: null,
             'created_at' => $now,
             'updated_at' => $now,
         ]);
