@@ -1454,30 +1454,16 @@ final class SchemaManager
                     CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
                 )
             SQL);
-            self::createSqliteIndexIfColumnsExist(
-                $pdo,
-                'device_components',
-                ['device_id'],
-                'CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)'
-            );
-            self::createSqliteIndexIfColumnsExist(
-                $pdo,
-                'device_components',
-                ['device_id', 'removed_at'],
-                'CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)'
-            );
-            self::createSqliteIndexIfColumnsExist(
-                $pdo,
-                'device_components',
-                ['device_id', 'warranty_expires_at'],
-                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)'
-            );
-            self::createSqliteIndexIfColumnsExist(
-                $pdo,
-                'device_components',
-                ['device_id', 'maintenance_interval_days'],
-                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)'
-            );
+            $indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)',
+            ];
+
+            foreach ($indexes as $sql) {
+                self::executeIgnoringMissingColumns($pdo, $sql);
+            }
             return;
         }
 
@@ -1512,10 +1498,16 @@ final class SchemaManager
                     CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
                 )
             SQL);
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)');
+            $indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)',
+                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)',
+            ];
+
+            foreach ($indexes as $sql) {
+                self::executeIgnoringMissingColumns($pdo, $sql);
+            }
             return;
         }
 
@@ -1847,7 +1839,14 @@ final class SchemaManager
         try {
             $pdo->exec($sql);
         } catch (PDOException $exception) {
-            if (!self::containsKeyword($exception, ['no such column'])) {
+            $keywords = [
+                'no such column',
+                'does not exist',
+                'undefined column',
+                'unknown column',
+            ];
+
+            if (!self::containsKeyword($exception, $keywords)) {
                 throw $exception;
             }
         }
