@@ -4,116 +4,231 @@
     <meta charset="UTF-8">
     <title><?= $documentTitel ?> - <?= $bedrijfsNaam ?></title>
     <style>
+        :root {
+            --accent: #F05A28;
+            --accent-dark: #c74a1f;
+            --text-main: #1f2533;
+            --text-muted: #4c5464;
+            --border-color: #e3e7ee;
+            --card-bg: #f7f9fc;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        @page {
+            margin: 35px;
+        }
         body {
-            font-family: Arial, sans-serif;
-            font-size: 14px;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 13.5px;
             margin: 0;
             padding: 0;
-            line-height: 1.5;
-            color: #333;
+            line-height: 1.6;
+            color: var(--text-main);
+            background-color: #f3f5f9;
         }
-        @page { margin: 40px; }
-        .content-wrapper { margin: 0 20px; }
+        .document {
+            background-color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(31, 37, 51, 0.08);
+            overflow: hidden;
+        }
         .header {
-            background-color: #F05A28;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
             color: #fff;
-            padding: 20px;
+            padding: 28px 32px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 24px;
         }
-        .header .company-info { text-align: right; }
-        .header .company-info h1 {
+        .header__identity h1 {
             margin: 0;
-            font-size: 1.5em;
+            font-size: 24px;
+            letter-spacing: 0.04em;
         }
-        .header .company-info p {
-            margin: 5px 0 0 0;
-            font-size: 0.9em;
+        .header__identity p {
+            margin: 8px 0 0;
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, 0.85);
+        }
+        .header__meta {
+            min-width: 220px;
+            text-align: right;
+        }
+        .header__meta-title {
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            color: rgba(255, 255, 255, 0.65);
+        }
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .meta-table td {
+            padding: 4px 0;
+            color: rgba(255, 255, 255, 0.92);
+        }
+        .meta-table td:first-child {
+            font-weight: 600;
+            padding-right: 12px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .main {
+            padding: 32px;
         }
         .document-title {
-            margin-top: 30px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #F05A28;
-            padding-bottom: 10px;
+            margin: 0 0 8px;
+            font-size: 22px;
+            color: var(--accent);
+            letter-spacing: -0.01em;
         }
-        .document-title h2 {
-            margin: 0;
-            font-size: 1.4em;
-            color: #F05A28;
+        .subtitle {
+            margin: 0 0 26px;
+            font-size: 13px;
+            color: var(--text-muted);
         }
-        .document-title p {
-            margin: 5px 0 0 0;
-            font-size: 0.9em;
-            color: #666;
+        .intro {
+            margin: 0 0 24px;
+            color: var(--text-muted);
         }
-        .info-block {
-            background-color: #f8f8f8;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 20px;
+        .section {
+            margin-bottom: 28px;
         }
-        .info-block h3 {
-            margin-top: 0;
-            font-size: 1.1em;
-            color: #F05A28;
+        .section__title {
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            color: var(--accent);
         }
-        .info-block p { margin: 5px 0; }
-        .instructions { margin-top: 20px; }
-        .instructions h3 {
-            font-size: 1.1em;
-            color: #F05A28;
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px 22px;
         }
-        .instructions ol { margin: 5px 0 0 20px; }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b758b;
+        }
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .instructions-card {
+            border: 1px dashed var(--accent);
+            background: linear-gradient(180deg, rgba(240, 90, 40, 0.08), rgba(240, 90, 40, 0.02));
+            border-radius: 12px;
+            padding: 20px 24px;
+        }
+        .instructions-card ol {
+            margin: 12px 0 0 18px;
+            padding: 0;
+            color: var(--text-muted);
+        }
+        .closing {
+            margin-top: 28px;
+            color: var(--text-muted);
+        }
+        .closing strong {
+            color: var(--text-main);
+        }
         .footer {
-            margin: 30px 20px;
-            padding-top: 10px;
-            border-top: 1px solid #ccc;
-            font-size: 0.9em;
-            color: #666;
+            padding: 22px 32px;
+            border-top: 1px solid var(--border-color);
+            background-color: #fafbfc;
+            text-align: center;
+            font-size: 12px;
+            color: #6b758b;
         }
     </style>
 </head>
 <body>
-<div class="header">
-    <div class="company-info">
-        <h1><?= $bedrijfsNaam ?></h1>
-        <p>
-            Adres: De Ganskuijl 103B, 3817EZ Amersfoort<br>
-            Telefoon: 033 785 4284<br>
-            E-mail: contact@digivriend.nl
+<div class="document">
+    <header class="header">
+        <div class="header__identity">
+            <h1><?= $bedrijfsNaam ?></h1>
+            <p>
+                De Ganskuijl 103B, 3817EZ Amersfoort<br>
+                033 785 4284 · contact@digivriend.nl
+            </p>
+        </div>
+        <div class="header__meta">
+            <p class="header__meta-title">Documentinformatie</p>
+            <table class="meta-table">
+                <tr>
+                    <td>Document</td>
+                    <td><?= $documentTitel ?></td>
+                </tr>
+                <tr>
+                    <td>Datum</td>
+                    <td><?= $huidigeDatum ?></td>
+                </tr>
+            </table>
+        </div>
+    </header>
+    <main class="main">
+        <h2 class="document-title">Ophaalbevestiging</h2>
+        <p class="subtitle">Bevestiging voor het ophalen van uw gerepareerde apparaat.</p>
+        <p class="intro">Beste <strong><?= $klantnaam ?></strong>,<br>
+            Uw apparaat is gerepareerd en staat klaar om opgehaald te worden. Gebruik de onderstaande unieke code als
+            identificatie bij het afhalen.</p>
+
+        <section class="section">
+            <h3 class="section__title">Belangrijkste gegevens</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Unieke ophaalcode</span>
+                    <span class="info-value"><?= $ophaalcode ?></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Apparaat</span>
+                    <span class="info-value"><?= $merkmodel ?></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Datum gereed</span>
+                    <span class="info-value"><?= date('d-m-Y', strtotime($datumgereed)) ?></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h3 class="section__title">Instructies voor ophalen</h3>
+            <div class="instructions-card">
+                <ol>
+                    <li>Neem deze bevestiging (digitaal of geprint) mee naar onze winkel.</li>
+                    <li>Toon de unieke ophaalcode aan één van onze medewerkers.</li>
+                    <li>Controleer samen het apparaat voordat u de winkel verlaat.</li>
+                </ol>
+            </div>
+        </section>
+
+        <p class="closing">
+            Bedankt voor het vertrouwen in <strong><?= $bedrijfsNaam ?></strong>.<br>
+            Met vriendelijke groet,<br>
+            <em>Het <?= $bedrijfsNaam ?> team</em>
         </p>
-    </div>
-</div>
-<div class="content-wrapper">
-    <div class="document-title">
-        <h2><?= $documentTitel ?></h2>
-        <p>Gegenereerd op: <?= $huidigeDatum ?></p>
-    </div>
-    <p>Beste <strong><?= $klantnaam ?></strong>,</p>
-    <p>Uw apparaat is gerepareerd en klaar om opgehaald te worden. Gebruik onderstaande unieke code om uw apparaat op te halen in onze winkel.</p>
-    <div class="info-block">
-        <h3>Details Ophaalbevestiging</h3>
-        <p><strong>Unieke Ophaalcode:</strong> <?= $ophaalcode ?></p>
-        <p><strong>Apparaat:</strong> <?= $merkmodel ?></p>
-        <p><strong>Datum gereed:</strong> <?= date('d-m-Y', strtotime($datumgereed)) ?></p>
-    </div>
-    <div class="instructions">
-        <h3>Instructies</h3>
-        <ol>
-            <li>Print deze ophaalbevestiging uit of noteer de unieke code op papier.</li>
-            <li>Neem deze mee naar onze winkel om uw apparaat op te halen.</li>
-        </ol>
-    </div>
-    <p style="margin-top: 20px;">
-        Bedankt voor het kiezen van <strong><?= $bedrijfsNaam ?></strong>!<br>
-        Met vriendelijke groet,<br>
-        <em>Het <?= $bedrijfsNaam ?> Team</em>
-    </p>
-</div>
-<div class="footer">
-    <p>Dit document is automatisch gegenereerd. Voor vragen kunt u contact opnemen via contact@digivriend.nl of 033 785 4284.</p>
+    </main>
+    <footer class="footer">
+        Dit document is automatisch gegenereerd. Heeft u vragen? Neem contact op via contact@digivriend.nl of bel 033 785 4284.
+    </footer>
 </div>
 </body>
 </html>
