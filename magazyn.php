@@ -261,6 +261,9 @@ $totalQuantity = $warehouseRepository->totalQuantity();
 $totalReserved = $warehouseRepository->totalReserved();
 $readyCount = $statusCounts['ready'] ?? 0;
 $completedCount = $statusCounts['completed'] ?? 0;
+$receivedCount = $statusCounts['received'] ?? 0;
+$reservedCount = $statusCounts['reserved'] ?? 0;
+$inServiceCount = $statusCounts['in_service'] ?? 0;
 $availableQuantity = max(0, $totalQuantity - $totalReserved);
 
 $itemOptions = $warehouseRepository->itemOptions();
@@ -496,167 +499,296 @@ $highlightId = $highlightIdRaw !== false && $highlightIdRaw !== null ? (int) $hi
         </section>
       </div>
 
-      <aside class="warehouse__sidebar">
-        <section class="card warehouse-card" id="new-entry">
-          <h2>Nowe przyjęcie / rejestracja</h2>
-          <?php if (!empty($errors['create']['general'])): ?>
-            <div class="alert alert--danger"><?= htmlspecialchars($errors['create']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-          <?php endif; ?>
-          <form method="post" class="form-grid">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="create-item">
-            <label>
-              Nazwa pozycji
-              <input type="text" name="name" value="<?= htmlspecialchars($createValues['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
-              <?php if (!empty($errors['create']['name'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-            </label>
-            <div class="form-grid form-grid--two">
-              <label>
-                Ilość początkowa
-                <input type="number" min="0" name="quantity" value="<?= (int) $createValues['quantity'] ?>">
-                <?php if (!empty($errors['create']['quantity'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-              </label>
-              <label>
-                Status początkowy
-                <select name="status">
-                  <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
-                    <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $createValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <?php if (!empty($errors['create']['status'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-              </label>
-            </div>
-            <label>
-              Kategoria
-              <input type="text" name="category" value="<?= htmlspecialchars($createValues['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            </label>
-            <label>
-              Lokalizacja magazynowa
-              <input type="text" name="location" value="<?= htmlspecialchars($createValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. Regał A3, półka 2">
-            </label>
-            <label>
-              Powiązana sprawa serwisowa
-              <select name="case_id">
-                <option value="">Brak powiązania</option>
-                <?php foreach ($caseOptions as $caseOption): ?>
-                  <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
-                  <option value="<?= $caseOptionId ?>"<?= $createValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <label>
-              Kod referencyjny (opcjonalnie)
-              <input type="text" name="reference_code" value="<?= htmlspecialchars($createValues['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. WH2404-001">
-            </label>
-            <label>
-              Uwagi
-              <textarea name="notes" rows="3" placeholder="Uwagi logistyczne, numer zamówienia itp."><?= htmlspecialchars($createValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-            </label>
-            <button type="submit" class="btn">Zapisz pozycję</button>
-          </form>
-        </section>
+      <section class="card warehouse-card warehouse-operations" id="new-entry">
+        <div class="warehouse-operations__header">
+          <div>
+            <span class="warehouse-operations__eyebrow">Centrum przyjęć</span>
+            <h2>Profesjonalne przyjęcia i operacje magazynowe</h2>
+          </div>
+          <p>Kompleksowy panel pozwala planować przyjęcia, kontrolować statusy i dokumentować każdy ruch sprzętu w jednym miejscu. Formularze są ułożone w proces, który prowadzi operatora krok po kroku.</p>
+        </div>
 
-        <section class="card warehouse-card">
-          <h2>Aktualizacja statusu</h2>
-          <?php if (!empty($errors['status']['general'])): ?>
-            <div class="alert alert--danger"><?= htmlspecialchars($errors['status']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-          <?php endif; ?>
-          <form method="post" class="form-grid">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="update-status">
-            <label>
-              Pozycja
-              <select name="item_id" required>
-                <option value="">Wybierz pozycję</option>
-                <?php foreach ($itemOptions as $option): ?>
-                  <?php $optionId = (int) ($option['id'] ?? 0); ?>
-                  <option value="<?= $optionId ?>"<?= (string) $statusValues['item_id'] === (string) $optionId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($option['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($option['barcode'])): ?> · <?= htmlspecialchars((string) $option['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($errors['status']['item_id'])): ?><span class="form-error"><?= htmlspecialchars($errors['status']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-            </label>
-            <label>
-              Nowy status
-              <select name="status" required>
-                <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
-                  <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $statusValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($errors['status']['status'])): ?><span class="form-error"><?= htmlspecialchars($errors['status']['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-            </label>
-            <label>
-              Powiązana sprawa
-              <select name="case_id">
-                <option value="">Brak</option>
-                <?php foreach ($caseOptions as $caseOption): ?>
-                  <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
-                  <option value="<?= $caseOptionId ?>"<?= $statusValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <label>
-              Lokalizacja
-              <input type="text" name="location" value="<?= htmlspecialchars($statusValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            </label>
-            <label>
-              Uwagi
-              <textarea name="notes" rows="3"><?= htmlspecialchars($statusValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-            </label>
-            <button type="submit" class="btn">Zapisz zmiany</button>
-          </form>
-        </section>
+        <div class="warehouse-operations__metrics" role="list">
+          <div class="warehouse-operations__metric" role="listitem">
+            <span>Pozycje oczekujące / przyjęte</span>
+            <strong><?= number_format($receivedCount, 0, ',', ' ') ?></strong>
+            <small>Wszystkie towary wymagające konfiguracji</small>
+          </div>
+          <div class="warehouse-operations__metric" role="listitem">
+            <span>Pozycje zarezerwowane</span>
+            <strong><?= number_format($reservedCount, 0, ',', ' ') ?></strong>
+            <small>Zablokowane pod naprawy lub rezerwacje</small>
+          </div>
+          <div class="warehouse-operations__metric" role="listitem">
+            <span>Sprzęt w obsłudze</span>
+            <strong><?= number_format($inServiceCount, 0, ',', ' ') ?></strong>
+            <small>Oczekujące na działania serwisu</small>
+          </div>
+          <div class="warehouse-operations__metric" role="listitem">
+            <span>Zamknięte operacje</span>
+            <strong><?= number_format($completedCount, 0, ',', ' ') ?></strong>
+            <small>Elementy wydane klientom</small>
+          </div>
+        </div>
 
-        <section class="card warehouse-card">
-          <h2>Rejestr ruchu</h2>
-          <?php if (!empty($errors['movement']['general'])): ?>
-            <div class="alert alert--danger"><?= htmlspecialchars($errors['movement']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-          <?php endif; ?>
-          <form method="post" class="form-grid">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="record-movement">
-            <label>
-              Pozycja
-              <select name="item_id" required>
-                <option value="">Wybierz pozycję</option>
-                <?php foreach ($itemOptions as $option): ?>
-                  <?php $optionId = (int) ($option['id'] ?? 0); ?>
-                  <option value="<?= $optionId ?>"<?= (string) $movementValues['item_id'] === (string) $optionId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($option['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($option['barcode'])): ?> · <?= htmlspecialchars((string) $option['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($errors['movement']['item_id'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-            </label>
-            <label>
-              Typ ruchu
-              <select name="movement_type" required>
-                <?php foreach ($movementLabels as $movementKey => $movementLabel): ?>
-                  <option value="<?= htmlspecialchars((string) $movementKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $movementValues['movement_type'] === $movementKey ? ' selected' : '' ?>><?= htmlspecialchars($movementLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($errors['movement']['movement_type'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['movement_type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-            </label>
-            <label>
-              Ilość
-              <input type="number" name="quantity" value="<?= htmlspecialchars((string) $movementValues['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-              <?php if (!empty($errors['movement']['quantity'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
-            </label>
-            <label>
-              Powiązana sprawa (opcjonalnie)
-              <select name="case_id">
-                <option value="">Brak</option>
-                <?php foreach ($caseOptions as $caseOption): ?>
-                  <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
-                  <option value="<?= $caseOptionId ?>"<?= $movementValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <label>
-              Uwagi
-              <textarea name="notes" rows="3" placeholder="Opis ruchu, osoba odpowiedzialna itp."><?= htmlspecialchars($movementValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-            </label>
-            <button type="submit" class="btn">Zapisz ruch</button>
-          </form>
-        </section>
-      </aside>
+        <ol class="warehouse-operations__roadmap">
+          <li>
+            <strong>Rejestracja dostawy</strong>
+            <span>Zapis nowej pozycji wraz z powiązaniem z kartą serwisową.</span>
+          </li>
+          <li>
+            <strong>Kontrola jakości &amp; status</strong>
+            <span>Aktualizacja lokalizacji, statusu i informacji operacyjnych.</span>
+          </li>
+          <li>
+            <strong>Ruch magazynowy</strong>
+            <span>Dokumentowanie wydania, zwrotów i korekt stanów.</span>
+          </li>
+        </ol>
+
+        <div class="operations-flow">
+          <article class="operations-step">
+            <header class="operations-step__header">
+              <span class="operations-step__badge">Krok 1</span>
+              <div>
+                <h3>Rejestracja dostawy</h3>
+                <p>Wprowadź nowe urządzenie do systemu wraz ze wszystkimi kluczowymi parametrami logistycznymi.</p>
+              </div>
+            </header>
+            <?php if (!empty($errors['create']['general'])): ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($errors['create']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <form method="post" class="operations-form">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="create-item">
+
+              <fieldset class="operations-form__group">
+                <legend>Dane podstawowe</legend>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Nazwa pozycji
+                    <input type="text" name="name" value="<?= htmlspecialchars($createValues['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
+                    <?php if (!empty($errors['create']['name'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                  <label>
+                    Ilość początkowa
+                    <input type="number" min="0" name="quantity" value="<?= (int) $createValues['quantity'] ?>">
+                    <?php if (!empty($errors['create']['quantity'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                </div>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Status początkowy
+                    <select name="status">
+                      <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
+                        <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $createValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($errors['create']['status'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                  <label>
+                    Kategoria / typ sprzętu
+                    <input type="text" name="category" value="<?= htmlspecialchars($createValues['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. Laptopy, urządzenia pomiarowe">
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="operations-form__group">
+                <legend>Powiązania logistyczne</legend>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Lokalizacja magazynowa
+                    <input type="text" name="location" value="<?= htmlspecialchars($createValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. Strefa A · Regał 2 · Półka 3">
+                  </label>
+                  <label>
+                    Powiązana sprawa (opcjonalnie)
+                    <select name="case_id">
+                      <option value="">Brak</option>
+                      <?php foreach ($caseOptions as $caseOption): ?>
+                        <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
+                        <option value="<?= $caseOptionId ?>"<?= $createValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                </div>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Kod referencyjny (opcjonalnie)
+                    <input type="text" name="reference_code" value="<?= htmlspecialchars($createValues['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. WH2404-001">
+                  </label>
+                  <label class="operations-form__label--notes">
+                    Uwagi operacyjne
+                    <textarea name="notes" rows="3" placeholder="Uwagi logistyczne, numer zamówienia itp."><?= htmlspecialchars($createValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="operations-step__footer">
+                <div>
+                  <span class="operations-step__hint-title">Lista kontrolna przyjęcia</span>
+                  <ul class="operations-step__checklist">
+                    <li>Zweryfikowano stan fizyczny sprzętu</li>
+                    <li>Dołączono akcesoria oraz dokumentację</li>
+                    <li>Przypisano odpowiedzialnego technika / opiekuna</li>
+                  </ul>
+                </div>
+                <button type="submit" class="btn">Zarejestruj pozycję</button>
+              </div>
+            </form>
+          </article>
+
+        <article class="operations-step">
+            <header class="operations-step__header">
+              <span class="operations-step__badge">Krok 2</span>
+              <div>
+                <h3>Kontrola jakości i status</h3>
+                <p>Przypisz lokalizację, sprawdź kompletność i zaktualizuj status w trakcie procesu serwisowego.</p>
+              </div>
+            </header>
+            <?php if (!empty($errors['status']['general'])): ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($errors['status']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <form method="post" class="operations-form">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="update-status">
+
+              <fieldset class="operations-form__group">
+                <legend>Aktualne informacje</legend>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Pozycja w magazynie
+                    <select name="item_id" required>
+                      <option value="">Wybierz pozycję</option>
+                      <?php foreach ($itemOptions as $option): ?>
+                        <?php $optionId = (int) ($option['id'] ?? 0); ?>
+                        <option value="<?= $optionId ?>"<?= (string) $statusValues['item_id'] === (string) $optionId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($option['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($option['barcode'])): ?> · <?= htmlspecialchars((string) $option['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($errors['status']['item_id'])): ?><span class="form-error"><?= htmlspecialchars($errors['status']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                  <label>
+                    Nowy status operacyjny
+                    <select name="status" required>
+                      <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
+                        <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $statusValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($errors['status']['status'])): ?><span class="form-error"><?= htmlspecialchars($errors['status']['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                </div>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Powiązana sprawa
+                    <select name="case_id">
+                      <option value="">Brak</option>
+                      <?php foreach ($caseOptions as $caseOption): ?>
+                        <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
+                        <option value="<?= $caseOptionId ?>"<?= $statusValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                  <label>
+                    Lokalizacja operacyjna
+                    <input type="text" name="location" value="<?= htmlspecialchars($statusValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="Strefa kompletacji, stanowisko testowe itp.">
+                  </label>
+                </div>
+                <label class="operations-form__label--notes">
+                  Notatki i ustalenia
+                  <textarea name="notes" rows="3" placeholder="Diagnoza, czynności wykonane, kolejne kroki."><?= htmlspecialchars($statusValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                </label>
+              </fieldset>
+
+              <div class="operations-step__footer">
+                <div>
+                  <span class="operations-step__hint-title">Wskazówki kontroli jakości</span>
+                  <ul class="operations-step__checklist">
+                    <li>Sprawdź komplet akcesoriów i plombę serwisową</li>
+                    <li>Zaktualizuj lokalizację fizyczną po kontroli</li>
+                    <li>Poinformuj zespół o zmianie statusu (powiadomienie systemowe)</li>
+                  </ul>
+                </div>
+                <button type="submit" class="btn">Zapisz aktualizację</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="operations-step">
+            <header class="operations-step__header">
+              <span class="operations-step__badge">Krok 3</span>
+              <div>
+                <h3>Rejestrowanie ruchu magazynowego</h3>
+                <p>Udokumentuj każdą zmianę stanu magazynowego – wydanie, zwrot, korektę lub przesunięcie.</p>
+              </div>
+            </header>
+            <?php if (!empty($errors['movement']['general'])): ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($errors['movement']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <form method="post" class="operations-form">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="record-movement">
+
+              <fieldset class="operations-form__group">
+                <legend>Parametry ruchu</legend>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Pozycja
+                    <select name="item_id" required>
+                      <option value="">Wybierz pozycję</option>
+                      <?php foreach ($itemOptions as $option): ?>
+                        <?php $optionId = (int) ($option['id'] ?? 0); ?>
+                        <option value="<?= $optionId ?>"<?= (string) $movementValues['item_id'] === (string) $optionId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($option['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($option['barcode'])): ?> · <?= htmlspecialchars((string) $option['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($errors['movement']['item_id'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                  <label>
+                    Typ ruchu
+                    <select name="movement_type" required>
+                      <?php foreach ($movementLabels as $movementKey => $movementLabel): ?>
+                        <option value="<?= htmlspecialchars((string) $movementKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $movementValues['movement_type'] === $movementKey ? ' selected' : '' ?>><?= htmlspecialchars($movementLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($errors['movement']['movement_type'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['movement_type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                </div>
+                <div class="operations-form__row operations-form__row--two">
+                  <label>
+                    Ilość
+                    <input type="number" name="quantity" value="<?= htmlspecialchars((string) $movementValues['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    <?php if (!empty($errors['movement']['quantity'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+                  </label>
+                  <label>
+                    Powiązana sprawa (opcjonalnie)
+                    <select name="case_id">
+                      <option value="">Brak</option>
+                      <?php foreach ($caseOptions as $caseOption): ?>
+                        <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
+                        <option value="<?= $caseOptionId ?>"<?= $movementValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                </div>
+                <label class="operations-form__label--notes">
+                  Uwagi do ruchu
+                  <textarea name="notes" rows="3" placeholder="Opis przesunięcia, osoby odpowiedzialne, powód korekty."><?= htmlspecialchars($movementValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                </label>
+              </fieldset>
+
+              <div class="operations-step__footer">
+                <div>
+                  <span class="operations-step__hint-title">Standard dokumentacyjny</span>
+                  <ul class="operations-step__checklist">
+                    <li>Zapisz numer dokumentu wydania / przyjęcia</li>
+                    <li>Upewnij się, że ilości po korekcie są zgodne ze stanem faktycznym</li>
+                    <li>Potwierdź operację podpisem osoby odpowiedzialnej</li>
+                  </ul>
+                </div>
+                <button type="submit" class="btn">Dodaj ruch magazynowy</button>
+              </div>
+            </form>
+          </article>
+        </div>
+      </section>
     </section>
   </main>
 </body>
