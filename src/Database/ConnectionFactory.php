@@ -61,6 +61,8 @@ final class ConnectionFactory
             if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
                 throw new RuntimeException(sprintf('Kan de SQLite map "%s" niet aanmaken.', $directory));
             }
+
+            self::migrateLegacySqliteDatabase($sqlitePath);
         }
 
         $username = $config->driver() === 'sqlite' ? null : $config->dbUser();
@@ -97,6 +99,34 @@ final class ConnectionFactory
             'CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
             $databaseName
         ));
+    }
+
+    private static function migrateLegacySqliteDatabase(string $sqlitePath): void
+    {
+        $directory = dirname($sqlitePath);
+        $basename = basename($sqlitePath);
+
+        if ($basename === '') {
+            return;
+        }
+
+        $legacyPath = $directory . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . $basename;
+
+        if ($legacyPath === $sqlitePath || is_file($sqlitePath) || !is_file($legacyPath)) {
+            return;
+        }
+
+        if (!@rename($legacyPath, $sqlitePath)) {
+            if (!@copy($legacyPath, $sqlitePath)) {
+                throw new RuntimeException(sprintf(
+                    'Kon het bestaande SQLite bestand niet migreren van "%s" naar "%s".',
+                    $legacyPath,
+                    $sqlitePath
+                ));
+            }
+
+            @unlink($legacyPath);
+        }
     }
 
     private static function isUnknownDatabaseError(PDOException $exception): bool

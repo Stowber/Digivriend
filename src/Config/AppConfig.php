@@ -247,11 +247,18 @@ final class AppConfig
         $isAbsolute = str_starts_with($database, DIRECTORY_SEPARATOR)
             || preg_match('/^[A-Za-z]:[\\\\\/]/', $database) === 1;
 
-        if (!$isAbsolute) {
-            $storagePath = $projectRoot . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'database';
-            return $storagePath . DIRECTORY_SEPARATOR . $database;
+         if ($isAbsolute) {
+            return $database;
         }
 
-        return $database;
+        $normalised = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $database);
+
+        if (str_contains($normalised, DIRECTORY_SEPARATOR)) {
+            return $projectRoot . DIRECTORY_SEPARATOR . ltrim($normalised, DIRECTORY_SEPARATOR);
+        }
+
+        $storagePath = $projectRoot . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'database';
+
+        return $storagePath . DIRECTORY_SEPARATOR . $normalised;
     }
 }
