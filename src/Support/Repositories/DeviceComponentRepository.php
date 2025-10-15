@@ -9,6 +9,10 @@ use PDO;
 
 final class DeviceComponentRepository
 {
+    /**
+     * @var array<int, string>|null
+     */
+    private ?array $columnCache = null;
     public function __construct(private readonly PDO $pdo)
     {
     }
@@ -42,6 +46,11 @@ final class DeviceComponentRepository
         $values = [];
 
         foreach ($columns as $column) {
+            if (!$this->hasColumn($column)) {
+                $values[$column] = [];
+
+                continue;
+            }
             $statement = $this->pdo->prepare(
                 "SELECT DISTINCT {$column} FROM device_components WHERE {$column} IS NOT NULL AND {$column} <> '' ORDER BY {$column} ASC LIMIT :limit"
             );
@@ -141,5 +150,51 @@ final class DeviceComponentRepository
             'replacement_component_id' => $replacementComponentId,
             'updated_at' => $now,
         ]);
+    }
+    private function hasColumn(string $column): bool
+    {
+        $availableColumns = $this->availableColumns();
+
+        return in_array(strtolower($column), $availableColumns, true);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function availableColumns(): array
+    {
+        if ($this->columnCache !== null) {
+            return $this->columnCache;
+        }
+
+        $driver = strtolower((string) $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        $columns = [];
+        [$sql, $key] = match ($driver) {
+            'sqlite' => ['PRAGMA table_info(device_components)', 'name'],
+            'pgsql' => [
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'device_components' AND table_schema = current_schema()",
+                'column_name',
+            ],
+            default => ['SHOW COLUMNS FROM device_components', 'Field'],
+        };
+
+        $statement = $this->pdo->query($sql);
+
+        if ($statement === false) {
+            return $this->columnCache = [];
+        }
+
+        while (($row = $statement->fetch(PDO::FETCH_ASSOC)) !== false) {
+            $name = $row[$key] ?? $row['column_name'] ?? $row['name'] ?? $row['field'] ?? null;
+
+            if (!is_string($name) || $name === '') {
+                continue;
+            }
+
+            $columns[] = strtolower($name);
+        }
+
+        return $this->columnCache = $columns;
     }
 }
