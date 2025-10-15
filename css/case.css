@@ -234,6 +234,7 @@
   padding: 0.75rem 0.9rem;
   text-align: left;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  vertical-align: top;
 }
 
 .case-warehouse__table th {
@@ -241,6 +242,33 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #64748b;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.case-warehouse__table td strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.case-warehouse__table td small {
+  display: block;
+  margin-top: 0.15rem;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.case-warehouse__table td:nth-child(3),
+.case-warehouse__table td:nth-child(4),
+.case-warehouse__table td:nth-child(5) {
+  white-space: nowrap;
+}
+
+.case-warehouse__table tbody tr:hover {
+  background: rgba(148, 163, 184, 0.12);
 }
 
 .warehouse-card__list {
