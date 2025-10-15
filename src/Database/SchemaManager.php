@@ -31,6 +31,7 @@ final class SchemaManager
         self::ensureCaseAuditLogTable($pdo);
         self::ensureDocumentsTable($pdo);
         self::ensureDeviceEnhancements($pdo);
+        self::ensureWarehouseTables($pdo);
 
         self::ensureOphaalbevestigingColumns($pdo);
         self::ensureReparatieOnderzoekColumns($pdo);
@@ -48,6 +49,146 @@ final class SchemaManager
         self::ensureDeviceComponentsTable($pdo);
         self::ensureDeviceComponentEnhancements($pdo);
         self::populateMissingDeviceBarcodes($pdo);
+    }
+
+    private static function ensureWarehouseItemsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS warehouse_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reference_code TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    category TEXT NULL,
+                    location TEXT NULL,
+                    status TEXT NOT NULL DEFAULT 'received',
+                    quantity INTEGER NOT NULL DEFAULT 0,
+                    reserved_quantity INTEGER NOT NULL DEFAULT 0,
+                    case_id INTEGER NULL,
+                    device_id INTEGER NULL,
+                    barcode TEXT NULL,
+                    notes TEXT NULL,
+                    received_at TEXT NULL,
+                    reserved_at TEXT NULL,
+                    ready_at TEXT NULL,
+                    completed_at TEXT NULL,
+                    last_movement_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_warehouse_reference ON warehouse_items(reference_code)');
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_warehouse_barcode ON warehouse_items(barcode)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_warehouse_status ON warehouse_items(status)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_warehouse_case ON warehouse_items(case_id)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS warehouse_items (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reference_code VARCHAR(64) NOT NULL,
+                name VARCHAR(191) NOT NULL,
+                category VARCHAR(120) NULL,
+                location VARCHAR(120) NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'received',
+                quantity INT NOT NULL DEFAULT 0,
+                reserved_quantity INT NOT NULL DEFAULT 0,
+                case_id INT UNSIGNED NULL,
+                device_id INT UNSIGNED NULL,
+                barcode VARCHAR(64) NULL,
+                notes TEXT NULL,
+                received_at TIMESTAMP NULL DEFAULT NULL,
+                reserved_at TIMESTAMP NULL DEFAULT NULL,
+                ready_at TIMESTAMP NULL DEFAULT NULL,
+                completed_at TIMESTAMP NULL DEFAULT NULL,
+                last_movement_at TIMESTAMP NULL DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_warehouse_reference (reference_code),
+                UNIQUE KEY uniq_warehouse_barcode (barcode),
+                INDEX idx_warehouse_status (status),
+                INDEX idx_warehouse_case (case_id),
+                CONSTRAINT fk_warehouse_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                CONSTRAINT fk_warehouse_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureWarehouseMovementsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS warehouse_movements (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item_id INTEGER NOT NULL,
+                    case_id INTEGER NULL,
+                    movement_type TEXT NOT NULL,
+                    quantity INTEGER NOT NULL DEFAULT 0,
+                    notes TEXT NULL,
+                    performed_by TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                    FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_movements_item ON warehouse_movements(item_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_movements_case ON warehouse_movements(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_movements_type ON warehouse_movements(movement_type)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS warehouse_movements (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                item_id INT UNSIGNED NOT NULL,
+                case_id INT UNSIGNED NULL,
+                movement_type VARCHAR(32) NOT NULL,
+                quantity INT NOT NULL DEFAULT 0,
+                notes TEXT NULL,
+                performed_by VARCHAR(120) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_movements_item (item_id),
+                INDEX idx_movements_case (case_id),
+                INDEX idx_movements_type (movement_type),
+                CONSTRAINT fk_movements_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                CONSTRAINT fk_movements_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureWarehouseIndexes(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_warehouse_last_movement ON warehouse_items(last_movement_at)');
+
+            return;
+        }
+
+        try {
+            $pdo->exec('CREATE INDEX idx_warehouse_last_movement ON warehouse_items(last_movement_at)');
+        } catch (PDOException $exception) {
+            if (!str_contains(strtolower($exception->getMessage()), 'duplicate')) {
+                throw $exception;
+            }
+        }
+    }
+
+    private static function ensureWarehouseTables(PDO $pdo): void
+    {
+        self::ensureWarehouseItemsTable($pdo);
+        self::ensureWarehouseMovementsTable($pdo);
+        self::ensureWarehouseIndexes($pdo);
     }
 
     private static function mysqlBaseStatements(): array

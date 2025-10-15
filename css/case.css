@@ -200,6 +200,128 @@
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.case-warehouse {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.warehouse-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 18px;
+}
+
+.warehouse-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.case-warehouse__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.case-warehouse__table th,
+.case-warehouse__table td {
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.case-warehouse__table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.warehouse-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.warehouse-card__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(241, 245, 249, 0.65);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+
+.warehouse-card__list span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.warehouse-card__list strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.warehouse-card--summary {
+  background: linear-gradient(150deg, rgba(240, 90, 40, 0.12), rgba(240, 90, 40, 0.04));
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.status-badge--expected {
+  background: rgba(94, 234, 212, 0.16);
+  color: #0f766e;
+}
+
+.status-badge--received {
+  background: rgba(96, 165, 250, 0.2);
+  color: #1d4ed8;
+}
+
+.status-badge--reserved {
+  background: rgba(251, 191, 36, 0.24);
+  color: #a16207;
+}
+
+.status-badge--in_service {
+  background: rgba(163, 163, 194, 0.24);
+  color: #4338ca;
+}
+
+.status-badge--ready {
+  background: rgba(74, 222, 128, 0.2);
+  color: #15803d;
+}
+
+.status-badge--completed {
+  background: rgba(148, 163, 184, 0.24);
+  color: #475569;
+}
+
+@media (max-width: 900px) {
+  .case-warehouse {
+    grid-template-columns: 1fr;
+  }
+}
+
 .checklist-card {
   background: #fff;
   border-radius: 16px;

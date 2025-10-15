@@ -10,6 +10,7 @@ use App\Support\Audit\AuditLogger;
 use App\Support\Checklist\ChecklistRepository;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\NoteRepository;
+use App\Support\Repositories\WarehouseRepository;
 use App\Validation\InputValidator;
 
 require __DIR__ . '/bootstrap.php';
@@ -24,6 +25,7 @@ $caseRepository = new CaseRepository($pdo);
 $noteRepository = new NoteRepository($pdo);
 $checklistRepository = new ChecklistRepository($pdo);
 $auditLogger = new AuditLogger($pdo);
+$warehouseRepository = new WarehouseRepository($pdo);
 
 $case = $caseRepository->findById((int) $caseId);
 if ($case === null) {
@@ -42,6 +44,35 @@ $statement->execute(['id' => $caseId]);
 $caseRecord = $statement->fetch();
 if (!$caseRecord) {
     Response::error('Casegegevens konden niet worden geladen.', 500);
+}
+
+$warehouseStatusLabels = $warehouseRepository->statusLabels();
+$warehouseItems = $warehouseRepository->findByCaseId((int) $caseId);
+$warehouseSummary = [
+    'total' => count($warehouseItems),
+    'ready' => 0,
+    'reserved' => 0,
+    'in_service' => 0,
+];
+$warehouseTotals = [
+    'quantity' => 0,
+    'reserved' => 0,
+];
+
+foreach ($warehouseItems as $warehouseItem) {
+    $statusKey = (string) ($warehouseItem['status'] ?? '');
+    if ($statusKey === 'ready') {
+        $warehouseSummary['ready']++;
+    }
+    if ($statusKey === 'reserved') {
+        $warehouseSummary['reserved']++;
+    }
+    if ($statusKey === 'in_service') {
+        $warehouseSummary['in_service']++;
+    }
+
+    $warehouseTotals['quantity'] += (int) ($warehouseItem['quantity'] ?? 0);
+    $warehouseTotals['reserved'] += (int) ($warehouseItem['reserved_quantity'] ?? 0);
 }
 
 $caseDetails = [];
@@ -193,6 +224,7 @@ $checklists = $checklistRepository->forCase((int) $caseId);
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
            <li><a href="documents.php">Documenten</a></li>
+           <li><a href="magazyn.php">Magazyn</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
@@ -257,6 +289,75 @@ $checklists = $checklistRepository->forCase((int) $caseId);
           </dl>
         <?php endif; ?>
       </article>
+    </section>
+
+    <section class="case-warehouse">
+      <article class="warehouse-card">
+        <div class="warehouse-card__header">
+          <div>
+            <h2>Powiązane zasoby magazynowe</h2>
+            <p class="muted">Monitoruj komponenty i zestawy przypisane do tej sprawy serwisowej.</p>
+          </div>
+          <a class="btn btn--ghost" href="magazyn.php?case=<?= (int) $caseId ?>">Otwórz Magazyn</a>
+        </div>
+        <?php if ($warehouseItems === []): ?>
+          <p class="muted">Brak powiązanych pozycji magazynowych. Dodaj sprzęt do sprawy bezpośrednio w zakładce Magazyn.</p>
+        <?php else: ?>
+          <div class="table-wrapper">
+            <table class="case-warehouse__table">
+              <thead>
+                <tr>
+                  <th>Pozycja</th>
+                  <th>Status</th>
+                  <th>Ilość</th>
+                  <th>Lokalizacja</th>
+                  <th>Ostatni ruch</th>
+                  <th>Etykieta</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($warehouseItems as $warehouseItem): ?>
+                  <?php
+                    $statusKey = (string) ($warehouseItem['status'] ?? '');
+                    $statusLabel = $warehouseStatusLabels[$statusKey] ?? ucfirst($statusKey);
+                    $quantity = (int) ($warehouseItem['quantity'] ?? 0);
+                    $reserved = (int) ($warehouseItem['reserved_quantity'] ?? 0);
+                    $location = trim((string) ($warehouseItem['location'] ?? ''));
+                    $lastMovement = (string) ($warehouseItem['last_movement_at'] ?? $warehouseItem['updated_at'] ?? '');
+                    $movementTimestamp = $lastMovement !== '' ? date('d-m-Y H:i', strtotime($lastMovement)) : '—';
+                    $referenceCode = trim((string) ($warehouseItem['reference_code'] ?? ''));
+                  ?>
+                  <tr>
+                    <td>
+                      <strong><?= htmlspecialchars((string) ($warehouseItem['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                      <?php if ($referenceCode !== ''): ?><small>Ref: <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                      <?php if (!empty($warehouseItem['barcode'])): ?><small>Kod: <?= htmlspecialchars((string) $warehouseItem['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                    </td>
+                    <td><span class="status-badge status-badge--<?= htmlspecialchars(str_replace('-', '_', $statusKey), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
+                    <td><?= number_format($quantity, 0, ',', ' ') ?><small>Zarezerwowane: <?= number_format($reserved, 0, ',', ' ') ?></small></td>
+                    <td><?= $location !== '' ? htmlspecialchars($location, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '—' ?></td>
+                    <td><?= htmlspecialchars($movementTimestamp, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                    <td><a class="btn btn--ghost btn--small" href="warehouse-label.php?id=<?= (int) ($warehouseItem['id'] ?? 0) ?>" target="_blank" rel="noopener">Etykieta</a></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+      </article>
+
+      <aside class="warehouse-card warehouse-card--summary">
+        <h3>Stan magazynowy dla case #<?= (int) $caseId ?></h3>
+        <ul class="warehouse-card__list">
+          <li><span>Powiązane pozycje</span><strong><?= (int) $warehouseSummary['total'] ?></strong></li>
+          <li><span>Ilość łączna</span><strong><?= number_format($warehouseTotals['quantity'], 0, ',', ' ') ?></strong></li>
+          <li><span>Zarezerwowane</span><strong><?= number_format($warehouseTotals['reserved'], 0, ',', ' ') ?></strong></li>
+          <li><span>Gotowe do wydania</span><strong><?= (int) $warehouseSummary['ready'] ?></strong></li>
+          <li><span>W naprawie</span><strong><?= (int) $warehouseSummary['in_service'] ?></strong></li>
+        </ul>
+        <p class="muted">Aktualizacje statusów oraz etykiety magazynowe dostępne są w zakładce Magazyn.</p>
+        <a class="btn btn--ghost" href="magazyn.php?case=<?= (int) $caseId ?>#new-entry">Dodaj komponent</a>
+      </aside>
     </section>
 
     <section class="checklists-section">

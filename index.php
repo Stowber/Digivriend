@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\WarehouseRepository;
 
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 
 $caseRepository = new CaseRepository($pdo);
+$warehouseRepository = new WarehouseRepository($pdo);
 
 $totalCustomers = (int) ($pdo->query('SELECT COUNT(*) FROM customers')->fetchColumn() ?: 0);
 $openCases = (int) ($pdo->query("SELECT COUNT(*) FROM cases WHERE status NOT IN ('opgehaald', 'gesloten')")->fetchColumn() ?: 0);
@@ -22,6 +24,12 @@ $periodStart = $today->sub(new DateInterval('P' . max($periodDays - 1, 0) . 'D')
 $periodStartString = $periodStart->format('Y-m-d 00:00:00');
 $todayPickups = 0;
 $longestWaiting = 0;
+$warehouseStatusCounts = $warehouseRepository->statusCounts();
+$totalWarehouseItems = $warehouseRepository->totalItems();
+$warehouseQuantityTotal = $warehouseRepository->totalQuantity();
+$warehouseReservedTotal = $warehouseRepository->totalReserved();
+$warehouseReadyTotal = $warehouseStatusCounts['ready'] ?? 0;
+$warehouseAvailableTotal = max(0, $warehouseQuantityTotal - $warehouseReservedTotal);
 
 $readyPickupsStmt = $pdo->prepare(
     "SELECT details
@@ -193,6 +201,7 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
           <li><a href="documents.php">Documenten</a></li>
+          <li><a href="magazyn.php">Magazyn</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
@@ -258,6 +267,11 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
         <h2>Cases deze periode</h2>
         <p class="stat-card__value"><?= number_format($casesInPeriod, 0, ',', '.') ?></p>
         <span class="stat-card__hint">Vanaf <?= htmlspecialchars($periodStart->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+      </article>
+      <article class="stat-card">
+        <h2>Magazyn</h2>
+        <p class="stat-card__value"><?= number_format($totalWarehouseItems, 0, ',', '.') ?></p>
+        <span class="stat-card__hint"><?= number_format($warehouseAvailableTotal, 0, ',', '.') ?> beschikbaar · <?= number_format($warehouseReadyTotal, 0, ',', '.') ?> klaar</span>
       </article>
       <article class="stat-card">
         <h2>Gem. doorlooptijd</h2>

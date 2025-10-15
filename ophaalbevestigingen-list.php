@@ -80,6 +80,7 @@ try {
           <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
+          <li><a href="magazyn.php">Magazyn</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>

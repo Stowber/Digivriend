@@ -1001,6 +1001,7 @@ $selectedEventTypePost = isset($_POST['event_type']) ? (string) $_POST['event_ty
           <li><a href="data-recovery.php">Data Recovery</a></li>
           <li><a href="klant-melding.php">Klant Melding</a></li>
           <li><a href="documents.php">Documenten</a></li>
+          <li><a href="magazyn.php">Magazyn</a></li>
           <li class="main-nav__spacer" aria-hidden="true"></li>
           <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
         </ul>
