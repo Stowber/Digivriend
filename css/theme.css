@@ -512,12 +512,17 @@ tbody tr:last-child td {
   display: grid;
   place-items: center;
   overflow: hidden;
+  position: relative;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .signature-board canvas {
+  display: block;
   width: 100%;
   height: 100%;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
 }
 
 .button-row {

@@ -54,6 +54,9 @@ if (!empty($caseRecord['details'])) {
 
 $errors = [];
 $checklistErrors = [];
+$noteEditErrors = [];
+$noteEditValues = [];
+$currentAction = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -62,12 +65,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $action = $_POST['action'] ?? 'add-note';
+        $currentAction = $action;
 
         switch ($action) {
             case 'add-note':
                 $body = InputValidator::requireString($_POST, 'body', 2000);
                 $noteRepository->add((int) $caseId, (int) $caseRecord['customer_id'], Auth::username(), $body);
                 $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'note_added', ['body' => $body]);
+                break;
+              case 'update-note':
+                $noteId = filter_var($_POST['note_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$noteId) {
+                    throw new ValidationException(['general' => 'Ongeldige notitie geselecteerd.']);
+                }
+                $body = InputValidator::requireString($_POST, 'body', 2000);
+                if (!$noteRepository->update((int) $caseId, (int) $noteId, $body)) {
+                    throw new ValidationException(['general' => 'Notitie niet gevonden.']);
+                }
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'note_updated', ['note_id' => (int) $noteId, 'body' => $body]);
+                break;
+            case 'delete-note':
+                $noteId = filter_var($_POST['note_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$noteId) {
+                    throw new ValidationException(['general' => 'Ongeldige notitie geselecteerd.']);
+                }
+                if (!$noteRepository->delete((int) $caseId, (int) $noteId)) {
+                    throw new ValidationException(['general' => 'Notitie niet gevonden.']);
+                }
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'note_deleted', ['note_id' => (int) $noteId]);
                 break;
             case 'add-checklist':
                 $title = InputValidator::requireString($_POST, 'title', 160);
@@ -115,9 +140,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         Response::redirect('case.php?id=' . (int) $caseId);
     } catch (ValidationException $exception) {
-        $errors = $exception->errors();
-        if (isset($errors['title']) || isset($errors['assigned_to']) || isset($errors['due_date']) || isset($errors['checklist_id'])) {
-            $checklistErrors = $errors;
+        $validationErrors = $exception->errors();
+        if ($currentAction === 'add-checklist' || $currentAction === 'add-checklist-item' || $currentAction === 'toggle-checklist-item' || $currentAction === 'remove-checklist') {
+            $checklistErrors = $validationErrors;
+        } elseif ($currentAction === 'update-note') {
+            $noteId = filter_var($_POST['note_id'] ?? null, FILTER_VALIDATE_INT);
+            if ($noteId) {
+                $noteEditErrors[(int) $noteId] = $validationErrors;
+                $noteEditValues[(int) $noteId] = (string) ($_POST['body'] ?? '');
+            } else {
+                $errors = $validationErrors;
+            }
+        } elseif ($currentAction === 'delete-note') {
+            $errors = array_merge($errors, $validationErrors);
+        } elseif ($currentAction === 'add-note') {
+            $errors = $validationErrors;
+        } else {
+            $errors = array_merge($errors, $validationErrors);
         }
     }
 }
@@ -329,6 +368,31 @@ $checklists = $checklistRepository->forCase((int) $caseId);
                     <span class="muted"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $note['created_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                   </div>
                   <div class="note-body"><?= nl2br(htmlspecialchars((string) $note['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
+                  <div class="note-actions">
+                    <details class="note-edit"<?= isset($noteEditErrors[(int) $note['id']]) ? ' open' : '' ?>>
+                      <summary>Bewerk notitie</summary>
+                      <?php if (!empty($noteEditErrors[(int) $note['id']]['general'])): ?>
+                        <div class="alert alert--error"><?= htmlspecialchars((string) $noteEditErrors[(int) $note['id']]['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                      <?php endif; ?>
+                      <form method="POST" class="note-edit__form">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                        <input type="hidden" name="action" value="update-note">
+                        <input type="hidden" name="note_id" value="<?= (int) $note['id'] ?>">
+                        <label class="sr-only" for="note-body-<?= (int) $note['id'] ?>">Notitie</label>
+                        <textarea id="note-body-<?= (int) $note['id'] ?>" name="body" rows="4" required><?= htmlspecialchars($noteEditValues[(int) $note['id']] ?? (string) $note['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                        <?php if (!empty($noteEditErrors[(int) $note['id']]['body'])): ?><small class="form-error"><?= htmlspecialchars((string) $noteEditErrors[(int) $note['id']]['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                        <div class="note-edit__actions">
+                          <button type="submit" class="btn btn--ghost btn--small">Opslaan</button>
+                        </div>
+                      </form>
+                    </details>
+                    <form method="POST" class="note-delete-form" onsubmit="return confirm('Notitie verwijderen?');">
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                      <input type="hidden" name="action" value="delete-note">
+                      <input type="hidden" name="note_id" value="<?= (int) $note['id'] ?>">
+                      <button type="submit" class="btn btn--ghost btn--small">Verwijderen</button>
+                    </form>
+                  </div>
                 </li>
               <?php endforeach; ?>
             </ul>

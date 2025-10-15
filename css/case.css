@@ -118,6 +118,42 @@
   white-space: pre-wrap;
 }
 
+.note-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.note-actions form {
+  margin: 0;
+}
+
+.note-edit summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.note-edit__form {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.note-edit__form textarea {
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  padding: 0.75rem;
+  min-height: 120px;
+}
+
+.note-edit__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .note-form {
   background: #fff;
   border-radius: 16px;

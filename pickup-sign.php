@@ -79,36 +79,194 @@ $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
     </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"
-          integrity="sha384-Pu0vQX1a+8XMGO6zkRgZNpmjDoE7YQDdyCjTiMQuuLHfoalGoVYLRNvKcJsteUms"
-          crossorigin="anonymous"></script>
   <script>
     const canvas = document.getElementById('signatureCanvas');
-    const signaturePad = new SignaturePad(canvas);
+    const context = canvas.getContext('2d');
+    const clearButton = document.getElementById('clearBtn');
+    const saveButton = document.getElementById('saveBtn');
+    const signatureDataInput = document.getElementById('signatureData');
+    const signatureForm = document.getElementById('signatureForm');
+
+    const penColor = '#1f2933';
+    const backgroundColor = '#ffffff';
+    let drawing = false;
+    let isCanvasEmpty = true;
+    let lastPoint = { x: 0, y: 0 };
+
+    function getCanvasRect() {
+      return canvas.getBoundingClientRect();
+    }
 
     function resizeCanvas() {
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      canvas.width = canvas.offsetWidth * ratio;
-      canvas.height = canvas.offsetHeight * ratio;
-      canvas.getContext('2d').scale(ratio, ratio);
-      signaturePad.clear();
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    document.getElementById('clearBtn').addEventListener('click', () => {
-      signaturePad.clear();
-    });
-
-    document.getElementById('saveBtn').addEventListener('click', () => {
-      if (!signaturePad.isEmpty()) {
-        const dataURL = signaturePad.toDataURL('image/png');
-        document.getElementById('signatureData').value = dataURL;
-        document.getElementById('signatureForm').submit();
-      } else {
-        alert('Handtekening is leeg. Zet eerst een handtekening.');
+      const rect = getCanvasRect();
+      if (!rect.width || !rect.height) {
+        return;
       }
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const existingDrawing = !isCanvasEmpty ? canvas.toDataURL() : null;
+
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.scale(ratio, ratio);
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      context.lineWidth = 2.4;
+      context.strokeStyle = penColor;
+
+      context.fillStyle = backgroundColor;
+      context.fillRect(0, 0, rect.width, rect.height);
+
+      if (existingDrawing) {
+        const image = new Image();
+        image.onload = () => {
+          context.drawImage(image, 0, 0, rect.width, rect.height);
+          isCanvasEmpty = false;
+        };
+        image.src = existingDrawing;
+      } else {
+        isCanvasEmpty = true;
+      }
+    }
+    function getInputPoint(event) {
+      if (event.touches && event.touches.length > 0) {
+        return event.touches[0];
+      }
+
+      if (event.changedTouches && event.changedTouches.length > 0) {
+        return event.changedTouches[0];
+      }
+
+      return event;
+    }
+
+    function getPointerType(event) {
+      if (event.pointerType) {
+        return event.pointerType;
+      }
+
+      if (event.touches || event.changedTouches) {
+        return 'touch';
+      }
+
+      return 'mouse';
+    }
+
+    function getCanvasCoordinates(event) {
+      const rect = getCanvasRect();
+      const point = getInputPoint(event);
+      return {
+        x: point.clientX - rect.left,
+        y: point.clientY - rect.top,
+      };
+    }
+
+    function drawDot(point) {
+      context.beginPath();
+      context.arc(point.x, point.y, context.lineWidth / 2, 0, Math.PI * 2);
+      context.fillStyle = penColor;
+      context.fill();
+      context.fillStyle = backgroundColor;
+      context.beginPath();
+      context.moveTo(point.x, point.y);
+    }
+
+    function startStroke(event) {
+      const pointerType = getPointerType(event);
+      if (pointerType === 'mouse' && 'button' in event && event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      if ('pointerId' in event && canvas.setPointerCapture) {
+        canvas.setPointerCapture(event.pointerId);
+      }
+      drawing = true;
+      lastPoint = getCanvasCoordinates(event);
+      drawDot(lastPoint);
+      isCanvasEmpty = false;
+    }
+
+    function moveStroke(event) {
+      if (!drawing) {
+        return;
+      }
+
+      event.preventDefault();
+      const point = getCanvasCoordinates(event);
+      context.beginPath();
+      context.moveTo(lastPoint.x, lastPoint.y);
+      context.lineTo(point.x, point.y);
+      context.stroke();
+      lastPoint = point;
+      isCanvasEmpty = false;
+    }
+
+    function endStroke(event) {
+      if (!drawing) {
+        return;
+      }
+
+      if (event) {
+        if (typeof event.preventDefault === 'function') {
+          event.preventDefault();
+        }
+        if ('pointerId' in event && canvas.releasePointerCapture) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+      }
+
+      drawing = false;
+      context.beginPath();
+    }
+
+    function clearCanvas() {
+      isCanvasEmpty = true;
+      signatureDataInput.value = '';
+      drawing = false;
+      context.beginPath();
+      resizeCanvas();
+    }
+
+    clearButton.addEventListener('click', () => {
+      clearCanvas();
     });
+
+    saveButton.addEventListener('click', () => {
+      if (isCanvasEmpty) {
+        alert('Handtekening is leeg. Zet eerst een handtekening.');
+        return;
+      }
+
+      signatureDataInput.value = canvas.toDataURL('image/png');
+      signatureForm.submit();
+    });
+
+    const supportsPointerEvents = window.PointerEvent !== undefined;
+    const nonPassive = { passive: false };
+
+    if (supportsPointerEvents) {
+      canvas.addEventListener('pointerdown', startStroke);
+      canvas.addEventListener('pointermove', moveStroke);
+      canvas.addEventListener('pointerup', endStroke);
+      canvas.addEventListener('pointerleave', endStroke);
+      canvas.addEventListener('pointercancel', endStroke);
+    } else {
+      canvas.addEventListener('mousedown', startStroke);
+      canvas.addEventListener('mousemove', moveStroke);
+      document.addEventListener('mouseup', endStroke);
+      canvas.addEventListener('touchstart', startStroke, nonPassive);
+      canvas.addEventListener('touchmove', moveStroke, nonPassive);
+      document.addEventListener('touchend', endStroke, nonPassive);
+      document.addEventListener('touchcancel', endStroke, nonPassive);
+    }
+
+    window.addEventListener('resize', () => {
+      window.requestAnimationFrame(resizeCanvas);
+    });
+
+    resizeCanvas();
   </script>
 </body>
 </html>

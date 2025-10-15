@@ -35,4 +35,28 @@ final class NoteRepository
 
         return $statement->fetchAll() ?: [];
     }
+public function update(int $caseId, int $noteId, string $body): bool
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE notes SET body = :body WHERE id = :id AND case_id = :case_id'
+        );
+        $statement->execute([
+            'id' => $noteId,
+            'case_id' => $caseId,
+            'body' => $body,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
+    public function delete(int $caseId, int $noteId): bool
+    {
+        $statement = $this->pdo->prepare('DELETE FROM notes WHERE id = :id AND case_id = :case_id');
+        $statement->execute([
+            'id' => $noteId,
+            'case_id' => $caseId,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
 }
