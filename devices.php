@@ -102,6 +102,7 @@ $csrfToken = Csrf::token();
             <tr>
               <th>Barcode</th>
               <th>Apparaat</th>
+              <th>Type</th>
               <th>Klant</th>
               <th>Aangemaakt</th>
               <th></th>
@@ -110,13 +111,14 @@ $csrfToken = Csrf::token();
           <tbody>
             <?php if ($recentDevices === []): ?>
               <tr>
-                <td colspan="5">Er zijn nog geen apparaten geregistreerd.</td>
+                <td colspan="6">Er zijn nog geen apparaten geregistreerd.</td>
               </tr>
             <?php else: ?>
               <?php foreach ($recentDevices as $device): ?>
                 <tr>
                   <td><code><?= htmlspecialchars((string) ($device['barcode'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></code></td>
                   <td><?= htmlspecialchars(trim(($device['brand'] ?? '') . ' ' . ($device['model'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars(($device['device_type'] ?? '') !== '' ? (string) $device['device_type'] : '-', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string) $device['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string) ($device['created_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td class="table-actions"><a class="btn btn--link" href="device.php?id=<?= (int) $device['id'] ?>">Details</a></td>

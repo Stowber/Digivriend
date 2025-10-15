@@ -45,6 +45,7 @@ $values = [
     'device_serial' => '',
     'device_notes' => '',
     'intake_notes' => '',
+    'device_type' => '',
 ];
 $errors = [];
 
@@ -63,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $values['device_brand'] = InputValidator::requireString($_POST, 'device_brand', 120);
         $values['device_model'] = InputValidator::optionalString($_POST, 'device_model', 191);
         $values['device_serial'] = InputValidator::optionalString($_POST, 'device_serial', 120);
+        $values['device_type'] = InputValidator::optionalString($_POST, 'device_type', 120);
         $values['device_notes'] = InputValidator::optionalString($_POST, 'device_notes', 500);
         $values['intake_notes'] = InputValidator::optionalString($_POST, 'intake_notes', 1000);
 
@@ -81,7 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (int) $customer['id'],
             $values['device_brand'] !== '' ? $values['device_brand'] : null,
             $values['device_model'] !== '' ? $values['device_model'] : null,
-            $values['device_serial'] !== '' ? $values['device_serial'] : null
+            $values['device_serial'] !== '' ? $values['device_serial'] : null,
+            $values['device_type'] !== '' ? $values['device_type'] : null,
+            $values['device_notes'] !== '' ? $values['device_notes'] : null
         );
 
         if ($device === null) {
@@ -258,7 +262,22 @@ $csrfToken = Csrf::token();
             Serienummer
             <input type="text" name="device_serial" value="<?= $values['device_serial'] ?>">
           </label>
+          <label>
+            Type apparaat
+            <input type="text" name="device_type" value="<?= $values['device_type'] ?>" list="device-type-suggestions" placeholder="Bijv. Laptop">
+            <?php if (!empty($errors['device_type'])): ?><span class="form-error"><?= htmlspecialchars($errors['device_type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
+          </label>
         </div>
+        <datalist id="device-type-suggestions">
+          <option value="Desktop PC"></option>
+          <option value="Laptop"></option>
+          <option value="Workstation"></option>
+          <option value="Server"></option>
+          <option value="Smartphone"></option>
+          <option value="Tablet"></option>
+          <option value="Gameconsole"></option>
+          <option value="Netwerkapparaat"></option>
+        </datalist>
         <label>
           Interne notities
           <textarea name="device_notes" rows="3"><?= $values['device_notes'] ?></textarea>

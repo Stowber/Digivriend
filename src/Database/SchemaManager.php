@@ -42,8 +42,10 @@ final class SchemaManager
     private static function ensureDeviceEnhancements(PDO $pdo): void
     {
         self::ensureDeviceBarcodeColumn($pdo);
+        self::ensureDeviceTypeColumn($pdo);
         self::ensureDevicePhotosTable($pdo);
         self::ensureRepairEventsTable($pdo);
+        self::ensureDeviceComponentsTable($pdo);
         self::populateMissingDeviceBarcodes($pdo);
     }
 
@@ -1158,6 +1160,27 @@ final class SchemaManager
         }
     }
 
+    private static function ensureDeviceTypeColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec('ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_type VARCHAR(120) NULL');
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'devices', 'device_type', 'TEXT');
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            "ALTER TABLE devices ADD COLUMN device_type VARCHAR(120) NULL AFTER model",
+            ['duplicate column', 'already exists']
+        );
+    }
+
     private static function ensureDevicePhotosTable(PDO $pdo): void
     {
         $driver = self::databaseDriver($pdo);
@@ -1207,6 +1230,89 @@ final class SchemaManager
                 INDEX idx_device_photos_device (device_id),
                 INDEX idx_device_photos_orientation (device_id, orientation),
                 CONSTRAINT fk_device_photos_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureDeviceComponentsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS device_components (
+                    id SERIAL PRIMARY KEY,
+                    device_id INTEGER NOT NULL,
+                    category VARCHAR(120) NOT NULL,
+                    component_name VARCHAR(191) NOT NULL,
+                    manufacturer VARCHAR(120) NULL,
+                    model VARCHAR(191) NULL,
+                    serial_number VARCHAR(120) NULL,
+                    specifications TEXT NULL,
+                    notes TEXT NULL,
+                    installed_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    removed_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    removal_reason TEXT NULL,
+                    replaced_by_component_id INTEGER NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_device_components_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)');
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS device_components (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id INTEGER NOT NULL,
+                    category TEXT NOT NULL,
+                    component_name TEXT NOT NULL,
+                    manufacturer TEXT NULL,
+                    model TEXT NULL,
+                    serial_number TEXT NULL,
+                    specifications TEXT NULL,
+                    notes TEXT NULL,
+                    installed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    removed_at TEXT NULL,
+                    removal_reason TEXT NULL,
+                    replaced_by_component_id INTEGER NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_device_components_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)');
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS device_components (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                device_id INT UNSIGNED NOT NULL,
+                category VARCHAR(120) NOT NULL,
+                component_name VARCHAR(191) NOT NULL,
+                manufacturer VARCHAR(120) NULL,
+                model VARCHAR(191) NULL,
+                serial_number VARCHAR(120) NULL,
+                specifications TEXT NULL,
+                notes TEXT NULL,
+                installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                removed_at DATETIME NULL,
+                removal_reason TEXT NULL,
+                replaced_by_component_id INT UNSIGNED NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_device_components_device (device_id),
+                INDEX idx_device_components_status (device_id, removed_at),
+                CONSTRAINT fk_device_components_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+                CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
     }
