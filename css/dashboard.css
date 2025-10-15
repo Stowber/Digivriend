@@ -195,6 +195,274 @@
   gap: 1.8rem;
 }
 
+.dashboard__activity-grid {
+  display: grid;
+  gap: 1.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.activity-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 252, 0.96));
+  border-radius: 24px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 26px 60px -36px rgba(15, 23, 42, 0.45);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-height: 100%;
+}
+
+.activity-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 10%, rgba(240, 90, 40, 0.18) 0%, transparent 55%);
+  opacity: 0.45;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.activity-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.2rem;
+}
+
+.activity-card__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.activity-card__subtitle {
+  margin: 0.4rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.activity-card__tag,
+.activity-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  background: rgba(240, 90, 40, 0.1);
+  color: var(--color-accent, #f05a28);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.activity-card__badge {
+  background: rgba(15, 23, 42, 0.07);
+  color: var(--color-text);
+}
+
+.activity-card__stats {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin: 0;
+}
+
+.activity-card__stat {
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(240, 244, 249, 0.8);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.activity-card__stat dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  margin-bottom: 0.35rem;
+}
+
+.activity-card__stat dd {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.activity-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+.activity-card__footer strong {
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.activity-card__footer--split {
+  margin-top: auto;
+}
+
+.activity-card__empty {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.activity-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.activity-card__list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.activity-card__list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.activity-card__list--notifications li {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.activity-card__list-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-muted);
+}
+
+.activity-card__list-value {
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--color-text);
+}
+
+.activity-card__case-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.activity-card__case-meta {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.activity-card__link {
+  align-self: flex-start;
+  font-weight: 600;
+  color: var(--color-accent, #f05a28);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.activity-card__link:hover,
+.activity-card__link:focus {
+  text-decoration: underline;
+}
+
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.note-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.note-card__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+
+.note-card__author {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.note-card__date {
+  color: var(--color-muted);
+}
+
+.note-card__body {
+  font-size: 0.95rem;
+  color: var(--color-text);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-card__footer {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.note-card__footer a {
+  color: var(--color-accent, #f05a28);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.note-card__footer a:hover,
+.note-card__footer a:focus {
+  text-decoration: underline;
+}
+
+.activity-card--notes {
+  grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+  .activity-card--notes {
+    grid-column: auto;
+  }
+}
+
+
 .insight-card {
   position: relative;
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(247, 249, 252, 0.98));

@@ -396,6 +396,111 @@ if ($trendData !== []) {
       </article>
     </section>
 
+    <section class="dashboard__activity-grid" aria-label="Teamactiviteiten en communicatie">
+      <article class="activity-card">
+        <header class="activity-card__header">
+          <div>
+            <h2 class="activity-card__title">Activiteit laatste <?= (int) $periodDays ?> dagen</h2>
+            <p class="activity-card__subtitle">Inzichten in de case-updates binnen de geselecteerde periode.</p>
+          </div>
+          <span class="activity-card__tag"><?= htmlspecialchars($periodStart->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> &ndash; <?= htmlspecialchars($now->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        </header>
+        <dl class="activity-card__stats">
+          <div class="activity-card__stat">
+            <dt>Case-updates</dt>
+            <dd><?= number_format($casesInPeriod, 0, ',', '.') ?></dd>
+          </div>
+          <div class="activity-card__stat">
+            <dt>Afgerond</dt>
+            <dd><?= number_format($casesCompleted, 0, ',', '.') ?></dd>
+          </div>
+          <?php if ($casesCompletionRate !== null): ?>
+            <div class="activity-card__stat">
+              <dt>Succesratio</dt>
+              <dd><?= htmlspecialchars($casesCompletionRate . '%', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+          <?php endif; ?>
+        </dl>
+        <footer class="activity-card__footer">
+          <span>Laatste update</span>
+          <strong><?= htmlspecialchars($lastActivityDate instanceof DateTimeInterface ? $lastActivityDate->format('d-m-Y H:i') : 'Nog geen activiteit', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+        </footer>
+      </article>
+
+      <article class="activity-card">
+        <header class="activity-card__header">
+          <div>
+            <h2 class="activity-card__title">Verstuurde meldingen</h2>
+            <p class="activity-card__subtitle">Overzicht van kanalen die klanten recent bereikten.</p>
+          </div>
+          <span class="activity-card__badge">Totaal <?= number_format($notificationTotal, 0, ',', '.') ?></span>
+        </header>
+        <?php if (empty($notificationsByChannel)): ?>
+          <p class="activity-card__empty">Er zijn nog geen meldingen verzonden in deze periode.</p>
+        <?php else: ?>
+          <ul class="activity-card__list activity-card__list--notifications">
+            <?php foreach ($notificationsByChannel as $channel => $count): ?>
+              <li>
+                <span class="activity-card__list-label"><?= htmlspecialchars(strtoupper((string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span class="activity-card__list-value"><?= number_format($count, 0, ',', '.') ?></span>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+        <div class="activity-card__footer activity-card__footer--split">
+          <span>Open meldingen</span>
+          <strong><?= number_format($pendingNotifications, 0, ',', '.') ?></strong>
+        </div>
+      </article>
+
+      <article class="activity-card">
+        <header class="activity-card__header">
+          <div>
+            <h2 class="activity-card__title">Laatste cases</h2>
+            <p class="activity-card__subtitle">Recent bijgewerkte dossiers voor snelle opvolging.</p>
+          </div>
+        </header>
+        <?php if (empty($recentCases)): ?>
+          <p class="activity-card__empty">Nog geen cases geregistreerd.</p>
+        <?php else: ?>
+          <ul class="activity-card__list activity-card__list--cases">
+            <?php foreach ($recentCases as $case): ?>
+              <li>
+                <div class="activity-card__case-title"><?= htmlspecialchars((string) ($case['summary'] ?? ucfirst((string) $case['type'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <div class="activity-card__case-meta">Type: <?= htmlspecialchars((string) $case['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · Status: <?= htmlspecialchars((string) $case['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $case['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <a class="activity-card__link" href="case.php?id=<?= (int) $case['id'] ?>">Bekijk case</a>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+      </article>
+
+      <article class="activity-card activity-card--notes">
+        <header class="activity-card__header">
+          <div>
+            <h2 class="activity-card__title">Recente notities</h2>
+            <p class="activity-card__subtitle">Laatste klantinteracties en servicelogboek.</p>
+          </div>
+        </header>
+        <?php if (empty($recentNotes)): ?>
+          <p class="activity-card__empty">Er zijn nog geen notities toegevoegd.</p>
+        <?php else: ?>
+          <ul class="note-list">
+            <?php foreach ($recentNotes as $note): ?>
+              <li class="note-card">
+                <div class="note-card__meta">
+                  <span class="note-card__author"><?= htmlspecialchars((string) $note['author'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  <span class="note-card__date"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $note['created_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                </div>
+                <div class="note-card__body"><?= nl2br(htmlspecialchars((string) $note['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
+                <div class="note-card__footer">Case: <a href="case.php?id=<?= (int) $note['case_id'] ?>"><?= htmlspecialchars((string) ($note['summary'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a> · Klant: <?= htmlspecialchars((string) $note['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+      </article>
+    </section>
+
     <section class="dashboard__panel-grid" aria-label="Operationele details">
       <article class="dashboard__panel dashboard__panel--stretch">
         <header class="dashboard__panel-header">
@@ -516,53 +621,6 @@ if ($trendData !== []) {
         <div class="notifications-summary__footer">
           <span>Afgeronde cases: <strong><?= number_format($casesCompleted, 0, ',', '.') ?></strong></span>
         </div>
-      </article>
-
-       <article class="dashboard__panel">
-        <header class="dashboard__panel-header">
-          <div>
-            <h2>Laatste cases</h2>
-            <p class="dashboard__panel-subtitle">Recent bijgewerkte dossiers</p>
-          </div>
-        </header>
-        <ul class="timeline">
-          <?php if (empty($recentCases)): ?>
-            <li class="empty-state">Nog geen cases geregistreerd.</li>
-          <?php else: ?>
-            <?php foreach ($recentCases as $case): ?>
-              <li>
-                <div class="timeline__title"><?= htmlspecialchars((string) ($case['summary'] ?? ucfirst((string) $case['type'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                <div class="timeline__meta">Type: <?= htmlspecialchars((string) $case['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · Status: <?= htmlspecialchars((string) $case['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $case['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                <a class="btn-link" href="case.php?id=<?= (int) $case['id'] ?>">Bekijk case</a>
-              </li>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </ul>
-      </article>
-
-      <article class="dashboard__panel">
-        <header class="dashboard__panel-header">
-          <div>
-            <h2>Recente notities</h2>
-            <p class="dashboard__panel-subtitle">Laatste klantinteracties</p>
-          </div>
-        </header>
-        <ul class="notes">
-          <?php if (empty($recentNotes)): ?>
-            <li class="empty-state">Er zijn nog geen notities toegevoegd.</li>
-          <?php else: ?>
-            <?php foreach ($recentNotes as $note): ?>
-              <li>
-                <div class="notes__header">
-                  <strong><?= htmlspecialchars((string) $note['author'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                  <span class="muted"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $note['created_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                </div>
-                <div class="notes__body"><?= nl2br(htmlspecialchars((string) $note['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
-                <div class="notes__footer">Case: <a href="case.php?id=<?= (int) $note['case_id'] ?>"><?= htmlspecialchars((string) ($note['summary'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a> · Klant: <?= htmlspecialchars((string) $note['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-              </li>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </ul>
       </article>
     </section>
   </main>
