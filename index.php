@@ -172,6 +172,32 @@ $notesStatement = $pdo->query(
 );
 $recentNotes = $notesStatement->fetchAll() ?: [];
 
+$notificationTotal = array_sum($notificationsByChannel);
+$casesCompletionRate = $casesInPeriod > 0
+    ? max(0, min(100, (int) round(($casesCompleted / $casesInPeriod) * 100)))
+    : null;
+$warehouseReadyRate = $totalWarehouseItems > 0
+    ? max(0, min(100, (int) round(($warehouseReadyTotal / $totalWarehouseItems) * 100)))
+    : null;
+$warehouseReservedRate = $warehouseQuantityTotal > 0
+    ? max(0, min(100, (int) round(($warehouseReservedTotal / $warehouseQuantityTotal) * 100)))
+    : null;
+$notificationCompletionRate = ($notificationTotal + $pendingNotifications) > 0
+    ? max(0, min(100, (int) round(($notificationTotal / ($notificationTotal + $pendingNotifications)) * 100)))
+    : null;
+$typeFilterLabel = $typeFilter === 'all'
+    ? 'Alle cases'
+    : ucfirst(str_replace('_', ' ', (string) $typeFilter));
+$now = new DateTimeImmutable('now');
+$lastActivityDate = null;
+if ($trendData !== []) {
+    $trendKeys = array_keys($trendData);
+    $lastTrendKey = end($trendKeys);
+    if (is_string($lastTrendKey)) {
+        $lastActivityDate = date_create_immutable($lastTrendKey) ?: null;
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -210,85 +236,173 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
   </header>
 
   <main class="container dashboard">
-    <section class="dashboard__intro">
-      <div>
-        <h1>Operationeel overzicht</h1>
-        <p>Monitor lopende cases, openstaande ophaalbevestigingen en de laatste activiteiten van klanten in één blik.</p>
+    <section class="dashboard__hero" aria-labelledby="dashboardTitle">
+      <div class="dashboard__hero-layout">
+        <div class="dashboard__hero-intro">
+          <span class="hero__badge">Realtime overzicht</span>
+          <h1 id="dashboardTitle">Digivriend Operations Dashboard</h1>
+          <p><?= number_format($openCases, 0, ',', '.') ?> actieve cases en <?= number_format($pendingNotifications, 0, ',', '.') ?> meldingen wachten op opvolging. Houd magazijn en communicatie real-time in het oog.</p>
+        </div>
+        <div class="dashboard__hero-metrics">
+          <article class="hero-metric">
+            <span class="hero-metric__label">Actieve cases</span>
+            <span class="hero-metric__value"><?= number_format($openCases, 0, ',', '.') ?></span>
+            <span class="hero-metric__hint"><?= htmlspecialchars($longestWaiting > 0 ? $longestWaiting . ' dagen wachttijd' : 'Directe opvolging', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </article>
+          <article class="hero-metric">
+            <span class="hero-metric__label">Ophaalmomenten vandaag</span>
+            <span class="hero-metric__value"><?= number_format($todayPickups, 0, ',', '.') ?></span>
+            <span class="hero-metric__hint"><?= htmlspecialchars($todayPickups > 0 ? 'Plan overdracht en communicatie' : 'Geen ophaalacties gepland', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </article>
+          <article class="hero-metric">
+            <span class="hero-metric__label">Open meldingen</span>
+            <span class="hero-metric__value"><?= number_format($pendingNotifications, 0, ',', '.') ?></span>
+            <span class="hero-metric__hint"><?= htmlspecialchars($pendingNotifications > 0 ? 'Nog te informeren klanten' : 'Alle klanten op de hoogte', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </article>
+        </div>
       </div>
-      <div class="dashboard__quick-actions">
-        <a class="btn" href="ophaalbevestiging.php">Nieuwe ophaalbevestiging</a>
-        <a class="btn btn--ghost" href="klant-melding.php">Nieuwe klantmelding</a>
+      <div class="dashboard__hero-meta">
+        <div class="hero-meta__item">
+          <span class="hero-meta__label">Laatste update</span>
+          <span class="hero-meta__value"><?= htmlspecialchars($now->format('d-m-Y H:i'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        </div>
+        <div class="hero-meta__item">
+          <span class="hero-meta__label">Periode</span>
+          <span class="hero-meta__value">Laatste <?= (int) $periodDays ?> dagen</span>
+        </div>
+        <div class="hero-meta__item">
+          <span class="hero-meta__label">Actief filter</span>
+          <span class="hero-meta__value"><?= htmlspecialchars($typeFilterLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        </div>
+        <div class="hero-meta__item">
+          <span class="hero-meta__label">Laatste activiteit</span>
+          <span class="hero-meta__value"><?= $lastActivityDate instanceof DateTimeInterface ? htmlspecialchars($lastActivityDate->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'Nog geen activiteit' ?></span>
+        </div>
+      </div>
+      <div class="dashboard__hero-actions">
+        <div class="hero__actions">
+          <a class="btn" href="ophaalbevestiging.php">Nieuwe ophaalbevestiging</a>
+          <a class="btn btn--ghost" href="klant-melding.php">Nieuwe klantmelding</a>
+        </div>
+        <form method="GET" class="dashboard__filters" aria-label="Dashboardfilters">
+          <div class="dashboard__filter">
+            <label for="type">Case type</label>
+            <select id="type" name="type">
+              <option value="all"<?= $typeFilter === 'all' ? ' selected' : '' ?>>Alle typen</option>
+              <?php foreach ($distinctTypes as $typeOption): ?>
+                <option value="<?= htmlspecialchars((string) $typeOption, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $typeFilter === $typeOption ? ' selected' : '' ?>><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $typeOption)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="dashboard__filter">
+            <label for="period">Periode</label>
+            <select id="period" name="period">
+              <?php foreach ($periodOptions as $option): ?>
+                <option value="<?= $option ?>"<?= $periodDays === $option ? ' selected' : '' ?>>Laatste <?= $option ?> dagen</option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <button type="submit" class="btn">Filter toepassen</button>
+        </form>
       </div>
     </section>
-
-    <form method="GET" class="dashboard__filters" aria-label="Dashboardfilters">
-      <div class="dashboard__filter">
-        <label for="type">Case type</label>
-        <select id="type" name="type">
-          <option value="all"<?= $typeFilter === 'all' ? ' selected' : '' ?>>Alle typen</option>
-          <?php foreach ($distinctTypes as $typeOption): ?>
-            <option value="<?= htmlspecialchars((string) $typeOption, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $typeFilter === $typeOption ? ' selected' : '' ?>><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $typeOption)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="dashboard__filter">
-        <label for="period">Periode</label>
-        <select id="period" name="period">
-          <?php foreach ($periodOptions as $option): ?>
-            <option value="<?= $option ?>"<?= $periodDays === $option ? ' selected' : '' ?>>Laatste <?= $option ?> dagen</option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <button type="submit" class="btn">Filter toepassen</button>
-    </form>
-
-    <section class="dashboard__stats">
-      <article class="stat-card">
-        <h2>Totaal klanten</h2>
-        <p class="stat-card__value"><?= number_format($totalCustomers, 0, ',', '.') ?></p>
-        <span class="stat-card__hint">Unieke klantprofielen in de database</span>
+      <section class="dashboard__highlights" aria-label="Belangrijkste KPI&#39;s">
+      <article class="insight-card">
+        <header class="insight-card__header">
+          <span class="insight-card__icon" aria-hidden="true">👥</span>
+          <div>
+            <h2>Klantbestand</h2>
+            <p>Unieke profielen in beheer</p>
+          </div>
+        </header>
+        <p class="insight-card__value"><?= number_format($totalCustomers, 0, ',', '.') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars(number_format($openCases, 0, ',', '.') . ' actieve cases gekoppeld', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </article>
-      <article class="stat-card">
-        <h2>Actieve cases</h2>
-        <p class="stat-card__value"><?= number_format($openCases, 0, ',', '.') ?></p>
-        <span class="stat-card__hint">Cases die nog aandacht vereisen</span>
+      <article class="insight-card insight-card--interactive">
+        <header class="insight-card__header">
+          <span class="insight-card__icon" aria-hidden="true">📂</span>
+          <div>
+            <h2>Case traject</h2>
+            <p>Werkvoorraad in geselecteerde periode</p>
+          </div>
+        </header>
+        <p class="insight-card__value"><?= number_format($casesInPeriod, 0, ',', '.') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars(number_format($casesCompleted, 0, ',', '.') . ' afgerond', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php if ($casesCompletionRate !== null): ?>
+          <div class="insight-card__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $casesCompletionRate ?>">
+            <span style="width: <?= $casesCompletionRate ?>%;"></span>
+          </div>
+          <p class="insight-card__meta"><?= htmlspecialchars($casesCompletionRate . '% van de cases afgerond', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php endif; ?>
+        <button type="button" class="insight-card__action" data-modal-open="modal-cases">Diepte-inzicht</button>
       </article>
-      <article class="stat-card">
-        <h2>Ophaal vandaag</h2>
-        <p class="stat-card__value"><?= number_format($todayPickups, 0, ',', '.') ?></p>
-        <span class="stat-card__hint">Klaar voor overdracht op <?= date('d-m-Y') ?></span>
+      <article class="insight-card insight-card--interactive">
+        <header class="insight-card__header">
+          <span class="insight-card__icon" aria-hidden="true">🏬</span>
+          <div>
+            <h2>Magazijnstatus</h2>
+            <p>Beschikbaarheid &amp; reserveringen</p>
+          </div>
+        </header>
+        <p class="insight-card__value"><?= number_format($totalWarehouseItems, 0, ',', '.') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars(number_format($warehouseAvailableTotal, 0, ',', '.') . ' beschikbaar · ' . number_format($warehouseReadyTotal, 0, ',', '.') . ' klaar', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php if ($warehouseReadyRate !== null): ?>
+          <div class="insight-card__progress insight-card__progress--accent" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $warehouseReadyRate ?>">
+            <span style="width: <?= $warehouseReadyRate ?>%;"></span>
+          </div>
+          <p class="insight-card__meta"><?= htmlspecialchars($warehouseReadyRate . '% klaar voor uitgifte', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php endif; ?>
+        <button type="button" class="insight-card__action" data-modal-open="modal-warehouse">Bekijk magazijn</button>
       </article>
-      <article class="stat-card">
-        <h2>Langste wachttijd</h2>
-        <p class="stat-card__value"><?= $longestWaiting > 0 ? $longestWaiting . ' dagen' : '—' ?></p>
-        <span class="stat-card__hint">Sinds datum gereed</span>
+      <article class="insight-card insight-card--interactive">
+        <header class="insight-card__header">
+          <span class="insight-card__icon" aria-hidden="true">✉️</span>
+          <div>
+            <h2>Communicatie</h2>
+            <p>Uitgestuurde notificaties</p>
+          </div>
+        </header>
+        <p class="insight-card__value"><?= number_format($notificationTotal, 0, ',', '.') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars(number_format($pendingNotifications, 0, ',', '.') . ' meldingen wachten nog', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php if ($notificationCompletionRate !== null): ?>
+          <div class="insight-card__progress insight-card__progress--soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $notificationCompletionRate ?>">
+            <span style="width: <?= $notificationCompletionRate ?>%;"></span>
+          </div>
+          <p class="insight-card__meta"><?= htmlspecialchars($notificationCompletionRate . '% afgehandeld', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php endif; ?>
+        <button type="button" class="insight-card__action" data-modal-open="modal-notifications">Bekijk kanalen</button>
       </article>
-      <article class="stat-card">
-        <h2>Cases deze periode</h2>
-        <p class="stat-card__value"><?= number_format($casesInPeriod, 0, ',', '.') ?></p>
-        <span class="stat-card__hint">Vanaf <?= htmlspecialchars($periodStart->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+      <article class="insight-card">
+        <header class="insight-card__header">
+          <span class="insight-card__icon" aria-hidden="true">⏱️</span>
+          <div>
+            <h2>Gem. doorlooptijd</h2>
+            <p>Van gereed tot opgehaald</p>
+          </div>
+        </header>
+        <p class="insight-card__value"><?= $averageLeadTime !== null ? htmlspecialchars($averageLeadTime . ' dagen', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '&mdash;' ?></p>
+        <p class="insight-card__hint">Focus op snelle opvolging van gereedmeldingen.</p>
       </article>
-      <article class="stat-card">
-        <h2>Magazyn</h2>
-        <p class="stat-card__value"><?= number_format($totalWarehouseItems, 0, ',', '.') ?></p>
-        <span class="stat-card__hint"><?= number_format($warehouseAvailableTotal, 0, ',', '.') ?> beschikbaar · <?= number_format($warehouseReadyTotal, 0, ',', '.') ?> klaar</span>
-      </article>
-      <article class="stat-card">
-        <h2>Gem. doorlooptijd</h2>
-        <p class="stat-card__value"><?= $averageLeadTime !== null ? $averageLeadTime . ' dagen' : '—' ?></p>
-        <span class="stat-card__hint">Van gereed tot opgehaald</span>
-      </article>
-      <article class="stat-card">
-        <h2>Open meldingen</h2>
-        <p class="stat-card__value"><?= number_format($pendingNotifications, 0, ',', '.') ?></p>
-        <span class="stat-card__hint">Nog te informeren klanten</span>
+      <article class="insight-card">
+        <header class="insight-card__header">
+          <span class="insight-card__icon" aria-hidden="true">📅</span>
+          <div>
+            <h2>Langste wachttijd</h2>
+            <p>Hoelang staat de oudste case klaar?</p>
+          </div>
+        </header>
+        <p class="insight-card__value"><?= htmlspecialchars($longestWaiting > 0 ? $longestWaiting . ' dagen' : 'Geen wachtrij', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="insight-card__hint">Monitor op escalatie en extra opvolging.</p>
       </article>
     </section>
 
-    <section class="dashboard__grid">
-      <div class="dashboard__panel">
+    <section class="dashboard__panel-grid" aria-label="Operationele details">
+      <article class="dashboard__panel dashboard__panel--stretch">
         <header class="dashboard__panel-header">
-          <h2>Openstaande ophaalbevestigingen</h2>
+          <div>
+            <h2>Openstaande ophaalbevestigingen</h2>
+            <p class="dashboard__panel-subtitle">Realtime overzicht van klanten die gereed staan</p>
+          </div>
           <a href="ophaalbevestigingen-list.php" class="btn-link">Bekijk alle</a>
         </header>
         <table class="data-table">
@@ -302,35 +416,39 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
           </thead>
           <tbody>
           <?php if (empty($upcomingPickups)): ?>
-            <tr>
-              <td colspan="4" class="empty-state">Geen openstaande bevestigingen.</td>
-            </tr>
-          <?php else: ?>
-            <?php foreach ($upcomingPickups as $pickup): ?>
               <tr>
-                <td>
-                  <strong><?= htmlspecialchars((string) $pickup['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong><br>
-                  <span class="muted">Status: <?= htmlspecialchars((string) $pickup['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                </td>
-                <td><?= htmlspecialchars((string) ($pickup['ophaalcode'] ?? $pickup['reference_code']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars((string) ($pickup['datumgereed'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td>
-                  <?php if (!empty($pickup['phone'])): ?>
-                    <div class="muted">Tel: <?= htmlspecialchars((string) $pickup['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                  <?php endif; ?>
-                  <?php if (!empty($pickup['email'])): ?>
-                    <div class="muted">E-mail: <?= htmlspecialchars((string) $pickup['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                  <?php endif; ?>
-                </td>
+                <td colspan="4" class="empty-state">Geen openstaande bevestigingen.</td>
               </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
+            <?php else: ?>
+              <?php foreach ($upcomingPickups as $pickup): ?>
+                <tr>
+                  <td>
+                    <strong><?= htmlspecialchars((string) $pickup['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong><br>
+                    <span class="muted">Status: <?= htmlspecialchars((string) $pickup['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  </td>
+                  <td><?= htmlspecialchars((string) ($pickup['ophaalcode'] ?? $pickup['reference_code']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars((string) ($pickup['datumgereed'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td>
+                    <?php if (!empty($pickup['phone'])): ?>
+                      <div class="muted">Tel: <?= htmlspecialchars((string) $pickup['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($pickup['email'])): ?>
+                      <div class="muted">E-mail: <?= htmlspecialchars((string) $pickup['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </tbody>
         </table>
+      w</article>
 
-      <div class="dashboard__panel">
+      <article class="dashboard__panel">
         <header class="dashboard__panel-header">
-          <h2>Case verdeling</h2>
+          <div>
+            <h2>Case verdeling</h2>
+            <p class="dashboard__panel-subtitle">Inzicht per type en status</p>
+          </div>
         </header>
         <div class="case-summary">
           <?php if (empty($caseSummary)): ?>
@@ -341,20 +459,24 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
                 <h3><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $type)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
                 <ul>
                   <?php foreach ($statuses as $status => $count): ?>
-                    <li><span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><strong><?= (int) $count ?></strong></li>
+                    <li>
+                      <span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <strong><?= (int) $count ?></strong>
+                    </li>
                   <?php endforeach; ?>
                 </ul>
               </article>
             <?php endforeach; ?>
           <?php endif; ?>
         </div>
-      </div>
-      </section>
+      </article>
 
-      <section class="dashboard__grid">
-      <div class="dashboard__panel">
+      <article class="dashboard__panel">
         <header class="dashboard__panel-header">
-          <h2>Activiteit laatste <?= (int) $periodDays ?> dagen</h2>
+          <div>
+            <h2>Activiteit laatste <?= (int) $periodDays ?> dagen</h2>
+            <p class="dashboard__panel-subtitle">Aantal case-updates per dag</p>
+          </div>
         </header>
         <div class="trend-list">
           <?php if (empty($trendData)): ?>
@@ -370,11 +492,14 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
             </ul>
           <?php endif; ?>
         </div>
-      </div>
+      </article>
 
-      <div class="dashboard__panel">
+      <article class="dashboard__panel">
         <header class="dashboard__panel-header">
-          <h2>Verstuurde meldingen</h2>
+           <div>
+            <h2>Verstuurde meldingen</h2>
+            <p class="dashboard__panel-subtitle">Kanaalprestatie en follow-up</p>
+          </div>
         </header>
         <ul class="notifications-summary">
           <?php if (empty($notificationsByChannel)): ?>
@@ -391,13 +516,14 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
         <div class="notifications-summary__footer">
           <span>Afgeronde cases: <strong><?= number_format($casesCompleted, 0, ',', '.') ?></strong></span>
         </div>
-      </div>
-    </section>
+      </article>
 
-      <section class="dashboard__grid">
-      <div class="dashboard__panel">
+       <article class="dashboard__panel">
         <header class="dashboard__panel-header">
-          <h2>Laatste cases</h2>
+          <div>
+            <h2>Laatste cases</h2>
+            <p class="dashboard__panel-subtitle">Recent bijgewerkte dossiers</p>
+          </div>
         </header>
         <ul class="timeline">
           <?php if (empty($recentCases)): ?>
@@ -412,11 +538,14 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
             <?php endforeach; ?>
           <?php endif; ?>
         </ul>
-      </div>
+      </article>
 
-      <div class="dashboard__panel">
+      <article class="dashboard__panel">
         <header class="dashboard__panel-header">
-          <h2>Recente notities</h2>
+          <div>
+            <h2>Recente notities</h2>
+            <p class="dashboard__panel-subtitle">Laatste klantinteracties</p>
+          </div>
         </header>
         <ul class="notes">
           <?php if (empty($recentNotes)): ?>
@@ -434,14 +563,225 @@ $recentNotes = $notesStatement->fetchAll() ?: [];
             <?php endforeach; ?>
           <?php endif; ?>
         </ul>
-      </div>
+      </article>
     </section>
   </main>
+
+  <div class="modal" id="modal-cases" role="dialog" aria-modal="true" aria-labelledby="modalCasesTitle" hidden>
+    <div class="modal__overlay" data-modal-close></div>
+    <div class="modal__content" role="document">
+      <header class="modal__header">
+        <h2 id="modalCasesTitle">Diepte-inzicht case traject</h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="Sluit pop-up"><span aria-hidden="true">&times;</span></button>
+      </header>
+      <div class="modal__body">
+        <p>In de laatste <?= (int) $periodDays ?> dagen zijn <?= number_format($casesInPeriod, 0, ',', '.') ?> cases aangemaakt waarvan <?= number_format($casesCompleted, 0, ',', '.') ?> werden afgerond.</p>
+        <?php if ($casesCompletionRate !== null): ?>
+          <p class="modal__note">Afrondingspercentage: <strong><?= htmlspecialchars($casesCompletionRate . '%', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>.</p>
+        <?php endif; ?>
+        <?php if (empty($caseSummary)): ?>
+          <p class="empty-state">Nog geen cases aangemaakt.</p>
+        <?php else: ?>
+          <div class="modal__grid">
+            <?php foreach ($caseSummary as $type => $statuses): ?>
+              <article class="modal__card">
+                <h3><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $type)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <ul class="modal__list">
+                  <?php foreach ($statuses as $status => $count): ?>
+                    <li>
+                      <span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <strong><?= (int) $count ?></strong>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </article>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+      <footer class="modal__footer">
+        <p>Tip: filter op type om specifieke diensten sneller te analyseren.</p>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-warehouse" role="dialog" aria-modal="true" aria-labelledby="modalWarehouseTitle" hidden>
+    <div class="modal__overlay" data-modal-close></div>
+    <div class="modal__content" role="document">
+      <header class="modal__header">
+        <h2 id="modalWarehouseTitle">Magazijninzicht</h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="Sluit pop-up"><span aria-hidden="true">&times;</span></button>
+      </header>
+      <div class="modal__body">
+        <p>Het magazijn bevat <?= number_format($totalWarehouseItems, 0, ',', '.') ?> registraties met <?= number_format($warehouseReadyTotal, 0, ',', '.') ?> klaar voor uitgifte en <?= number_format($warehouseReservedTotal, 0, ',', '.') ?> gereserveerd.</p>
+        <ul class="modal__list modal__list--stacked">
+          <li><span>Beschikbaar</span><strong><?= number_format($warehouseAvailableTotal, 0, ',', '.') ?></strong></li>
+          <li><span>Klaar</span><strong><?= number_format($warehouseReadyTotal, 0, ',', '.') ?></strong></li>
+          <li><span>Gereserveerd</span><strong><?= number_format($warehouseReservedTotal, 0, ',', '.') ?></strong></li>
+        </ul>
+        <?php if (!empty($warehouseStatusCounts)): ?>
+          <div class="modal__grid modal__grid--compact">
+            <?php foreach ($warehouseStatusCounts as $status => $count): ?>
+              <div class="modal__stat">
+                <span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <strong><?= (int) $count ?></strong>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+      <footer class="modal__footer">
+        <p>Plan uitgiftes vanuit dit overzicht en stem af met het serviceteam.</p>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-notifications" role="dialog" aria-modal="true" aria-labelledby="modalNotificationsTitle" hidden>
+    <div class="modal__overlay" data-modal-close></div>
+    <div class="modal__content" role="document">
+      <header class="modal__header">
+        <h2 id="modalNotificationsTitle">Notificatiekanalen</h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="Sluit pop-up"><span aria-hidden="true">&times;</span></button>
+      </header>
+      <div class="modal__body">
+        <p>In de geselecteerde periode zijn <?= number_format($notificationTotal, 0, ',', '.') ?> meldingen verstuurd naar klanten.</p>
+        <?php if (empty($notificationsByChannel)): ?>
+          <p class="empty-state">Nog geen meldingen verzonden in deze periode.</p>
+        <?php else: ?>
+          <ul class="modal__list">
+            <?php foreach ($notificationsByChannel as $channel => $count): ?>
+              <li>
+                <span><?= htmlspecialchars(strtoupper((string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <strong><?= (int) $count ?></strong>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+        <p class="modal__note">Open meldingen: <strong><?= number_format($pendingNotifications, 0, ',', '.') ?></strong>.</p>
+      </div>
+      <footer class="modal__footer">
+        <p>Laat meldingen automatisch opvolgen of plan handmatige acties direct.</p>
+      </footer>
+    </div>
+  </div>
 
   <footer class="main-footer">
     <div class="container">
       <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
     </div>
   </footer>
+
+  <script>
+  (function() {
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    let activeModal = null;
+    let previousFocus = null;
+    const focusHandlers = new WeakMap();
+
+    function createTrapHandler(modal) {
+      return function(event) {
+        if (event.key !== 'Tab') {
+          return;
+        }
+
+        const focusable = modal.querySelectorAll(focusableSelector);
+        if (!focusable.length) {
+          event.preventDefault();
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+    }
+
+    function openModal(modal, trigger) {
+      if (!modal || activeModal === modal) {
+        return;
+      }
+
+      if (activeModal && activeModal !== modal) {
+        closeModal(activeModal, false);
+      }
+
+      previousFocus = trigger;
+      modal.removeAttribute('hidden');
+      requestAnimationFrame(() => {
+        modal.classList.add('modal--visible');
+      });
+      document.body.classList.add('has-modal');
+
+      const trapHandler = createTrapHandler(modal);
+      focusHandlers.set(modal, trapHandler);
+      modal.addEventListener('keydown', trapHandler);
+
+      const focusable = modal.querySelectorAll(focusableSelector);
+      const targetFocus = focusable.length ? focusable[0] : modal;
+      targetFocus.focus({ preventScroll: true });
+      activeModal = modal;
+    }
+
+    function closeModal(modal, restoreFocus = true) {
+      if (!modal) {
+        return;
+      }
+
+      modal.classList.remove('modal--visible');
+      const trapHandler = focusHandlers.get(modal);
+      if (trapHandler) {
+        modal.removeEventListener('keydown', trapHandler);
+        focusHandlers.delete(modal);
+      }
+
+      setTimeout(() => {
+        modal.setAttribute('hidden', '');
+      }, 220);
+
+      document.body.classList.remove('has-modal');
+
+      if (restoreFocus && previousFocus && typeof previousFocus.focus === 'function') {
+        previousFocus.focus({ preventScroll: true });
+      }
+
+      if (activeModal === modal) {
+        activeModal = null;
+      }
+    }
+
+    document.addEventListener('click', (event) => {
+      const openTrigger = event.target.closest('[data-modal-open]');
+      if (openTrigger) {
+        event.preventDefault();
+        const modalId = openTrigger.getAttribute('data-modal-open');
+        const modal = document.getElementById(modalId);
+        openModal(modal, openTrigger);
+        return;
+      }
+
+      const closeTrigger = event.target.closest('[data-modal-close]');
+      if (closeTrigger) {
+        const modal = closeTrigger.closest('.modal');
+        closeModal(modal);
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && activeModal) {
+        event.preventDefault();
+        closeModal(activeModal);
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
