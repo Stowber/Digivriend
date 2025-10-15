@@ -23,6 +23,10 @@ final class SchemaManager
             $pdo->exec($sql);
         }
 
+        if ($driver === 'sqlite') {
+            self::ensureSqliteIndexes($pdo);
+        }
+
         self::ensureOphaalbevestigingenTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
         self::ensureDataRecoveryTable($pdo);
@@ -170,7 +174,12 @@ final class SchemaManager
         $driver = self::databaseDriver($pdo);
 
         if ($driver === 'sqlite') {
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_warehouse_last_movement ON warehouse_items(last_movement_at)');
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'warehouse_items',
+                ['last_movement_at'],
+                'CREATE INDEX IF NOT EXISTS idx_warehouse_last_movement ON warehouse_items(last_movement_at)'
+            );
 
             return;
         }
@@ -271,7 +280,7 @@ final class SchemaManager
         ];
     }
 
-        private static function sqliteBaseStatements(): array
+    private static function sqliteBaseStatements(): array
     {
         return [
             <<<SQL
@@ -288,8 +297,6 @@ final class SchemaManager
                 last_interaction_at TEXT NULL
             )
             SQL,
-            'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers(email)',
-            'CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)',
             <<<SQL
             CREATE TABLE IF NOT EXISTS devices (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -304,7 +311,6 @@ final class SchemaManager
                 CONSTRAINT uniq_device_customer_serial UNIQUE (customer_id, serial_number)
             )
             SQL,
-            'CREATE INDEX IF NOT EXISTS idx_devices_customer ON devices(customer_id)',
             <<<SQL
             CREATE TABLE IF NOT EXISTS cases (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -323,9 +329,6 @@ final class SchemaManager
                 CONSTRAINT fk_cases_devices FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
             )
             SQL,
-            'CREATE INDEX IF NOT EXISTS idx_cases_customer ON cases(customer_id)',
-            'CREATE INDEX IF NOT EXISTS idx_cases_reference ON cases(reference_code)',
-            'CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status)',
             <<<SQL
             CREATE TABLE IF NOT EXISTS notes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -349,6 +352,46 @@ final class SchemaManager
             )
             SQL,
         ];
+    }
+
+    private static function ensureSqliteIndexes(PDO $pdo): void
+    {
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'customers',
+            ['email'],
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers(email)'
+        );
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'customers',
+            ['phone'],
+            'CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)'
+        );
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'devices',
+            ['customer_id'],
+            'CREATE INDEX IF NOT EXISTS idx_devices_customer ON devices(customer_id)'
+        );
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'cases',
+            ['customer_id'],
+            'CREATE INDEX IF NOT EXISTS idx_cases_customer ON cases(customer_id)'
+        );
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'cases',
+            ['reference_code'],
+            'CREATE INDEX IF NOT EXISTS idx_cases_reference ON cases(reference_code)'
+        );
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'cases',
+            ['status'],
+            'CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status)'
+        );
     }
 
     private static function postgresBaseStatements(): array
@@ -1411,10 +1454,30 @@ final class SchemaManager
                     CONSTRAINT fk_device_components_replacement FOREIGN KEY (replaced_by_component_id) REFERENCES device_components(id) ON DELETE SET NULL
                 )
             SQL);
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)');
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'device_components',
+                ['device_id'],
+                'CREATE INDEX IF NOT EXISTS idx_device_components_device ON device_components(device_id)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'device_components',
+                ['device_id', 'removed_at'],
+                'CREATE INDEX IF NOT EXISTS idx_device_components_status ON device_components(device_id, removed_at)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'device_components',
+                ['device_id', 'warranty_expires_at'],
+                'CREATE INDEX IF NOT EXISTS idx_device_components_warranty ON device_components(device_id, warranty_expires_at)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'device_components',
+                ['device_id', 'maintenance_interval_days'],
+                'CREATE INDEX IF NOT EXISTS idx_device_components_maintenance ON device_components(device_id, maintenance_interval_days)'
+            );
             return;
         }
 
@@ -1745,6 +1808,17 @@ final class SchemaManager
         }
 
         return false;
+    }
+
+    private static function createSqliteIndexIfColumnsExist(PDO $pdo, string $table, array $columns, string $sql): void
+    {
+        foreach ($columns as $column) {
+            if (!self::sqliteColumnExists($pdo, $table, $column)) {
+                return;
+            }
+        }
+
+        $pdo->exec($sql);
     }
 
     private static function quoteSqliteIdentifier(string $identifier): string
