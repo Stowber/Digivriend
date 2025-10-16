@@ -166,6 +166,18 @@ if ($upcomingAppointments !== []) {
     );
     $closestAppointment = $sortedAppointments[0];
 }
+$formatDateTime = static function ($value): string {
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    try {
+        return (new \DateTimeImmutable((string) $value))->format('d-m-Y H:i');
+    } catch (\Throwable $exception) {
+        return (string) $value;
+    }
+};
+$closestAppointmentStartDisplay = $closestAppointment ? $formatDateTime($closestAppointment['start_at'] ?? null) : null;
 $csrfToken = Csrf::token();
 
 ?><!DOCTYPE html>
@@ -239,7 +251,7 @@ $csrfToken = Csrf::token();
         <article class="stat-card">
           <span class="stat-card__label">Najbliższa wizyta</span>
           <?php if ($closestAppointment): ?>
-            <span class="stat-card__value"><?= htmlspecialchars((string) ($closestAppointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            <span class="stat-card__value"><?= htmlspecialchars((string) ($closestAppointmentStartDisplay ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             <span class="stat-card__meta"><?= htmlspecialchars((string) ($closestAppointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <?php else: ?>
             <span class="stat-card__value">—</span>
@@ -292,9 +304,10 @@ $csrfToken = Csrf::token();
           <?php else: ?>
             <ul>
               <?php foreach (array_slice($upcomingAppointments, 0, 4) as $appointment): ?>
+                <?php $startAtDisplay = $formatDateTime($appointment['start_at'] ?? null); ?>
                 <li>
                   <strong><?= htmlspecialchars((string) ($appointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                  <span class="muted"><?= htmlspecialchars((string) ($appointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <span class="muted"><?= htmlspecialchars($startAtDisplay, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                   <?php if (!empty($appointment['attendees'])): ?>
                     <span class="muted">Ekipa: <?= htmlspecialchars(implode(', ', array_map(static fn (array $attendee): string => (string) ($attendee['full_name'] ?? 'Pracownik'), $appointment['attendees'] ?? [])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                   <?php endif; ?>
@@ -486,8 +499,9 @@ $csrfToken = Csrf::token();
             </thead>
             <tbody>
               <?php foreach ($upcomingAppointments as $appointment): ?>
+                <?php $startAtDisplay = $formatDateTime($appointment['start_at'] ?? null); ?>
                 <tr>
-                  <td><?= htmlspecialchars((string) ($appointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                   <td><?= htmlspecialchars($startAtDisplay, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string) ($appointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td>
                     <?php if (empty($appointment['attendees'])): ?>

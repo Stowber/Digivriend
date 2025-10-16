@@ -1,14 +1,14 @@
 :root {
-  --surface-glass: rgba(255, 255, 255, 0.08);
-  --surface-glass-strong: rgba(255, 255, 255, 0.16);
-  --surface-panel: rgba(13, 17, 23, 0.6);
+   --surface-glass: rgba(28, 43, 82, 0.85);
+  --surface-glass-strong: rgba(33, 54, 102, 0.92);
+  --surface-panel: rgba(23, 38, 82, 0.95);
   --accent-primary: #3c7df0;
   --accent-secondary: #8a5cf6;
   --accent-success: #3fcf8e;
-  --text-light: rgba(255, 255, 255, 0.92);
-  --text-muted: rgba(255, 255, 255, 0.65);
-  --border-soft: rgba(255, 255, 255, 0.18);
-  --shadow-elevated: 0 24px 45px rgba(17, 24, 39, 0.35);
+  --text-light: #ffffff;
+  --text-muted: rgba(229, 236, 255, 0.88);
+  --border-soft: rgba(144, 176, 255, 0.45);
+  --shadow-elevated: 0 20px 48px rgba(8, 15, 35, 0.55);
 }
 
 body.page--calendar,
@@ -19,7 +19,7 @@ body.page--employees {
   flex-direction: column;
   font-family: 'Inter', 'Segoe UI', sans-serif;
   color: var(--text-light);
-  background: radial-gradient(160% 140% at 15% 20%, #1a3b6f 0%, #0b1730 55%, #040611 100%);
+  background: radial-gradient(160% 140% at 15% 20%, #254f9f 0%, #172d5c 55%, #080f27 100%);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -248,7 +248,7 @@ body.page--employees {
 }
 
 .panel-card li {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.16);
   border-radius: 14px;
   padding: 0.75rem 1rem;
   display: flex;
@@ -272,14 +272,15 @@ body.page--employees {
   font-size: 0.95rem;
   color: #fff;
   text-decoration: none;
-  background: rgba(60, 125, 240, 0.3);
+  background: rgba(60, 125, 240, 0.45);
   backdrop-filter: blur(6px);
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .panel-card__action button:hover,
 .panel-card__action a:hover {
-  background: rgba(138, 92, 246, 0.45);
+  background: rgba(138, 92, 246, 0.65);
+  box-shadow: 0 10px 20px rgba(60, 125, 240, 0.35);
 }
 
 .attendee-list {
@@ -305,15 +306,15 @@ body.page--employees {
   border-radius: 18px;
   color: inherit;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.16);
   border: 1px solid transparent;
-  transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .people-grid a:hover {
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(184, 213, 255, 0.75);
   transform: translateY(-2px);
-  background: rgba(60, 125, 240, 0.25);
+  background: rgba(60, 125, 240, 0.35);
 }
 
 .people-grid .is-active,
@@ -462,11 +463,11 @@ body.modal-open {
 .inline-form {
   display: grid;
   gap: 1.6rem;
-  background: rgba(9, 13, 28, 0.78);
+  background: var(--surface-glass-strong);
   border-radius: 22px;
   padding: 1.8rem;
-  border: 1px solid rgba(122, 146, 240, 0.22);
-  box-shadow: 0 16px 40px rgba(5, 9, 20, 0.45);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 18px 44px rgba(6, 12, 28, 0.5);
 }
 
 .form-card .form-grid,
@@ -497,8 +498,8 @@ body.modal-open {
 .form-field input,
 .form-field select,
 .form-field textarea {
-  background: rgba(5, 9, 24, 0.72);
-  border: 1px solid rgba(125, 146, 255, 0.28);
+  background: rgba(29, 46, 98, 0.9);
+  border: 1px solid rgba(154, 183, 255, 0.55);
   border-radius: 14px;
   padding: 0.75rem 1rem;
   color: var(--text-light);
@@ -514,16 +515,16 @@ body.modal-open {
 
 .form-field input::placeholder,
 .form-field textarea::placeholder {
-  color: rgba(236, 242, 255, 0.48);
+  color: rgba(236, 242, 255, 0.68);
 }
 
 .form-field input:focus,
 .form-field select:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: rgba(132, 204, 255, 0.65);
-  background: rgba(9, 15, 32, 0.88);
-  box-shadow: 0 0 0 3px rgba(88, 144, 255, 0.22);
+  border-color: rgba(184, 213, 255, 0.85);
+  background: rgba(36, 58, 118, 0.95);
+  box-shadow: 0 0 0 3px rgba(120, 165, 255, 0.28);
 }
 
 .form-card h3 {
@@ -553,27 +554,27 @@ body.modal-open {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.9rem;
-  background: rgba(7, 12, 30, 0.7);
+  background: var(--surface-glass);
   padding: 1.2rem;
   border-radius: 18px;
-  border: 1px solid rgba(122, 146, 240, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .permissions-grid label {
   display: flex;
   align-items: center;
-   gap: 0.7rem;
+  gap: 0.7rem;
   padding: 0.85rem 1rem;
   border-radius: 14px;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.03);
-  transition: border-color 0.2s ease, background 0.2s ease;
+  background: rgba(255, 255, 255, 0.12);
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .permissions-grid label:hover {
-  border-color: rgba(132, 204, 255, 0.45);
-  background: rgba(19, 30, 72, 0.55);
+  border-color: rgba(184, 213, 255, 0.75);
+  background: rgba(64, 90, 155, 0.65);
 }
 
 .permissions-grid input[type="checkbox"] {
@@ -660,11 +661,11 @@ body.modal-open {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-muted);
+  color: var(--text-light);
 }
 
 .table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(143, 176, 255, 0.16);
 }
 
 .muted {
