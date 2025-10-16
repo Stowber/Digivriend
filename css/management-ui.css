@@ -435,6 +435,29 @@ body.page--employees {
   display: grid;
   gap: 1.6rem;
   background: radial-gradient(140% 160% at 18% 12%, rgba(43, 67, 124, 0.22), transparent 65%);
+  color: var(--text-light);
+}
+
+.modal__body .table th,
+.modal__body .table td {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.modal__body .table thead th {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.modal__body .table tbody tr:hover {
+  background: rgba(143, 176, 255, 0.22);
+}
+
+.modal__body .btn-link {
+  color: #9cb7ff;
+}
+
+.modal__body .btn-link:hover,
+.modal__body .btn-link:focus {
+  color: #c4d6ff;
 }
 
 .modal__footer {

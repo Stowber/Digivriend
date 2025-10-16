@@ -273,6 +273,7 @@ if ($trendData !== []) {
         <div class="hero__actions">
           <a class="btn" href="ophaalbevestiging.php">Nieuwe ophaalbevestiging</a>
           <a class="btn btn--ghost" href="klant-melding.php">Nieuwe klantmelding</a>
+          <a class="btn btn--ghost" href="netwerkcheck-brief.php">LIST</a>
         </div>
         <form method="GET" class="dashboard__filters" aria-label="Dashboardfilters">
           <div class="dashboard__filter">
