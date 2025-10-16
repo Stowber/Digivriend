@@ -150,6 +150,22 @@ if (isset($_SESSION['calendar_messages'])) {
 
 $now = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 $upcomingAppointments = $appointmentRepository->upcoming($now, null, $employeeFilter, $statusFilter, 25);
+$totalAttendees = array_reduce(
+    $upcomingAppointments,
+    static fn (int $carry, array $appointment): int => $carry + count($appointment['attendees'] ?? []),
+    0
+);
+$closestAppointment = null;
+if ($upcomingAppointments !== []) {
+    $sortedAppointments = $upcomingAppointments;
+    usort(
+        $sortedAppointments,
+        static function (array $first, array $second): int {
+            return strcmp((string) ($first['start_at'] ?? ''), (string) ($second['start_at'] ?? ''));
+        }
+    );
+    $closestAppointment = $sortedAppointments[0];
+}
 $csrfToken = Csrf::token();
 
 ?><!DOCTYPE html>
