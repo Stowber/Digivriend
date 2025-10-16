@@ -36,6 +36,9 @@ final class SchemaManager
         self::ensureDocumentsTable($pdo);
         self::ensureDeviceEnhancements($pdo);
         self::ensureWarehouseTables($pdo);
+        self::ensureEmployeeTables($pdo);
+        self::ensureCaseEnhancements($pdo);
+        self::ensureCalendarTables($pdo);
 
         self::ensureOphaalbevestigingColumns($pdo);
         self::ensureReparatieOnderzoekColumns($pdo);
@@ -198,6 +201,659 @@ final class SchemaManager
         self::ensureWarehouseItemsTable($pdo);
         self::ensureWarehouseMovementsTable($pdo);
         self::ensureWarehouseIndexes($pdo);
+    }
+
+    private static function ensureEmployeesTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS employees (
+                    id SERIAL PRIMARY KEY,
+                    full_name VARCHAR(191) NOT NULL,
+                    email VARCHAR(191) NULL,
+                    phone VARCHAR(64) NULL,
+                    role VARCHAR(64) NOT NULL DEFAULT 'staff',
+                    department VARCHAR(120) NULL,
+                    position VARCHAR(120) NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'active',
+                    color VARCHAR(16) NULL,
+                    timezone VARCHAR(64) NULL,
+                    permissions JSONB NULL,
+                    notes TEXT NULL,
+                    hired_at DATE NULL,
+                    terminated_at DATE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL);
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS uniq_employees_email ON employees(email)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS employees (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    full_name TEXT NOT NULL,
+                    email TEXT NULL,
+                    phone TEXT NULL,
+                    role TEXT NOT NULL DEFAULT 'staff',
+                    department TEXT NULL,
+                    position TEXT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    color TEXT NULL,
+                    timezone TEXT NULL,
+                    permissions TEXT NULL,
+                    notes TEXT NULL,
+                    hired_at TEXT NULL,
+                    terminated_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL);
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees(email)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS employees (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                full_name VARCHAR(191) NOT NULL,
+                email VARCHAR(191) NULL,
+                phone VARCHAR(64) NULL,
+                role VARCHAR(64) NOT NULL DEFAULT 'staff',
+                department VARCHAR(120) NULL,
+                position VARCHAR(120) NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'active',
+                color VARCHAR(16) NULL,
+                timezone VARCHAR(64) NULL,
+                permissions TEXT NULL,
+                notes TEXT NULL,
+                hired_at DATE NULL,
+                terminated_at DATE NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_employees_email (email),
+                INDEX idx_employees_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureEmployeeAvailabilityTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS employee_availability (
+                    id SERIAL PRIMARY KEY,
+                    employee_id INT NOT NULL,
+                    availability_type VARCHAR(32) NOT NULL,
+                    reason VARCHAR(191) NULL,
+                    start_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    end_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_employee_availability_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_availability_employee ON employee_availability(employee_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_availability_window ON employee_availability(start_at, end_at)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS employee_availability (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id INTEGER NOT NULL,
+                    availability_type TEXT NOT NULL,
+                    reason TEXT NULL,
+                    start_at TEXT NOT NULL,
+                    end_at TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_employee_availability_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_availability_employee ON employee_availability(employee_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_availability_window ON employee_availability(start_at, end_at)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS employee_availability (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NOT NULL,
+                availability_type VARCHAR(32) NOT NULL,
+                reason VARCHAR(191) NULL,
+                start_at DATETIME NOT NULL,
+                end_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_employee_availability_employee (employee_id),
+                INDEX idx_employee_availability_window (start_at, end_at),
+                CONSTRAINT fk_employee_availability_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureEmployeeAuditTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS employee_audit_log (
+                    id SERIAL PRIMARY KEY,
+                    employee_id INT NULL,
+                    action VARCHAR(120) NOT NULL,
+                    context JSONB NULL,
+                    performed_by VARCHAR(120) NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_employee_audit_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_audit_employee ON employee_audit_log(employee_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_audit_action ON employee_audit_log(action)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS employee_audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    employee_id INTEGER NULL,
+                    action TEXT NOT NULL,
+                    context TEXT NULL,
+                    performed_by TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_employee_audit_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_audit_employee ON employee_audit_log(employee_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_employee_audit_action ON employee_audit_log(action)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS employee_audit_log (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT UNSIGNED NULL,
+                action VARCHAR(120) NOT NULL,
+                context TEXT NULL,
+                performed_by VARCHAR(120) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_employee_audit_employee (employee_id),
+                INDEX idx_employee_audit_action (action),
+                CONSTRAINT fk_employee_audit_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureCaseAssignmentsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_assignments (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NOT NULL,
+                    employee_id INT NOT NULL,
+                    assignment_type VARCHAR(32) NOT NULL DEFAULT 'primary',
+                    assigned_by VARCHAR(120) NULL,
+                    assigned_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    unassigned_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    notes TEXT NULL,
+                    CONSTRAINT fk_case_assignments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_case_assignments_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_case_assignments_case ON case_assignments(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_case_assignments_employee ON case_assignments(employee_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_case_assignments_type ON case_assignments(assignment_type)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_assignments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NOT NULL,
+                    employee_id INTEGER NOT NULL,
+                    assignment_type TEXT NOT NULL DEFAULT 'primary',
+                    assigned_by TEXT NULL,
+                    assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    unassigned_at TEXT NULL,
+                    notes TEXT NULL,
+                    CONSTRAINT fk_case_assignments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_case_assignments_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_case_assignments_case ON case_assignments(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_case_assignments_employee ON case_assignments(employee_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_case_assignments_type ON case_assignments(assignment_type)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS case_assignments (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NOT NULL,
+                employee_id INT UNSIGNED NOT NULL,
+                assignment_type VARCHAR(32) NOT NULL DEFAULT 'primary',
+                assigned_by VARCHAR(120) NULL,
+                assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                unassigned_at TIMESTAMP NULL DEFAULT NULL,
+                notes TEXT NULL,
+                INDEX idx_case_assignments_case (case_id),
+                INDEX idx_case_assignments_employee (employee_id),
+                INDEX idx_case_assignments_type (assignment_type),
+                CONSTRAINT fk_case_assignments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                CONSTRAINT fk_case_assignments_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureCasePriorityColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec('ALTER TABLE cases ADD COLUMN IF NOT EXISTS priority VARCHAR(32)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_cases_priority ON cases(priority)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'cases', 'priority', 'TEXT');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_cases_priority ON cases(priority)');
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            "ALTER TABLE cases ADD COLUMN priority VARCHAR(32) NULL AFTER status",
+            ['duplicate column']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'CREATE INDEX idx_cases_priority ON cases(priority)',
+            ['duplicate', 'exists']
+        );
+    }
+
+    private static function ensureCaseSlaColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec('ALTER TABLE cases ADD COLUMN IF NOT EXISTS sla_due_at TIMESTAMP WITHOUT TIME ZONE NULL');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_cases_sla_due ON cases(sla_due_at)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'cases', 'sla_due_at', 'TEXT');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_cases_sla_due ON cases(sla_due_at)');
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            "ALTER TABLE cases ADD COLUMN sla_due_at DATETIME NULL AFTER priority",
+            ['duplicate column']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'CREATE INDEX idx_cases_sla_due ON cases(sla_due_at)',
+            ['duplicate', 'exists']
+        );
+    }
+
+    private static function ensureCasePrimaryEmployeeColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec('ALTER TABLE cases ADD COLUMN IF NOT EXISTS primary_employee_id INT NULL');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_cases_primary_employee ON cases(primary_employee_id)');
+
+            try {
+                $pdo->exec('ALTER TABLE cases ADD CONSTRAINT fk_cases_primary_employee FOREIGN KEY (primary_employee_id) REFERENCES employees(id) ON DELETE SET NULL');
+            } catch (PDOException $exception) {
+                if (!self::containsKeyword($exception, ['already exists', 'duplicate'])) {
+                    throw $exception;
+                }
+            }
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'cases', 'primary_employee_id', 'INTEGER');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_cases_primary_employee ON cases(primary_employee_id)');
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            "ALTER TABLE cases ADD COLUMN primary_employee_id INT UNSIGNED NULL AFTER sla_due_at",
+            ['duplicate column']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'CREATE INDEX idx_cases_primary_employee ON cases(primary_employee_id)',
+            ['duplicate', 'exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE cases ADD CONSTRAINT fk_cases_primary_employee FOREIGN KEY (primary_employee_id) REFERENCES employees(id) ON DELETE SET NULL',
+            ['duplicate', 'already exists']
+        );
+    }
+
+    private static function ensureAppointmentsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointments (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NULL,
+                    customer_id INT NULL,
+                    title VARCHAR(191) NOT NULL,
+                    appointment_type VARCHAR(64) NOT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'tentative',
+                    start_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    end_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                    location VARCHAR(191) NULL,
+                    notes TEXT NULL,
+                    color VARCHAR(16) NULL,
+                    confirmation_method VARCHAR(64) NULL,
+                    customer_confirmation_status VARCHAR(32) NULL,
+                    customer_confirmed_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_by VARCHAR(120) NULL,
+                    updated_by VARCHAR(120) NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    resources JSONB NULL,
+                    CONSTRAINT fk_appointments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_period ON appointments(start_at, end_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NULL,
+                    customer_id INTEGER NULL,
+                    title TEXT NOT NULL,
+                    appointment_type TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'tentative',
+                    start_at TEXT NOT NULL,
+                    end_at TEXT NOT NULL,
+                    location TEXT NULL,
+                    notes TEXT NULL,
+                    color TEXT NULL,
+                    confirmation_method TEXT NULL,
+                    customer_confirmation_status TEXT NULL,
+                    customer_confirmed_at TEXT NULL,
+                    created_by TEXT NULL,
+                    updated_by TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    resources TEXT NULL,
+                    CONSTRAINT fk_appointments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_period ON appointments(start_at, end_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NULL,
+                customer_id INT UNSIGNED NULL,
+                title VARCHAR(191) NOT NULL,
+                appointment_type VARCHAR(64) NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'tentative',
+                start_at DATETIME NOT NULL,
+                end_at DATETIME NOT NULL,
+                location VARCHAR(191) NULL,
+                notes TEXT NULL,
+                color VARCHAR(16) NULL,
+                confirmation_method VARCHAR(64) NULL,
+                customer_confirmation_status VARCHAR(32) NULL,
+                customer_confirmed_at DATETIME NULL,
+                created_by VARCHAR(120) NULL,
+                updated_by VARCHAR(120) NULL,
+                resources TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_appointments_period (start_at, end_at),
+                INDEX idx_appointments_status (status),
+                CONSTRAINT fk_appointments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL,
+                CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureAppointmentAttendeesTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointment_attendees (
+                    id SERIAL PRIMARY KEY,
+                    appointment_id INT NOT NULL,
+                    employee_id INT NOT NULL,
+                    attendee_role VARCHAR(64) NULL,
+                    is_required BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_attendees_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_attendees_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_attendees_appointment ON appointment_attendees(appointment_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_attendees_employee ON appointment_attendees(employee_id)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointment_attendees (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    appointment_id INTEGER NOT NULL,
+                    employee_id INTEGER NOT NULL,
+                    attendee_role TEXT NULL,
+                    is_required INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_attendees_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_attendees_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_attendees_appointment ON appointment_attendees(appointment_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_attendees_employee ON appointment_attendees(employee_id)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS appointment_attendees (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                appointment_id INT UNSIGNED NOT NULL,
+                employee_id INT UNSIGNED NOT NULL,
+                attendee_role VARCHAR(64) NULL,
+                is_required TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_attendees_appointment (appointment_id),
+                INDEX idx_attendees_employee (employee_id),
+                CONSTRAINT fk_attendees_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+                CONSTRAINT fk_attendees_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureAppointmentResourcesTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointment_resources (
+                    id SERIAL PRIMARY KEY,
+                    appointment_id INT NOT NULL,
+                    resource_type VARCHAR(64) NOT NULL,
+                    resource_label VARCHAR(191) NOT NULL,
+                    details JSONB NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_resources_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_resources_appointment ON appointment_resources(appointment_id)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointment_resources (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    appointment_id INTEGER NOT NULL,
+                    resource_type TEXT NOT NULL,
+                    resource_label TEXT NOT NULL,
+                    details TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_resources_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_resources_appointment ON appointment_resources(appointment_id)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS appointment_resources (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                appointment_id INT UNSIGNED NOT NULL,
+                resource_type VARCHAR(64) NOT NULL,
+                resource_label VARCHAR(191) NOT NULL,
+                details TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_resources_appointment (appointment_id),
+                CONSTRAINT fk_resources_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureAppointmentNotificationsTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointment_notifications (
+                    id SERIAL PRIMARY KEY,
+                    appointment_id INT NOT NULL,
+                    channel VARCHAR(32) NOT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                    scheduled_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    sent_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    error TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_notification_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointment_notifications_status ON appointment_notifications(status)');
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS appointment_notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    appointment_id INTEGER NOT NULL,
+                    channel TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    scheduled_at TEXT NULL,
+                    sent_at TEXT NULL,
+                    error TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_notification_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointment_notifications_status ON appointment_notifications(status)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS appointment_notifications (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                appointment_id INT UNSIGNED NOT NULL,
+                channel VARCHAR(32) NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                scheduled_at DATETIME NULL,
+                sent_at DATETIME NULL,
+                error TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_appointment_notifications_status (status),
+                CONSTRAINT fk_notification_appointment FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureEmployeeTables(PDO $pdo): void
+    {
+        self::ensureEmployeesTable($pdo);
+        self::ensureEmployeeAvailabilityTable($pdo);
+        self::ensureEmployeeAuditTable($pdo);
+        self::ensureCaseAssignmentsTable($pdo);
+    }
+
+    private static function ensureCaseEnhancements(PDO $pdo): void
+    {
+        self::ensureCasePriorityColumn($pdo);
+        self::ensureCaseSlaColumn($pdo);
+        self::ensureCasePrimaryEmployeeColumn($pdo);
+    }
+
+    private static function ensureCalendarTables(PDO $pdo): void
+    {
+        self::ensureAppointmentsTable($pdo);
+        self::ensureAppointmentAttendeesTable($pdo);
+        self::ensureAppointmentResourcesTable($pdo);
+        self::ensureAppointmentNotificationsTable($pdo);
     }
 
     private static function mysqlBaseStatements(): array

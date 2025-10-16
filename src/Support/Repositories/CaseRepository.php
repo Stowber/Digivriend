@@ -54,7 +54,6 @@ final class CaseRepository
     public function updateStatus(int $caseId, string $status): void
     {   
         $shouldClose = in_array($status, ['opgehaald', 'gesloten'], true);
-
         $statement = $this->pdo->prepare(
             'UPDATE cases SET status = :status, closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END WHERE id = :id'
         );
@@ -133,6 +132,100 @@ final class CaseRepository
         $statement->execute();
 
         return $statement->fetchAll() ?: [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function assignments(int $caseId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT ca.*, e.full_name, e.role
+             FROM case_assignments ca
+             INNER JOIN employees e ON e.id = ca.employee_id
+             WHERE ca.case_id = :case_id
+             ORDER BY ca.assigned_at DESC'
+        );
+        $statement->execute(['case_id' => $caseId]);
+
+        return $statement->fetchAll() ?: [];
+    }
+
+    /**
+     * @param array<int, array{employee_id:int, type:string, notes?:string|null}> $assignments
+     */
+    public function syncAssignments(int $caseId, array $assignments, string $assignedBy): void
+    {
+        $currentAssignments = $this->assignments($caseId);
+        $activeMap = [];
+
+        foreach ($currentAssignments as $assignment) {
+            if (!empty($assignment['unassigned_at'])) {
+                continue;
+            }
+
+            $key = $assignment['employee_id'] . ':' . ($assignment['assignment_type'] ?? 'primary');
+            $activeMap[$key] = $assignment;
+        }
+
+        $newKeys = [];
+        foreach ($assignments as $entry) {
+            $employeeId = (int) ($entry['employee_id'] ?? 0);
+            if ($employeeId <= 0) {
+                continue;
+            }
+
+            $type = trim((string) ($entry['type'] ?? 'primary'));
+            if ($type === '') {
+                $type = 'primary';
+            }
+            $notes = isset($entry['notes']) ? trim((string) $entry['notes']) : null;
+            $key = $employeeId . ':' . $type;
+            $newKeys[$key] = true;
+
+            if (isset($activeMap[$key])) {
+                continue;
+            }
+
+            $insert = $this->pdo->prepare(
+                'INSERT INTO case_assignments (case_id, employee_id, assignment_type, assigned_by, notes)
+                 VALUES (:case_id, :employee_id, :type, :assigned_by, :notes)'
+            );
+            $insert->execute([
+                'case_id' => $caseId,
+                'employee_id' => $employeeId,
+                'type' => $type,
+                'assigned_by' => $assignedBy,
+                'notes' => $notes,
+            ]);
+        }
+
+        foreach ($activeMap as $key => $assignment) {
+            if (isset($newKeys[$key])) {
+                continue;
+            }
+
+            $update = $this->pdo->prepare('UPDATE case_assignments SET unassigned_at = CURRENT_TIMESTAMP WHERE id = :id');
+            $update->execute(['id' => $assignment['id']]);
+        }
+    }
+
+    public function updateMeta(int $caseId, ?string $priority, ?string $slaDueAt, ?int $primaryEmployeeId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE cases
+             SET priority = :priority,
+                 sla_due_at = :sla_due_at,
+                 primary_employee_id = :primary_employee_id,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $caseId,
+            'priority' => $priority !== null && $priority !== '' ? $priority : null,
+            'sla_due_at' => $slaDueAt !== null && $slaDueAt !== '' ? $slaDueAt : null,
+            'primary_employee_id' => $primaryEmployeeId,
+        ]);
     }
 
     private function updateCase(int $caseId, string $status, ?string $summary, array $details): void

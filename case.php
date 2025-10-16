@@ -8,13 +8,17 @@ use App\Security\Auth;
 use App\Security\Csrf;
 use App\Support\Audit\AuditLogger;
 use App\Support\Checklist\ChecklistRepository;
+use App\Support\Repositories\AppointmentRepository;
 use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\EmployeeRepository;
 use App\Support\Repositories\NoteRepository;
 use App\Support\Repositories\WarehouseRepository;
 use App\Validation\InputValidator;
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
+require_once __DIR__ . '/templates/partials/main-nav.php';
+require_once __DIR__ . '/templates/partials/field-help.php';
 
 $caseId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 if ($caseId === null || $caseId === false) {
@@ -26,6 +30,8 @@ $noteRepository = new NoteRepository($pdo);
 $checklistRepository = new ChecklistRepository($pdo);
 $auditLogger = new AuditLogger($pdo);
 $warehouseRepository = new WarehouseRepository($pdo);
+$employeeRepository = new EmployeeRepository($pdo);
+$appointmentRepository = new AppointmentRepository($pdo);
 
 $case = $caseRepository->findById((int) $caseId);
 if ($case === null) {
@@ -82,6 +88,21 @@ if (!empty($caseRecord['details'])) {
         $caseDetails = $decoded;
     }
 }
+
+$priorityValue = (string) ($caseRecord['priority'] ?? '');
+$slaDueInputValue = '';
+if (!empty($caseRecord['sla_due_at'])) {
+    $slaDueInputValue = date('Y-m-d\TH:i', strtotime((string) $caseRecord['sla_due_at']));
+}
+$primaryEmployeeValue = $caseRecord['primary_employee_id'] ?? null;
+
+$activeEmployees = $employeeRepository->all('active');
+$caseAssignments = $caseRepository->assignments((int) $caseId);
+$caseAppointments = $appointmentRepository->forCase((int) $caseId);
+$activeCaseAssignments = array_values(array_filter(
+    $caseAssignments,
+    static fn (array $assignment): bool => empty($assignment['unassigned_at'])
+));
 
 $errors = [];
 $checklistErrors = [];
@@ -166,6 +187,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $checklistRepository->removeChecklist((int) $checklistId);
                 $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'checklist_removed', ['checklist_id' => (int) $checklistId]);
                 break;
+
+                case 'update-case-meta':
+                $priorityRaw = InputValidator::optionalString($_POST, 'priority', 32);
+                $priority = $priorityRaw !== '' ? strtolower($priorityRaw) : null;
+                if ($priority !== null && !in_array($priority, ['low', 'normal', 'high', 'critical'], true)) {
+                    throw new ValidationException(['priority' => 'Nieobsługiwany priorytet.']);
+                }
+
+                $slaDueRaw = InputValidator::optionalString($_POST, 'sla_due_at', 32);
+                $slaDueAt = null;
+                if ($slaDueRaw !== '') {
+                    $slaDate = date_create_immutable($slaDueRaw);
+                    if (!$slaDate instanceof \DateTimeImmutable) {
+                        throw new ValidationException(['sla_due_at' => 'Nieprawidłowy format daty.']);
+                    }
+                    $slaDueAt = $slaDate->format('Y-m-d H:i:s');
+                }
+
+                $primaryEmployee = filter_var($_POST['primary_employee_id'] ?? null, FILTER_VALIDATE_INT);
+                if ($primaryEmployee && !$employeeRepository->find((int) $primaryEmployee)) {
+                    throw new ValidationException(['primary_employee_id' => 'Wybrany pracownik nie istnieje.']);
+                }
+
+                $assignmentPayload = $_POST['assignments'] ?? [];
+                $assignmentRows = [];
+                if (is_array($assignmentPayload)) {
+                    foreach ($assignmentPayload as $row) {
+                        if (!is_array($row)) {
+                            continue;
+                        }
+                        $employeeId = filter_var($row['employee_id'] ?? null, FILTER_VALIDATE_INT);
+                        if (!$employeeId) {
+                            continue;
+                        }
+                        $type = isset($row['type']) ? trim((string) $row['type']) : 'primary';
+                        $notes = isset($row['notes']) ? trim((string) $row['notes']) : null;
+                        $assignmentRows[] = [
+                            'employee_id' => (int) $employeeId,
+                            'type' => $type !== '' ? $type : 'primary',
+                            'notes' => $notes,
+                        ];
+                    }
+                }
+
+                $caseRepository->updateMeta((int) $caseId, $priority, $slaDueAt, $primaryEmployee ?: null);
+                $caseRepository->syncAssignments((int) $caseId, $assignmentRows, Auth::username());
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'case_meta_updated', [
+                    'priority' => $priority,
+                    'sla_due_at' => $slaDueAt,
+                    'primary_employee_id' => $primaryEmployee,
+                    'assignments' => array_map(static fn (array $row): array => ['employee_id' => $row['employee_id'], 'type' => $row['type']], $assignmentRows),
+                ]);
+                break;
             default:
                 throw new ValidationException(['general' => 'Onbekende actie.']);
         }
@@ -216,23 +290,16 @@ $checklists = $checklistRepository->forCase((int) $caseId);
         </span>
       </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
-        <ul>
-          <li><a href="index.php">Dashboard</a></li>
-          <li><a href="devices.php">Klanten &amp; apparaten</a></li>
-          <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
-          <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
-          <li><a href="data-recovery.php">Data Recovery</a></li>
-          <li><a href="klant-melding.php">Klant Melding</a></li>
-           <li><a href="documents.php">Documenten</a></li>
-           <li><a href="magazyn.php">Magazyn</a></li>
-          <li class="main-nav__spacer" aria-hidden="true"></li>
-          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
-        </ul>
+        <?php render_main_nav('repairs'); ?>
       </nav>
     </div>
   </header>
 
   <main class="container case-view">
+    <?php if (!empty($errors['general'])): ?>
+      <?php $generalMessage = is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general']; ?>
+      <div class="alert alert--danger"><?= htmlspecialchars($generalMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+    <?php endif; ?>
     <section class="case-overview">
       <div>
         <h1>Case #<?= (int) $caseId ?> · <?= htmlspecialchars((string) $caseRecord['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
@@ -242,6 +309,125 @@ $checklists = $checklistRepository->forCase((int) $caseId);
         <p>Laatst bijgewerkt: <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $caseRecord['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <p>Referentie: <?= htmlspecialchars((string) $caseRecord['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
+    </section>
+
+    <section class="case-staff">
+      <article class="info-card info-card--wide">
+        <h2>Zespół i priorytety</h2>
+        <form method="post" class="case-meta-form">
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="action" value="update-case-meta">
+          <div class="form-grid">
+            <label class="form-field">
+              <span class="form-field__label">Priorytet</span>
+              <select name="priority">
+                <?php $priorityOptions = ['' => 'Domyślny', 'low' => 'Niski', 'normal' => 'Normalny', 'high' => 'Wysoki', 'critical' => 'Krytyczny']; ?>
+                <?php foreach ($priorityOptions as $key => $label): ?>
+                  <option value="<?= htmlspecialchars($key, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $priorityValue === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php if (!empty($errors['priority'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Termin SLA</span>
+              <input type="datetime-local" name="sla_due_at" value="<?= htmlspecialchars($slaDueInputValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <?php if (!empty($errors['sla_due_at'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['sla_due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Główny technik</span>
+              <select name="primary_employee_id">
+                <option value="">—</option>
+                <?php foreach ($activeEmployees as $employee): ?>
+                  <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
+                  <option value="<?= $employeeId ?>"<?= $primaryEmployeeValue === $employeeId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php if (!empty($errors['primary_employee_id'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['primary_employee_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+          </div>
+
+          <div class="assignments-editor">
+            <h3>Przypisani pracownicy</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Pracownik</th>
+                  <th>Rola</th>
+                  <th>Notatki</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php $assignmentRowsCount = max(count($activeCaseAssignments) + 1, 3); ?>
+                <?php for ($i = 0; $i < $assignmentRowsCount; $i++): ?>
+                  <?php $rowData = $activeCaseAssignments[$i] ?? ['employee_id' => '', 'assignment_type' => 'primary', 'notes' => '']; ?>
+                  <tr>
+                    <td>
+                      <select name="assignments[<?= $i ?>][employee_id]">
+                        <option value="">—</option>
+                        <?php foreach ($activeEmployees as $employee): ?>
+                          <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
+                          <option value="<?= $employeeId ?>"<?= (int) ($rowData['employee_id'] ?? 0) === $employeeId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                    </td>
+                    <td>
+                      <?php $assignmentType = (string) ($rowData['assignment_type'] ?? 'primary'); ?>
+                      <select name="assignments[<?= $i ?>][type]">
+                        <option value="primary"<?= $assignmentType === 'primary' ? ' selected' : '' ?>>Główny</option>
+                        <option value="assistant"<?= $assignmentType === 'assistant' ? ' selected' : '' ?>>Wsparcie</option>
+                        <option value="observer"<?= $assignmentType === 'observer' ? ' selected' : '' ?>>Obserwator</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input type="text" name="assignments[<?= $i ?>][notes]" value="<?= htmlspecialchars((string) ($rowData['notes'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="191" placeholder="Uwagi">
+                    </td>
+                  </tr>
+                <?php endfor; ?>
+              </tbody>
+            </table>
+          </div>
+          <button type="submit" class="btn btn--primary">Zapisz zespół</button>
+        </form>
+      </article>
+
+      <article class="info-card info-card--wide">
+        <h2>Wizyty dla case #<?= (int) $caseId ?></h2>
+        <?php if ($caseAppointments === []): ?>
+          <p class="muted">Brak zaplanowanych wizyt dla tego zlecenia.</p>
+        <?php else: ?>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Termin</th>
+                <th>Tytuł</th>
+                <th>Pracownicy</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($caseAppointments as $appointment): ?>
+                <tr>
+                  <td><?= htmlspecialchars((string) ($appointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars((string) ($appointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td>
+                    <?php if (empty($appointment['attendees'])): ?>
+                      <span class="muted">—</span>
+                    <?php else: ?>
+                      <ul class="attendee-list">
+                        <?php foreach ($appointment['attendees'] as $attendee): ?>
+                          <li><?= htmlspecialchars((string) ($attendee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                        <?php endforeach; ?>
+                      </ul>
+                    <?php endif; ?>
+                  </td>
+                  <td><?= htmlspecialchars((string) ($appointment['status'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php endif; ?>
+        <a class="btn btn--ghost" href="calendar.php?case=<?= (int) $caseId ?>">Zaplanuj wizytę</a>
+      </article>
     </section>
 
     <section class="case-grid">
@@ -523,5 +709,6 @@ $checklists = $checklistRepository->forCase((int) $caseId);
       <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
     </div>
   </footer>
+  <script src="js/field-help.js"></script>
 </body>
 </html>

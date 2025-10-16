@@ -8,6 +8,7 @@ use App\Support\Repositories\DeviceRepository;
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
+require_once __DIR__ . '/templates/partials/main-nav.php';
 
 $deviceRepository = new DeviceRepository($pdo);
 
@@ -55,18 +56,7 @@ $csrfToken = Csrf::token();
         </span>
       </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
-        <ul>
-          <li><a href="index.php">Dashboard</a></li>
-          <li><a href="devices.php" aria-current="page">Klanten &amp; apparaten</a></li>
-          <li><a href="ophaalbevestiging.php">Ophaalbevestiging</a></li>
-          <li><a href="reparatie-onderzoek.php">Reparatie &amp; Onderzoek</a></li>
-          <li><a href="data-recovery.php">Data Recovery</a></li>
-          <li><a href="klant-melding.php">Klant Melding</a></li>
-          <li><a href="documents.php">Documenten</a></li>
-          <li><a href="magazyn.php">Magazyn</a></li>
-          <li class="main-nav__spacer" aria-hidden="true"></li>
-          <li><a href="logout.php" class="btn btn--ghost">Afmelden</a></li>
-        </ul>
+        <?php render_main_nav('devices'); ?>
       </nav>
     </div>
   </header>
