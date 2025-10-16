@@ -159,9 +159,9 @@ $csrfToken = Csrf::token();
   <title>Kalendarz - Digivriend</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/documents.css">
+  <link rel="stylesheet" href="css/management-ui.css">
 </head>
-<body>
+<body class="page--calendar">
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo">Digivriend</a>
@@ -171,50 +171,180 @@ $csrfToken = Csrf::token();
     </div>
   </header>
 
-  <main class="container calendar">
-    <div class="page-header">
-      <div>
-        <h1>Kalendarz serwisu</h1>
-        <p class="page-intro">Planuj wizyty diagnostyczne, odbiory i wyjazdy oraz monitoruj obłożenie zespołu.</p>
+  <section class="workspace">
+    <div class="container">
+      <div class="hero">
+        <div class="hero__header">
+          <div>
+            <h1>Panel kalendarza</h1>
+            <p class="hero__description">Planowanie wizyt, delegacji i odbiorów nigdy nie było prostsze. Zarządzaj harmonogramem zespołu z jednego, przejrzystego miejsca.</p>
+          </div>
+          <div class="quick-actions" role="group" aria-label="Szybkie akcje kalendarza">
+            <button type="button" data-modal-target="modal-create-appointment">Nowa wizyta</button>
+            <button type="button" data-modal-target="modal-upcoming-appointments">Przeglądaj wizyty</button>
+          </div>
+        </div>
+        <form method="get" class="filter-panel" aria-label="Filtry kalendarza">
+          <label>
+            <span>Pracownik</span>
+            <select name="employee" onchange="this.form.submit()">
+              <option value="">Wszyscy</option>
+              <?php foreach ($employees as $employee): ?>
+                <?php $id = (int) ($employee['id'] ?? 0); ?>
+                <option value="<?= $id ?>"<?= $employeeFilter === $id ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Nieznany'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select name="status" onchange="this.form.submit()">
+              <option value="all"<?= $statusFilter === 'all' ? ' selected' : '' ?>>Wszystkie</option>
+              <option value="tentative"<?= $statusFilter === 'tentative' ? ' selected' : '' ?>>Oczekujące</option>
+              <option value="confirmed"<?= $statusFilter === 'confirmed' ? ' selected' : '' ?>>Potwierdzone</option>
+              <option value="completed"<?= $statusFilter === 'completed' ? ' selected' : '' ?>>Zrealizowane</option>
+            </select>
+          </label>
+          <?php if ($caseFilter): ?>
+            <input type="hidden" name="case" value="<?= (int) $caseFilter ?>">
+          <?php endif; ?>
+        </form>
       </div>
-      <form method="get" class="filters" aria-label="Filtry kalendarza">
-        <label>
-          <span>Pracownik</span>
-          <select name="employee" onchange="this.form.submit()">
-            <option value="">Wszyscy</option>
-            <?php foreach ($employees as $employee): ?>
-              <?php $id = (int) ($employee['id'] ?? 0); ?>
-              <option value="<?= $id ?>"<?= $employeeFilter === $id ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Nieznany'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label>
-          <span>Status</span>
-          <select name="status" onchange="this.form.submit()">
-            <option value="all"<?= $statusFilter === 'all' ? ' selected' : '' ?>>Wszystkie</option>
-            <option value="tentative"<?= $statusFilter === 'tentative' ? ' selected' : '' ?>>Oczekujące</option>
-            <option value="confirmed"<?= $statusFilter === 'confirmed' ? ' selected' : '' ?>>Potwierdzone</option>
-            <option value="completed"<?= $statusFilter === 'completed' ? ' selected' : '' ?>>Zrealizowane</option>
-          </select>
-        </label>
-      </form>
+      <div class="stat-grid" aria-label="Podsumowanie kalendarza">
+        <article class="stat-card">
+          <span class="stat-card__label">Nadchodzące wizyty</span>
+          <span class="stat-card__value"><?= count($upcomingAppointments) ?></span>
+          <span class="stat-card__meta">w wybranych filtrach</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Zespół w harmonogramie</span>
+          <span class="stat-card__value"><?= $totalAttendees ?></span>
+          <span class="stat-card__meta">łączna liczba przydzielonych pracowników</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Najbliższa wizyta</span>
+          <?php if ($closestAppointment): ?>
+            <span class="stat-card__value"><?= htmlspecialchars((string) ($closestAppointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            <span class="stat-card__meta"><?= htmlspecialchars((string) ($closestAppointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <?php else: ?>
+            <span class="stat-card__value">—</span>
+            <span class="stat-card__meta">Brak wizyt w kalendarzu</span>
+          <?php endif; ?>
+        </article>
+      </div>
+
+    <div class="panel-grid">
+        <section class="panel-card" aria-label="Lista zespołu">
+          <div>
+            <h2>Zespół serwisu</h2>
+            <p class="hero__description">Kliknij, aby szybko przełączyć kalendarz na wybranego specjalistę.</p>
+          </div>
+          <?php if ($employees === []): ?>
+            <p class="muted">Brak aktywnych pracowników.</p>
+          <?php else: ?>
+            <div class="people-grid" role="list">
+              <?php foreach ($employees as $employee): ?>
+                <?php $id = (int) ($employee['id'] ?? 0); ?>
+                <?php
+                  $linkQuery = ['employee' => $id];
+                  if ($statusFilter !== null) {
+                      $linkQuery['status'] = $statusFilter;
+                  }
+                  if ($caseFilter) {
+                      $linkQuery['case'] = (int) $caseFilter;
+                  }
+                  $linkHref = 'calendar.php?' . http_build_query($linkQuery);
+                ?>
+                <a role="listitem" href="<?= htmlspecialchars($linkHref, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $employeeFilter === $id ? ' aria-current="true"' : '' ?>>
+                  <strong><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Nieznany'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <span class="muted"><?= htmlspecialchars((string) ($employee['position'] ?? $employee['role'] ?? 'Specjalista'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+          <div class="panel-card__action">
+            <button type="button" data-modal-target="modal-create-appointment">Zaplanuj spotkanie</button>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-label="Szybki podgląd wizyt">
+          <div>
+            <h2>Następne wizyty</h2>
+            <p class="hero__description">Zobacz, co czeka zespół w najbliższych dniach.</p>
+          </div>
+          <?php if ($upcomingAppointments === []): ?>
+            <p class="muted">Brak wizyt do wyświetlenia.</p>
+          <?php else: ?>
+            <ul>
+              <?php foreach (array_slice($upcomingAppointments, 0, 4) as $appointment): ?>
+                <li>
+                  <strong><?= htmlspecialchars((string) ($appointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <span class="muted"><?= htmlspecialchars((string) ($appointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  <?php if (!empty($appointment['attendees'])): ?>
+                    <span class="muted">Ekipa: <?= htmlspecialchars(implode(', ', array_map(static fn (array $attendee): string => (string) ($attendee['full_name'] ?? 'Pracownik'), $appointment['attendees'] ?? [])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  <?php endif; ?>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+          <div class="panel-card__action">
+            <button type="button" data-modal-target="modal-upcoming-appointments">Pełna lista</button>
+          </div>
+        </section>
+
+        <section class="panel-card" aria-label="Powiązane zlecenia">
+          <div>
+            <h2>Powiązane zlecenia</h2>
+            <p class="hero__description">Szybki dostęp do ostatnich spraw klientów.</p>
+          </div>
+          <?php if ($cases === []): ?>
+            <p class="muted">Brak zleceń do wyświetlenia.</p>
+          <?php else: ?>
+            <ul>
+              <?php foreach (array_slice($cases, 0, 5) as $case): ?>
+                <?php $caseId = (int) ($case['id'] ?? 0); ?>
+                <li>
+                  <strong>Case #<?= $caseId ?></strong>
+                  <span class="muted"><?= htmlspecialchars((string) ($case['summary'] ?? $case['type'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+            <?php $firstCaseId = (int) ($cases[0]['id'] ?? 0); ?>
+            <?php if ($firstCaseId): ?>
+              <div class="panel-card__action">
+                <a href="case.php?id=<?= $firstCaseId ?>">Otwórz najnowszą sprawę</a>
+              </div>
+            <?php endif; ?>
+          <?php endif; ?>
+        </section>
+      </div>
     </div>
+  </section>
 
-    <?php if ($messages['success'] !== [] || $messages['error'] !== []): ?>
-      <div class="alerts">
-        <?php foreach ($messages['success'] as $message): ?>
-          <div class="alert alert--success"><?= htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-        <?php endforeach; ?>
-        <?php foreach ($messages['error'] as $message): ?>
-          <div class="alert alert--danger"><?= htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-        <?php endforeach; ?>
+  <?php if ($messages['success'] !== [] || $messages['error'] !== []): ?>
+    <div class="toast-stack" role="status" aria-live="polite">
+      <?php foreach ($messages['success'] as $message): ?>
+        <div class="toast toast--success"><?= htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+      <?php endforeach; ?>
+      <?php foreach ($messages['error'] as $message): ?>
+        <div class="toast toast--error"><?= htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <footer class="main-footer">
+    <div class="container">
+      <p>&copy; <?= date('Y') ?> Digivriend. Wszystkie prawa zastrzeżone.</p>
+    </div>
+  </footer>
+
+  <div class="modal" id="modal-create-appointment" role="dialog" aria-modal="true" aria-labelledby="modal-create-appointment-title">
+    <div class="modal__panel">
+      <div class="modal__header">
+        <h2 id="modal-create-appointment-title">Nowa wizyta</h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="Zamknij">&times;</button>
       </div>
-    <?php endif; ?>
-
-    <div class="calendar__layout">
-      <section class="calendar__form card">
-        <h2>Nowa wizyta</h2>
-        <form method="post" autocomplete="off">
+      <div class="modal__body">
+        <form method="post" class="form-card" autocomplete="off">
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <input type="hidden" name="action" value="create-appointment">
           <div class="form-grid">
@@ -281,7 +411,7 @@ $csrfToken = Csrf::token();
           </fieldset>
 
           <label class="form-field">
-            <span class="form-field__label">Zasoby (każdy w linii: typ|nazwa|szczegóły) <?php render_field_help('appointment', 'resources'); ?></span>
+             <span class="form-field__label">Zasoby (typ|nazwa|szczegóły) <?php render_field_help('appointment', 'resources'); ?></span>
             <textarea name="resources" rows="3" placeholder="stanowisko|Serwis 2&#10;samochod|Bus 1"></textarea>
           </label>
 
@@ -310,12 +440,21 @@ $csrfToken = Csrf::token();
             </label>
           </div>
 
-          <button type="submit" class="btn btn--primary">Zapisz wizytę</button>
+          <div class="form-actions">
+            <button type="submit" class="btn--primary">Zapisz wizytę</button>
+          </div>
         </form>
-      </section>
+       </div>
+    </div>
+  </div>
 
-      <section class="calendar__list card">
-        <h2>Nadchodzące wizyty</h2>
+      <div class="modal" id="modal-upcoming-appointments" role="dialog" aria-modal="true" aria-labelledby="modal-upcoming-appointments-title">
+    <div class="modal__panel">
+      <div class="modal__header">
+        <h2 id="modal-upcoming-appointments-title">Nadchodzące wizyty</h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="Zamknij">&times;</button>
+      </div>
+      <div class="modal__body">
         <?php if ($upcomingAppointments === []): ?>
           <p class="muted">Brak zaplanowanych wizyt w wybranym filtrze.</p>
         <?php else: ?>
@@ -358,15 +497,11 @@ $csrfToken = Csrf::token();
             </tbody>
           </table>
         <?php endif; ?>
-      </section>
+      </div>
     </div>
-  </main>
+  </div>
 
-  <footer class="main-footer">
-    <div class="container">
-      <p>&copy; <?= date('Y') ?> Digivriend. Wszystkie prawa zastrzeżone.</p>
-    </div>
-  </footer>
+  <script src="js/modals.js"></script>
   <script src="js/field-help.js"></script>
 </body>
 </html>
