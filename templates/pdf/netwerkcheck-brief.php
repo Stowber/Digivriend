@@ -216,108 +216,164 @@
     }
 
     .tearoff {
-      margin-top: 32px;
-      border-top: 2px dashed var(--border-color);
-      padding: 26px 26px 22px;
-      background: linear-gradient(180deg, #ffffff 0%, rgba(240, 90, 40, 0.05) 100%);
-      border-radius: 0 0 16px 16px;
+      position: relative;
+      margin: 36px auto 0;
+      padding: 20px 22px 18px;
+      max-width: 320px;
+      border: 1.5px dashed var(--accent);
+      border-radius: 22px;
+      background: #fff;
+      box-shadow: 0 12px 28px rgba(31, 37, 51, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .tearoff::before {
+      content: '✂️';
+      position: absolute;
+      top: -12px;
+      right: 18px;
+      background: #fff;
+      padding: 0 4px;
+      font-size: 13px;
     }
 
     .tearoff__header {
       display: flex;
+      gap: 12px;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 18px;
     }
 
-    .tearoff__icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: var(--accent);
-      color: #fff;
-      display: inline-flex;
+    .tearoff__logo-wrapper {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: #fff5ef;
+      border: 1px solid rgba(240, 90, 40, 0.25);
+      display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .tearoff__logo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .tearoff__logo-fallback {
       font-weight: 700;
+      font-size: 16px;
       letter-spacing: 0.08em;
+      color: var(--accent);
+    }
+
+    .tearoff__heading {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
     .tearoff__title {
       margin: 0;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--text-main);
+      color: var(--accent);
+      letter-spacing: 0.02em;
     }
 
     .tearoff__subtitle {
-      margin: 4px 0 0;
-      font-size: 12px;
+      margin: 0;
+      font-size: 11.5px;
       color: var(--text-muted);
+      line-height: 1.4;
     }
 
-    .tearoff__grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 18px;
+    .tearoff__body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
-    .tearoff__column {
-      background: #fff;
-      border-radius: 14px;
-      border: 1px solid var(--border-color);
-      box-shadow: 0 8px 20px rgba(240, 90, 40, 0.12);
-      padding: 16px 18px;
+    .tearoff__section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .tearoff__column h3 {
-      margin: 0 0 10px;
-      font-size: 12px;
+    .tearoff__section-title {
+      margin: 0;
+      font-size: 10.5px;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--accent);
+      letter-spacing: 0.1em;
+      color: #6b758b;
     }
 
-    .tearoff__list {
+    .tearoff__chiplist {
       list-style: none;
       padding: 0;
       margin: 0;
       display: grid;
-      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
     }
 
-    .tearoff__list li {
+    .tearoff__chiplist--single {
+      grid-template-columns: 1fr;
+    }
+
+    .tearoff__chip {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px dashed rgba(240, 90, 40, 0.25);
-      font-size: 12.5px;
-      font-weight: 500;
+      gap: 6px;
+      padding: 6px 8px;
+      border: 1px dashed rgba(240, 90, 40, 0.45);
+      border-radius: 10px;
+      font-size: 11.5px;
       color: var(--text-main);
-    }
-
-    .tearoff__list li:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
+      background: rgba(240, 90, 40, 0.05);
     }
 
     .tearoff__checkbox {
-      width: 16px;
-      height: 16px;
-      border: 1.6px solid var(--accent);
+      width: 12px;
+      height: 12px;
+      border: 1.4px solid var(--accent);
       border-radius: 4px;
       background: #fff;
-      box-shadow: inset 0 0 0 2px #fff;
+      flex-shrink: 0;
+    }
+
+    .tearoff__footer {
+      border-top: 1px dashed rgba(240, 90, 40, 0.4);
+      padding-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .tearoff__note {
-      margin: 18px 0 0;
-      font-size: 11.5px;
+      margin: 0;
+      font-size: 10.5px;
       color: var(--text-muted);
+      line-height: 1.45;
       text-align: center;
+    }
+
+    .tearoff__line {
+      height: 1px;
+      background: rgba(31, 37, 51, 0.1);
+      margin-top: 4px;
+    }
+
+    .tearoff__line-label {
+      margin: 0;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #a0a7b7;
     }
   </style>
 </head>
@@ -394,45 +450,55 @@
     </p>
     <div class="tearoff">
       <div class="tearoff__header">
-        <span class="tearoff__icon">DV</span>
-        <div>
-          <p class="tearoff__title">Afspraakherinnering voor op de deur</p>
-          <p class="tearoff__subtitle">Knip deze strook uit, vink het gewenste moment aan en hang hem zichtbaar aan uw deur.</p>
+        <div class="tearoff__logo-wrapper">
+          <?php if ($companyLogoDataUri !== ''): ?>
+            <img src="<?= $companyLogoDataUri ?>" alt="<?= $bedrijfsNaam ?> logo" class="tearoff__logo">
+          <?php else: ?>
+            <span class="tearoff__logo-fallback">DV</span>
+          <?php endif; ?>
+        </div>
+        <div class="tearoff__heading">
+          <p class="tearoff__title">Afspraakkaart voor uw deur</p>
+          <p class="tearoff__subtitle">Knip uit, vul uw voorkeur in en laat onze specialist direct zien wanneer het schikt.</p>
         </div>
       </div>
-      <div class="tearoff__grid">
-        <div class="tearoff__column">
-          <h3>Dag</h3>
-          <ul class="tearoff__list">
-            <li><span class="tearoff__checkbox"></span>Maandag</li>
-            <li><span class="tearoff__checkbox"></span>Dinsdag</li>
-            <li><span class="tearoff__checkbox"></span>Woensdag</li>
-            <li><span class="tearoff__checkbox"></span>Donderdag</li>
-            <li><span class="tearoff__checkbox"></span>Vrijdag</li>
-            <li><span class="tearoff__checkbox"></span>Zaterdag</li>
+      <div class="tearoff__body">
+        <div class="tearoff__section">
+          <p class="tearoff__section-title">Dag</p>
+          <ul class="tearoff__chiplist">
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Maandag</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Dinsdag</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Woensdag</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Donderdag</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Vrijdag</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Zaterdag</li>
           </ul>
         </div>
-        <div class="tearoff__column">
-          <h3>Tijd</h3>
-          <ul class="tearoff__list">
-            <li><span class="tearoff__checkbox"></span>08:00 - 10:00</li>
-            <li><span class="tearoff__checkbox"></span>10:00 - 12:00</li>
-            <li><span class="tearoff__checkbox"></span>12:00 - 14:00</li>
-            <li><span class="tearoff__checkbox"></span>14:00 - 16:00</li>
-            <li><span class="tearoff__checkbox"></span>16:00 - 18:00</li>
-            <li><span class="tearoff__checkbox"></span>18:00 - 20:00</li>
+        <div class="tearoff__section">
+          <p class="tearoff__section-title">Tijdslot</p>
+          <ul class="tearoff__chiplist">
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>08:00 - 10:00</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>10:00 - 12:00</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>12:00 - 14:00</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>14:00 - 16:00</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>16:00 - 18:00</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>18:00 - 20:00</li>
           </ul>
         </div>
-        <div class="tearoff__column">
-          <h3>Opmerkingen</h3>
-          <ul class="tearoff__list">
-            <li><span class="tearoff__checkbox"></span>Bel graag aan</li>
-            <li><span class="tearoff__checkbox"></span>Bel aan, maar wacht even</li>
-            <li><span class="tearoff__checkbox"></span>Ik ben niet thuis</li>
+        <div class="tearoff__section">
+          <p class="tearoff__section-title">Voorkeur</p>
+          <ul class="tearoff__chiplist tearoff__chiplist--single">
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Bel graag aan</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Bel aan, maar wacht even</li>
+            <li class="tearoff__chip"><span class="tearoff__checkbox"></span>Ik ben niet thuis</li>
           </ul>
         </div>
       </div>
-      <p class="tearoff__note">Vul uw voorkeuren duidelijk in en bevestig de kaart bij de deurklink of op ooghoogte voor onze specialist.</p>
+      <div class="tearoff__footer">
+        <p class="tearoff__note">Noteer uw naam of huisnummer en bevestig de kaart bij de deur zodat onze specialist zich direct kan melden.</p>
+        <div class="tearoff__line"></div>
+        <p class="tearoff__line-label">Naam / Huisnummer</p>
+      </div>
     </div>
   </main>
   <footer class="footer">

@@ -110,6 +110,15 @@ $additionalNoteHtml = $additionalNote !== '' ? nl2br($additionalNote) : '';
 
 $documentRepository = new DocumentRepository($pdo);
 
+$logoPath = __DIR__ . '/Logo.png';
+$companyLogoDataUri = '';
+if (is_readable($logoPath)) {
+    $logoContents = file_get_contents($logoPath);
+    if ($logoContents !== false) {
+        $companyLogoDataUri = sprintf('data:image/png;base64,%s', base64_encode($logoContents));
+    }
+}
+
 $html = View::render('pdf/netwerkcheck-brief.php', [
     'bedrijfsNaam' => 'Digivriend',
     'documentTitel' => 'Buurtbrief netwerkscan',
