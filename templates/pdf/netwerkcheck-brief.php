@@ -18,7 +18,7 @@
     }
 
     @page {
-      margin: 32px;
+      margin: 26px;
     }
 
     body {
@@ -26,21 +26,21 @@
       background-color: #eef2f7;
       color: var(--text-main);
       margin: 0;
-      font-size: 13.5px;
-      line-height: 1.65;
+      font-size: 12.5px;
+      line-height: 1.6;
     }
 
     .document {
       background-color: #fff;
-      border-radius: 18px;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 14px 40px rgba(31, 37, 51, 0.12);
+      box-shadow: 0 10px 32px rgba(31, 37, 51, 0.12);
     }
 
     .header {
       background: linear-gradient(135deg, #f05a28, #dd4d20);
       color: #fff;
-      padding: 28px 34px;
+      padding: 24px 30px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -59,13 +59,13 @@
       gap: 14px;
       font-weight: 700;
       letter-spacing: 0.06em;
-      font-size: 17px;
+      font-size: 16px;
       text-transform: uppercase;
     }
 
     .logo-mark {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.12);
       display: inline-flex;
@@ -75,8 +75,8 @@
     }
 
     .brand-contact {
-      font-size: 12px;
-      line-height: 1.6;
+      font-size: 11.5px;
+      line-height: 1.55;
       color: rgba(255, 255, 255, 0.85);
       margin: 0;
     }
@@ -87,8 +87,8 @@
     }
 
     .meta-title {
-      margin: 0 0 10px;
-      font-size: 11px;
+      margin: 0 0 8px;
+      font-size: 10.5px;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       color: rgba(255, 255, 255, 0.65);
@@ -97,7 +97,7 @@
     .meta-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12.5px;
+      font-size: 11.5px;
     }
 
     .meta-table td {
@@ -114,50 +114,50 @@
     }
 
     .main {
-      padding: 34px;
+      padding: 28px 30px 22px;
     }
 
     .eyebrow {
       display: inline-block;
-      padding: 6px 14px;
+      padding: 5px 12px;
       background-color: var(--accent-soft);
       color: var(--accent);
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .main-title {
       margin: 0;
-      font-size: 24px;
+      font-size: 22px;
       letter-spacing: -0.01em;
       color: var(--text-main);
     }
 
     .lead {
-      margin: 18px 0 28px;
+      margin: 14px 0 22px;
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .body-text p {
-      margin: 0 0 18px;
+      margin: 0 0 14px;
     }
 
     .schedule-card {
       border: 1px solid var(--border-color);
       border-radius: 14px;
-      padding: 20px 24px;
+      padding: 18px 22px;
       background: linear-gradient(180deg, rgba(240, 90, 40, 0.08), rgba(240, 90, 40, 0.02));
-      margin: 26px 0;
+      margin: 22px 0;
     }
 
     .schedule-card h2 {
       margin: 0 0 12px;
-      font-size: 16px;
+      font-size: 15px;
       color: var(--accent);
     }
 
@@ -168,8 +168,8 @@
     }
 
     .schedule-card__note {
-      margin-top: 12px;
-      font-size: 12.5px;
+      margin-top: 10px;
+      font-size: 11.5px;
       color: var(--text-muted);
     }
 
@@ -177,41 +177,105 @@
       border-radius: 14px;
       border: 1px solid var(--border-color);
       background: #fff6f1;
-      padding: 22px 24px;
-      margin: 28px 0 32px;
+      padding: 18px 22px;
+      margin: 24px 0 26px;
     }
 
     .cta-card h2 {
       margin: 0 0 12px;
-      font-size: 16px;
+      font-size: 15px;
       color: var(--accent);
     }
 
     .cta-card p {
-      margin: 0 0 14px;
+      margin: 0 0 12px;
     }
 
     .cta-details {
-      margin: 0 0 14px;
+      margin: 0 0 12px;
       padding-left: 16px;
       color: var(--text-main);
     }
 
     .cta-details li {
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
 
     .closing {
-      margin-top: 32px;
-      line-height: 1.7;
+      margin-top: 26px;
+      line-height: 1.6;
     }
 
     .footer {
-      padding: 20px 34px;
+      padding: 16px 30px;
       border-top: 1px solid var(--border-color);
       background: #f8f9fb;
       font-size: 12px;
       color: #6b758b;
+      text-align: center;
+    }
+
+    .tearoff {
+      margin-top: 28px;
+      border-top: 2px dashed var(--border-color);
+      padding-top: 18px;
+    }
+
+    .tearoff__title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--text-main);
+    }
+
+    .tearoff__grid {
+      display: flex;
+      gap: 18px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .tearoff__column {
+      flex: 1 1 180px;
+    }
+
+    .tearoff__column h3 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .tearoff__list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .tearoff__list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      border-bottom: 1px dotted var(--border-color);
+      font-size: 12px;
+    }
+
+    .tearoff__checkbox {
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+    }
+
+    .tearoff__note {
+      margin: 14px 0 0;
+      font-size: 11px;
+      color: var(--text-muted);
       text-align: center;
     }
   </style>
@@ -287,6 +351,42 @@
       <?= $signatureRole ?><br>
       Digivriend
     </p>
+    <div class="tearoff">
+      <p class="tearoff__title">Afspraakherinnering voor op de deur</p>
+      <div class="tearoff__grid">
+        <div class="tearoff__column">
+          <h3>Dag</h3>
+          <ul class="tearoff__list">
+            <li><span class="tearoff__checkbox"></span>Maandag</li>
+            <li><span class="tearoff__checkbox"></span>Dinsdag</li>
+            <li><span class="tearoff__checkbox"></span>Woensdag</li>
+            <li><span class="tearoff__checkbox"></span>Donderdag</li>
+            <li><span class="tearoff__checkbox"></span>Vrijdag</li>
+            <li><span class="tearoff__checkbox"></span>Zaterdag</li>
+          </ul>
+        </div>
+        <div class="tearoff__column">
+          <h3>Tijd</h3>
+          <ul class="tearoff__list">
+            <li><span class="tearoff__checkbox"></span>08:00 - 10:00</li>
+            <li><span class="tearoff__checkbox"></span>10:00 - 12:00</li>
+            <li><span class="tearoff__checkbox"></span>12:00 - 14:00</li>
+            <li><span class="tearoff__checkbox"></span>14:00 - 16:00</li>
+            <li><span class="tearoff__checkbox"></span>16:00 - 18:00</li>
+            <li><span class="tearoff__checkbox"></span>18:00 - 20:00</li>
+          </ul>
+        </div>
+        <div class="tearoff__column">
+          <h3>Opmerkingen</h3>
+          <ul class="tearoff__list">
+            <li><span class="tearoff__checkbox"></span>Bel graag aan</li>
+            <li><span class="tearoff__checkbox"></span>Bel aan, maar wacht even</li>
+            <li><span class="tearoff__checkbox"></span>Ik ben niet thuis</li>
+          </ul>
+        </div>
+      </div>
+      <p class="tearoff__note">Knip deze strook uit, vink het gewenste moment aan en hang hem zichtbaar aan uw deur.</p>
+    </div>
   </main>
   <footer class="footer">
     Digivriend · Betrouwbare computerhulp aan huis · KvK 87566543 · BTW NL004558765B12
