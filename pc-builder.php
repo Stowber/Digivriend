@@ -38,6 +38,72 @@ $totalLeftovers = (int) ($metrics['total_leftovers'] ?? 0);
 $activeCases = (int) ($metrics['active_cases'] ?? 0);
 $latestBuild = is_array($metrics['latest_build'] ?? null) ? $metrics['latest_build'] : null;
 
+$componentStages = [
+    'case' => [
+        'label' => 'Obudowa',
+        'subtitle' => 'Baza zestawu',
+        'description' => 'Zacznij od przypisania obudowy z magazynu, aby budowa miała właściwą kartę serwisową.',
+        'keywords' => ['obud', 'case', 'tower', 'chassis'],
+        'note' => 'Obudowa',
+    ],
+    'motherboard' => [
+        'label' => 'Płyta główna',
+        'subtitle' => 'Serce komputera',
+        'description' => 'Wybierz płytę główną zgodną z obudową i wymaganiami klienta.',
+        'keywords' => ['płyta', 'motherboard', 'mainboard', 'mobo'],
+        'note' => 'Płyta główna',
+    ],
+    'cpu' => [
+        'label' => 'Procesor',
+        'subtitle' => 'Jednostka obliczeniowa',
+        'description' => 'Dodaj procesor wraz z informacją o ewentualnym montażu lub testach.',
+        'keywords' => ['procesor', 'cpu'],
+        'note' => 'Procesor',
+    ],
+    'memory' => [
+        'label' => 'Pamięć RAM',
+        'subtitle' => 'Konfiguracja pamięci',
+        'description' => 'Określ moduły RAM montowane w zestawie wraz z ilością sztuk.',
+        'keywords' => ['ram', 'pamięć', 'memory', 'ddr'],
+        'note' => 'Pamięć RAM',
+    ],
+    'storage' => [
+        'label' => 'Nośniki danych',
+        'subtitle' => 'Dyski i moduły M.2',
+        'description' => 'Dodaj dyski HDD, SSD lub moduły NVMe przypisane do zestawu.',
+        'keywords' => ['dysk', 'ssd', 'hdd', 'nvme', 'storage'],
+        'note' => 'Nośnik danych',
+    ],
+    'gpu' => [
+        'label' => 'Karta graficzna',
+        'subtitle' => 'Renderowanie obrazu',
+        'description' => 'Wybierz kartę graficzną oraz zanotuj dodatkowe akcesoria lub okablowanie.',
+        'keywords' => ['gpu', 'graf', 'rtx', 'gtx', 'radeon', 'graphics', 'vga'],
+        'note' => 'Karta graficzna',
+    ],
+    'psu' => [
+        'label' => 'Zasilacz',
+        'subtitle' => 'Zasilanie zestawu',
+        'description' => 'Określ zasilacz i przewody, aby serwisant wiedział, co zostało zamontowane.',
+        'keywords' => ['zasilacz', 'psu', 'power supply'],
+        'note' => 'Zasilacz',
+    ],
+    'cooling' => [
+        'label' => 'Chłodzenie',
+        'subtitle' => 'Wentylatory i układy AIO',
+        'description' => 'Dodaj chłodzenie procesora lub dodatkowe wentylatory zamontowane w obudowie.',
+        'keywords' => ['chłodzenie', 'cooler', 'wentyl', 'fan', 'aio', 'radiator'],
+        'note' => 'Chłodzenie',
+    ],
+    'extras' => [
+        'label' => 'Dodatki',
+        'subtitle' => 'Okablowanie i akcesoria',
+        'description' => 'Zapisz dodatkowe elementy, np. kontrolery, okablowanie, risery czy akcesoria montażowe.',
+        'keywords' => ['akces', 'extra', 'kontroler', 'kabel', 'adapter', 'peripheral'],
+        'note' => 'Dodatkowy element',
+    ],
+];
+
 $errors = [
     'profile' => [],
     'build' => [],
@@ -657,6 +723,43 @@ $typeLabels = $profileRepository->typeLabels();
                 $buildCaseSummary,
             ]))));
             $highlightAttribute = $highlightBuildId === $buildId ? ' data-highlight="true"' : '';
+
+            $normalizeStageText = static function (string $value): string {
+                if (function_exists('mb_strtolower')) {
+                    return mb_strtolower($value, 'UTF-8');
+                }
+
+                return strtolower($value);
+            };
+
+            $stageStates = [];
+            foreach ($componentStages as $stageKey => $stageData) {
+                $stageStates[$stageKey] = ['completed' => false];
+            }
+
+            if ($details !== null && isset($details['components']) && is_array($details['components'])) {
+                foreach ($details['components'] as $component) {
+                    $componentName = $normalizeStageText((string) ($component['item_name'] ?? ''));
+                    foreach ($componentStages as $stageKey => $stageData) {
+                        if ($stageStates[$stageKey]['completed']) {
+                            continue;
+                        }
+
+                        $keywords = isset($stageData['keywords']) && is_array($stageData['keywords']) ? $stageData['keywords'] : [];
+                        foreach ($keywords as $keyword) {
+                            $keywordValue = $normalizeStageText((string) $keyword);
+                            if ($keywordValue === '') {
+                                continue;
+                            }
+
+                            if (strpos($componentName, $keywordValue) !== false) {
+                                $stageStates[$stageKey]['completed'] = true;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
         ?>
         <article
           class="pc-builder__build"
@@ -696,57 +799,143 @@ $typeLabels = $profileRepository->typeLabels();
           </header>
 
           <div class="pc-builder__build-body">
-            <section>
-              <h4>Dodaj komponent</h4>
-              <form method="post" class="form-inline" data-component-form>
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <input type="hidden" name="action" value="add-component">
-                <input type="hidden" name="build_id" value="<?= $buildId ?>">
-
-                <label>
-                  Pozycja magazynowa
-                  <select name="item_id" required>
-                    <option value="">-- wybierz --</option>
-                    <?php foreach ($itemOptions as $item): ?>
+            <section class="pc-builder__assembly">
+              <header class="pc-builder__assembly-header">
+                <div>
+                  <h4>Dodaj komponent</h4>
+                  <p>Prowadź montaż krok po kroku — wybierz sekcję komputera i przypisz odpowiedni element z magazynu.</p>
+                </div>
+              </header>
+              <div class="pc-builder__assembly-grid" data-assembly>
+                <div class="pc-builder__visual" aria-hidden="true">
+                  <div class="pc-builder__visual-frame">
+                    <?php $stageIndex = 1; foreach ($componentStages as $stageKey => $stageData): ?>
                       <?php
-                          $itemName = (string) ($item['name'] ?? '');
-                          $itemBarcode = (string) ($item['barcode'] ?? '');
-                          $itemStatus = (string) ($item['status'] ?? '');
-                          $optionLabel = $itemName;
-                          if ($itemBarcode !== '') {
-                              $optionLabel .= ' [' . $itemBarcode . ']';
-                          }
-                          if ($itemStatus !== '') {
-                              $optionLabel .= ' — ' . $itemStatus;
-                          }
+                          $stageCompleted = $stageStates[$stageKey]['completed'] ?? false;
+                        $slotClass = 'pc-builder__slot pc-builder__slot--' . htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                        if ($stageCompleted) {
+                            $slotClass .= ' is-complete';
+                        }
                       ?>
-                      <option
-                        value="<?= (int) $item['id'] ?>"
-                        data-item-name="<?= htmlspecialchars($itemName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-item-barcode="<?= htmlspecialchars($itemBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-item-status="<?= htmlspecialchars($itemStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      <button
+                        type="button"
+                        class="<?= $slotClass ?>"
+                        data-slot="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        aria-label="Etap <?= $stageIndex ?>: <?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                       >
-                        <?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                      </option>
+                        <span><?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      </button>
+                      <?php $stageIndex += 1; ?>
                     <?php endforeach; ?>
-                  </select>
-                </label>
+                  </div>
+                </div>
+                <div class="pc-builder__stage-panel">
+                  <div class="pc-builder__stage-info">
+                    <h5 data-stage-title data-default="Wybierz element">Wybierz element</h5>
+                    <p data-stage-description data-default="Kliknij sekcję na wizualizacji lub wybierz ją z listy kroków poniżej.">Kliknij sekcję na wizualizacji lub wybierz ją z listy kroków poniżej.</p>
+                    <p class="pc-builder__stage-subtitle" data-stage-subtitle></p>
+                  </div>
+                  <ul class="pc-builder__stage-list">
+                    <?php $stageIndex = 1; foreach ($componentStages as $stageKey => $stageData): ?>
+                      <?php
+                        $stageCompleted = $stageStates[$stageKey]['completed'] ?? false;
+                        $stageClasses = 'pc-builder__stage-button' . ($stageCompleted ? ' is-complete' : '');
+                        $keywordsJson = json_encode(isset($stageData['keywords']) && is_array($stageData['keywords']) ? $stageData['keywords'] : [], JSON_UNESCAPED_UNICODE);
+                        if (!is_string($keywordsJson)) {
+                            $keywordsJson = '[]';
+                        }
+                      ?>
+                      <li>
+                        <button
+                          type="button"
+                          class="<?= $stageClasses ?>"
+                          data-stage="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          data-stage-label="<?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          data-stage-subtitle="<?= htmlspecialchars($stageData['subtitle'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          data-stage-description="<?= htmlspecialchars($stageData['description'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          data-stage-keywords="<?= htmlspecialchars($keywordsJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          data-stage-note="<?= htmlspecialchars($stageData['note'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          aria-pressed="false"
+                        >
+                          <span class="pc-builder__stage-index"><?= $stageIndex ?></span>
+                          <span class="pc-builder__stage-copy">
+                            <span class="pc-builder__stage-label"><?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                            <?php if (($stageData['subtitle'] ?? '') !== ''): ?>
+                              <small><?= htmlspecialchars($stageData['subtitle'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                            <?php endif; ?>
+                          </span>
+                          <span class="pc-builder__stage-status" aria-hidden="true"></span>
+                        </button>
+                      </li>
+                      <?php $stageIndex += 1; ?>
+                    <?php endforeach; ?>
+                  </ul>
+                </div>
+                <div class="pc-builder__form-panel">
+                  <form method="post" class="form-grid pc-builder__component-form" data-component-form>
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    <input type="hidden" name="action" value="add-component">
+                    <input type="hidden" name="build_id" value="<?= $buildId ?>">
 
-                <label>
-                  Ilość
-                  <input type="number" name="quantity" value="1" min="1" step="1" required>
-                </label>
+                    <label>
+                      Pozycja magazynowa
+                      <select name="item_id" required>
+                        <option value="">-- wybierz --</option>
+                        <?php foreach ($itemOptions as $item): ?>
+                          <?php
+                              $itemName = (string) ($item['name'] ?? '');
+                              $itemBarcode = (string) ($item['barcode'] ?? '');
+                              $itemStatus = (string) ($item['status'] ?? '');
+                              $optionLabel = $itemName;
+                              if ($itemBarcode !== '') {
+                                  $optionLabel .= ' [' . $itemBarcode . ']';
+                              }
+                              if ($itemStatus !== '') {
+                                  $optionLabel .= ' — ' . $itemStatus;
+                              }
+                          ?>
+                          <option
+                            value="<?= (int) $item['id'] ?>"
+                            data-item-name="<?= htmlspecialchars($itemName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-item-barcode="<?= htmlspecialchars($itemBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-item-status="<?= htmlspecialchars($itemStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          >
+                            <?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </label>
+                    <?php if ($highlightBuildId === $buildId && isset($errors['component']['item_id'])): ?>
+                      <p class="form-error"><?= htmlspecialchars($errors['component']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                    <?php endif; ?>
 
-                <label>
-                  Notatki
-                  <input type="text" name="notes" placeholder="np. montaż">
-                </label>
+                    <p class="pc-builder__hint" data-stage-hint>System filtruje listę na podstawie wybranego etapu. W każdej chwili możesz pokazać wszystkie pozycje.</p>
+                    <p class="pc-builder__no-suggestions" data-no-suggestions hidden>Brak elementów pasujących do tej kategorii. Pokaż wszystkie pozycje lub wybierz inny etap.</p>
 
-                <button type="submit" class="btn">Dodaj</button>
-              </form>
-              <?php if ($highlightBuildId === $buildId && isset($errors['component']['general'])): ?>
-                <p class="form-error"><?= htmlspecialchars($errors['component']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
+                    <div class="pc-builder__form-row">
+                      <label>
+                        Ilość
+                        <input type="number" name="quantity" value="1" min="1" step="1" required>
+                      </label>
+                      <label>
+                        Notatki
+                        <input type="text" name="notes" placeholder="np. montaż">
+                      </label>
+                    </div>
+                    <?php if ($highlightBuildId === $buildId && isset($errors['component']['quantity'])): ?>
+                      <p class="form-error"><?= htmlspecialchars($errors['component']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                    <?php endif; ?>
+
+                    <div class="pc-builder__form-actions">
+                      <button type="button" class="btn btn--ghost btn--small" data-show-all-options>Pokaż wszystkie pozycje</button>
+                      <button type="submit" class="btn">Dodaj</button>
+                    </div>
+                  </form>
+                  <?php if ($highlightBuildId === $buildId && isset($errors['component']['general'])): ?>
+                    <p class="form-error"><?= htmlspecialchars($errors['component']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <?php endif; ?>
+                </div>
+              </div>
 
               <div class="pc-builder__component-list">
                 <h5>Wykorzystane komponenty</h5>

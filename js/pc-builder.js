@@ -151,6 +151,236 @@
       });
     });
 
+    function parseStageKeywords(raw) {
+      if (!raw) {
+        return [];
+      }
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (error) {
+        parsed = String(raw).split(',');
+      }
+      if (!Array.isArray(parsed)) {
+        parsed = [parsed];
+      }
+      return parsed
+        .map((value) => String(value).trim().toLowerCase())
+        .filter((value) => value !== '');
+    }
+
+    function setupAssembly(assembly, context) {
+      if (!(assembly instanceof HTMLElement)) {
+        return;
+      }
+
+      const itemSelect = context.select instanceof HTMLSelectElement ? context.select : null;
+      const notesInput = context.notes instanceof HTMLInputElement ? context.notes : null;
+      const updateNotes = typeof context.updateNotes === 'function' ? context.updateNotes : null;
+      const defaultPlaceholder = typeof context.defaultPlaceholder === 'string' ? context.defaultPlaceholder : '';
+
+      const stageButtons = Array.from(assembly.querySelectorAll('[data-stage]'));
+      const slotButtons = Array.from(assembly.querySelectorAll('[data-slot]'));
+      const stageTitle = assembly.querySelector('[data-stage-title]');
+      const stageDescription = assembly.querySelector('[data-stage-description]');
+      const stageSubtitle = assembly.querySelector('[data-stage-subtitle]');
+      const showAllButton = assembly.querySelector('[data-show-all-options]');
+      const noSuggestions = assembly.querySelector('[data-no-suggestions]');
+
+      const defaultTitle = stageTitle ? stageTitle.getAttribute('data-default') || stageTitle.textContent || '' : '';
+      const defaultDescription = stageDescription ? stageDescription.getAttribute('data-default') || stageDescription.textContent || '' : '';
+
+      const options = itemSelect ? Array.from(itemSelect.options) : [];
+      let activeStageKey = '';
+      let activeStageLabel = '';
+      let activeStageNote = '';
+
+      const updateAssemblyState = () => {
+        if (activeStageKey !== '') {
+          assembly.setAttribute('data-active-stage', activeStageKey);
+        } else {
+          assembly.removeAttribute('data-active-stage');
+        }
+        if (activeStageLabel !== '') {
+          assembly.setAttribute('data-active-stage-label', activeStageLabel);
+        } else {
+          assembly.removeAttribute('data-active-stage-label');
+        }
+        if (activeStageNote !== '') {
+          assembly.setAttribute('data-active-stage-note', activeStageNote);
+        } else {
+          assembly.removeAttribute('data-active-stage-note');
+        }
+      };
+
+      const applyFilter = (keywords) => {
+        if (!itemSelect) {
+          return;
+        }
+        const normalized = Array.isArray(keywords) ? keywords : [];
+        let visibleCount = 0;
+        options.forEach((option) => {
+          if (option.value === '') {
+            option.hidden = false;
+            option.disabled = false;
+            return;
+          }
+          const optionName = (option.getAttribute('data-item-name') || option.textContent || '').toLowerCase();
+          let matches = true;
+          if (normalized.length > 0) {
+            matches = normalized.some((keyword) => keyword !== '' && optionName.includes(keyword));
+          }
+          option.hidden = normalized.length > 0 && !matches;
+          option.disabled = normalized.length > 0 && !matches;
+          if (!option.disabled) {
+            visibleCount += 1;
+          }
+        });
+        if (normalized.length > 0 && visibleCount === 0) {
+          if (noSuggestions instanceof HTMLElement) {
+            noSuggestions.hidden = false;
+          }
+        } else if (noSuggestions instanceof HTMLElement) {
+          noSuggestions.hidden = true;
+        }
+        if (itemSelect.value !== '' && itemSelect.selectedOptions.length > 0 && itemSelect.selectedOptions[0].disabled) {
+          itemSelect.value = '';
+        }
+      };
+
+      const resetStage = () => {
+        activeStageKey = '';
+        activeStageLabel = '';
+        activeStageNote = '';
+        stageButtons.forEach((button) => {
+          button.dataset.active = 'false';
+          button.setAttribute('aria-pressed', 'false');
+          button.classList.remove('is-active');
+        });
+        slotButtons.forEach((slot) => {
+          slot.classList.remove('is-active');
+        });
+        if (stageTitle) {
+          stageTitle.textContent = defaultTitle;
+        }
+        if (stageDescription) {
+          stageDescription.textContent = defaultDescription;
+        }
+        if (stageSubtitle) {
+          stageSubtitle.textContent = '';
+        }
+        if (notesInput) {
+          notesInput.setAttribute('placeholder', defaultPlaceholder);
+        }
+        if (noSuggestions instanceof HTMLElement) {
+          noSuggestions.hidden = true;
+        }
+        applyFilter([]);
+        updateAssemblyState();
+        if (updateNotes) {
+          updateNotes();
+        }
+      };
+
+      const setStage = (button, focus = false) => {
+        if (!(button instanceof HTMLElement)) {
+          resetStage();
+          return;
+        }
+        const stageKey = button.getAttribute('data-stage') || '';
+        const stageLabel = button.getAttribute('data-stage-label') || '';
+        const stageDescriptionText = button.getAttribute('data-stage-description') || '';
+        const stageSubtitleText = button.getAttribute('data-stage-subtitle') || '';
+        const stageNote = button.getAttribute('data-stage-note') || '';
+        const keywords = parseStageKeywords(button.getAttribute('data-stage-keywords') || '');
+
+        activeStageKey = stageKey;
+        activeStageLabel = stageLabel;
+        activeStageNote = stageNote;
+
+        stageButtons.forEach((stageButton) => {
+          const isCurrent = stageButton === button;
+          stageButton.dataset.active = isCurrent ? 'true' : 'false';
+          stageButton.setAttribute('aria-pressed', isCurrent ? 'true' : 'false');
+          stageButton.classList.toggle('is-active', isCurrent);
+        });
+
+        slotButtons.forEach((slot) => {
+          const slotKey = slot.getAttribute('data-slot') || '';
+          slot.classList.toggle('is-active', slotKey === stageKey);
+        });
+
+        if (stageTitle) {
+          stageTitle.textContent = stageLabel !== '' ? stageLabel : defaultTitle;
+        }
+        if (stageDescription) {
+          stageDescription.textContent = stageDescriptionText !== '' ? stageDescriptionText : defaultDescription;
+        }
+        if (stageSubtitle) {
+          stageSubtitle.textContent = stageSubtitleText;
+        }
+        if (notesInput) {
+          const placeholder = stageNote !== '' ? stageNote : (stageLabel !== '' ? stageLabel : defaultPlaceholder);
+          notesInput.setAttribute('placeholder', placeholder);
+        }
+
+        applyFilter(keywords);
+        updateAssemblyState();
+        if (updateNotes) {
+          updateNotes();
+        }
+        if (focus) {
+          button.focus();
+        }
+      };
+
+      stageButtons.forEach((button) => {
+        button.dataset.active = 'false';
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => {
+          const stageKey = button.getAttribute('data-stage') || '';
+          if (stageKey !== '' && stageKey === activeStageKey) {
+            resetStage();
+            button.blur();
+          } else {
+            setStage(button, true);
+          }
+        });
+      });
+
+      slotButtons.forEach((slot) => {
+        slot.addEventListener('click', () => {
+          const slotKey = slot.getAttribute('data-slot') || '';
+          const target = stageButtons.find((button) => (button.getAttribute('data-stage') || '') === slotKey);
+          if (!target) {
+            return;
+          }
+          if (slotKey !== '' && slotKey === activeStageKey) {
+            resetStage();
+            target.blur();
+            return;
+          }
+          setStage(target, true);
+        });
+      });
+
+      if (showAllButton instanceof HTMLElement) {
+        showAllButton.addEventListener('click', () => {
+          resetStage();
+          if (itemSelect) {
+            itemSelect.focus();
+          }
+        });
+      }
+
+      const initialStage = stageButtons.find((button) => !button.classList.contains('is-complete')) || stageButtons[0] || null;
+      if (initialStage) {
+        setStage(initialStage);
+      } else {
+        resetStage();
+      }
+    }
+
     document.querySelectorAll('[data-component-form]').forEach((form) => {
       const select = form.querySelector('select[name="item_id"]');
       const notes = form.querySelector('input[name="notes"]');
@@ -159,6 +389,18 @@
       }
       const buildContainer = form.closest('[data-build-item]');
       const buildReference = buildContainer ? buildContainer.getAttribute('data-build-reference') || '' : '';
+      const assembly = form.closest('[data-assembly]');
+      const defaultPlaceholder = notes.getAttribute('placeholder') || '';
+      const getStageDetails = () => {
+        if (!(assembly instanceof HTMLElement)) {
+          return { key: '', label: '', note: '' };
+        }
+        return {
+          key: assembly.getAttribute('data-active-stage') || '',
+          label: assembly.getAttribute('data-active-stage-label') || '',
+          note: assembly.getAttribute('data-active-stage-note') || '',
+        };
+      };
       const updateNotes = () => {
         const option = select.selectedOptions[0];
         if (!option) {
@@ -166,6 +408,12 @@
         }
         const itemName = option.getAttribute('data-item-name') || '';
         const suggestionParts = [];
+        const stageDetails = getStageDetails();
+        if (stageDetails.note !== '') {
+          suggestionParts.push(stageDetails.note);
+        } else if (stageDetails.label !== '') {
+          suggestionParts.push(stageDetails.label);
+        }
         if (itemName !== '') {
           suggestionParts.push(itemName);
         }
@@ -183,6 +431,13 @@
       select.addEventListener('change', updateNotes);
       notes.addEventListener('input', () => {
         notes.removeAttribute('data-autofilled');
+      });
+
+      setupAssembly(assembly, {
+        select,
+        notes,
+        updateNotes,
+        defaultPlaceholder,
       });
     });
 
