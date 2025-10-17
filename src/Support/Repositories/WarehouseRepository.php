@@ -163,7 +163,8 @@ final class WarehouseRepository
         ?string $notes,
         string $status,
         ?string $referenceCode = null,
-        ?string $performedBy = null
+        ?string $performedBy = null,
+        ?int $unitPriceCents = null
     ): array {
         if (!$this->isValidStatus($status)) {
             $status = 'received';
@@ -182,10 +183,11 @@ final class WarehouseRepository
         $reservedAt = $status === 'reserved' ? $now : null;
         $readyAt = $status === 'ready' ? $now : null;
         $completedAt = $status === 'completed' ? $now : null;
+        $priceCents = $unitPriceCents !== null ? max(0, $unitPriceCents) : 0;
 
         $statement = $this->pdo->prepare(
-            'INSERT INTO warehouse_items (reference_code, name, category, location, status, quantity, reserved_quantity, case_id, device_id, barcode, notes, received_at, reserved_at, ready_at, completed_at, last_movement_at, created_at, updated_at)
-             VALUES (:reference_code, :name, :category, :location, :status, :quantity, 0, :case_id, NULL, :barcode, :notes, :received_at, :reserved_at, :ready_at, :completed_at, :last_movement_at, :created_at, :updated_at)'
+            'INSERT INTO warehouse_items (reference_code, name, category, location, status, quantity, reserved_quantity, case_id, device_id, barcode, notes, received_at, reserved_at, ready_at, completed_at, last_movement_at, created_at, updated_at, unit_price_cents)'
+            . ' VALUES (:reference_code, :name, :category, :location, :status, :quantity, 0, :case_id, NULL, :barcode, :notes, :received_at, :reserved_at, :ready_at, :completed_at, :last_movement_at, :created_at, :updated_at, :unit_price_cents)'
         );
 
         $statement->execute([
@@ -205,6 +207,7 @@ final class WarehouseRepository
             'last_movement_at' => $now,
             'created_at' => $now,
             'updated_at' => $now,
+            'unit_price_cents' => $priceCents,
         ]);
 
         $itemId = (int) $this->pdo->lastInsertId();

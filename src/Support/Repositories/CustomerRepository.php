@@ -13,6 +13,41 @@ final class CustomerRepository
     {
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listCustomers(?string $search = null, int $limit = 200): array
+    {
+        $limit = max(1, min(500, $limit));
+
+        $sql = 'SELECT id, full_name, email, phone FROM customers';
+        $conditions = [];
+        $params = [];
+
+        if ($search !== null && trim($search) !== '') {
+            $like = '%' . trim($search) . '%';
+            $conditions[] = '(full_name LIKE :search OR email LIKE :search OR phone LIKE :search)';
+            $params['search'] = $like;
+        }
+
+        if ($conditions !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+
+        $sql .= ' ORDER BY updated_at DESC LIMIT :limit';
+
+        $statement = $this->pdo->prepare($sql);
+
+        foreach ($params as $key => $value) {
+            $statement->bindValue($key, $value);
+        }
+
+        $statement->bindValue('limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll() ?: [];
+    }
+
     public function upsert(
         string $fullName,
         ?string $email,

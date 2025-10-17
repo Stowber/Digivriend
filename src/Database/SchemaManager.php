@@ -47,6 +47,75 @@ final class SchemaManager
         self::ensureDefaultUserExists($pdo);
     }
 
+    private static function ensurePcBuildEnhancements(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'customer_id', 'INTEGER NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'assigned_employee', 'TEXT NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'current_step', "TEXT NOT NULL DEFAULT 'information'");
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'planning_payload', 'TEXT NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'planning_total_cents', 'INTEGER NOT NULL DEFAULT 0');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'planning_currency', "TEXT NOT NULL DEFAULT 'PLN'");
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'assembly_payload', 'TEXT NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'release_payload', 'TEXT NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'approved_at', 'TEXT NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'approved_by', 'TEXT NULL');
+
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'pc_builds',
+                ['customer_id'],
+                'CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'pc_builds',
+                ['current_step'],
+                'CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)'
+            );
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN customer_id INT NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN assigned_employee VARCHAR(191) NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ADD COLUMN current_step VARCHAR(32) NOT NULL DEFAULT 'information'", ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN planning_payload JSONB NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN planning_total_cents INT NOT NULL DEFAULT 0', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ADD COLUMN planning_currency VARCHAR(16) NOT NULL DEFAULT 'PLN'", ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN assembly_payload JSONB NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN release_payload JSONB NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN approved_at TIMESTAMP NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN approved_by VARCHAR(191) NULL', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ALTER COLUMN status SET DEFAULT 'draft'", ['duplicate', 'already exists']);
+            self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ALTER COLUMN current_step SET DEFAULT 'information'", ['duplicate', 'already exists']);
+
+            self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_pc_builds_customer ON pc_builds(customer_id)', ['already exists', 'duplicate']);
+            self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_pc_builds_step ON pc_builds(current_step)', ['already exists', 'duplicate']);
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN customer_id INT UNSIGNED NULL AFTER case_profile_id', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN assigned_employee VARCHAR(191) NULL AFTER customer_id', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ADD COLUMN current_step VARCHAR(32) NOT NULL DEFAULT 'information' AFTER status", ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN planning_payload JSON NULL AFTER summary', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN planning_total_cents INT NOT NULL DEFAULT 0 AFTER planning_payload', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ADD COLUMN planning_currency VARCHAR(16) NOT NULL DEFAULT 'PLN' AFTER planning_total_cents", ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN assembly_payload JSON NULL AFTER planning_currency', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN release_payload JSON NULL AFTER assembly_payload', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN approved_at TIMESTAMP NULL DEFAULT NULL AFTER release_payload', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE pc_builds ADD COLUMN approved_by VARCHAR(191) NULL AFTER approved_at', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ALTER COLUMN status SET DEFAULT 'draft'", ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, "ALTER TABLE pc_builds ALTER COLUMN current_step SET DEFAULT 'information'", ['duplicate', 'already exists']);
+
+        self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_pc_builds_customer ON pc_builds(customer_id)', ['already exists', 'duplicate']);
+        self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_pc_builds_step ON pc_builds(current_step)', ['already exists', 'duplicate']);
+    }
+
     private static function ensureDeviceEnhancements(PDO $pdo): void
     {
         self::ensureDeviceBarcodeColumn($pdo);
@@ -73,6 +142,7 @@ final class SchemaManager
                     status TEXT NOT NULL DEFAULT 'received',
                     quantity INTEGER NOT NULL DEFAULT 0,
                     reserved_quantity INTEGER NOT NULL DEFAULT 0,
+                    unit_price_cents INTEGER NOT NULL DEFAULT 0,
                     case_id INTEGER NULL,
                     device_id INTEGER NULL,
                     barcode TEXT NULL,
@@ -106,6 +176,7 @@ final class SchemaManager
                 status VARCHAR(32) NOT NULL DEFAULT 'received',
                 quantity INT NOT NULL DEFAULT 0,
                 reserved_quantity INT NOT NULL DEFAULT 0,
+                unit_price_cents INT NOT NULL DEFAULT 0,
                 case_id INT UNSIGNED NULL,
                 device_id INT UNSIGNED NULL,
                 barcode VARCHAR(64) NULL,
@@ -204,6 +275,26 @@ final class SchemaManager
         self::ensureHardwareProfilesTable($pdo);
         self::ensureWarehouseItemProfilesTable($pdo);
         self::ensurePcBuildTables($pdo);
+        self::ensureWarehouseEnhancements($pdo);
+    }
+
+    private static function ensureWarehouseEnhancements(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'warehouse_items', 'unit_price_cents', 'INTEGER NOT NULL DEFAULT 0');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE warehouse_items ADD COLUMN unit_price_cents INT NOT NULL DEFAULT 0', ['already exists', 'duplicate']);
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE warehouse_items ADD COLUMN unit_price_cents INT NOT NULL DEFAULT 0 AFTER reserved_quantity', ['duplicate', 'already exists']);
     }
 
     private static function ensureHardwareProfilesTable(PDO $pdo): void
@@ -324,18 +415,31 @@ final class SchemaManager
                     reference_code TEXT NOT NULL,
                     case_id INTEGER NOT NULL,
                     case_profile_id INTEGER NULL,
-                    status TEXT NOT NULL DEFAULT 'planning',
+                    customer_id INTEGER NULL,
+                    assigned_employee TEXT NULL,
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    current_step TEXT NOT NULL DEFAULT 'information',
                     summary TEXT NULL,
+                    planning_payload TEXT NULL,
+                    planning_total_cents INTEGER NOT NULL DEFAULT 0,
+                    planning_currency TEXT NOT NULL DEFAULT 'PLN',
+                    assembly_payload TEXT NULL,
+                    release_payload TEXT NULL,
+                    approved_at TEXT NULL,
+                    approved_by TEXT NULL,
                     created_by TEXT NULL,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(reference_code),
                     FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
-                    FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                    FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL,
+                    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
                 )
             SQL);
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)');
 
             $pdo->exec(<<<SQL
                 CREATE TABLE IF NOT EXISTS pc_build_components (
@@ -369,6 +473,40 @@ final class SchemaManager
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_build ON pc_build_leftovers(build_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_profile ON pc_build_leftovers(profile_id)');
 
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_workflow (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    build_id INTEGER NOT NULL,
+                    step TEXT NOT NULL,
+                    payload TEXT NULL,
+                    completed_at TEXT NULL,
+                    completed_by TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(build_id, step),
+                    FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_workflow_step ON pc_build_workflow(step)');
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_journal (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    build_id INTEGER NOT NULL,
+                    step TEXT NOT NULL,
+                    entry_type TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    data TEXT NULL,
+                    created_by TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_build ON pc_build_journal(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_step ON pc_build_journal(step)');
+
+            self::ensurePcBuildEnhancements($pdo);
+
             return;
         }
 
@@ -379,18 +517,31 @@ final class SchemaManager
                     reference_code VARCHAR(64) NOT NULL,
                     case_id INT NOT NULL,
                     case_profile_id INT NULL,
-                    status VARCHAR(32) NOT NULL DEFAULT 'planning',
+                    customer_id INT NULL,
+                    assigned_employee VARCHAR(191) NULL,
+                    status VARCHAR(64) NOT NULL DEFAULT 'draft',
+                    current_step VARCHAR(32) NOT NULL DEFAULT 'information',
                     summary TEXT NULL,
+                    planning_payload JSONB NULL,
+                    planning_total_cents INT NOT NULL DEFAULT 0,
+                    planning_currency VARCHAR(16) NOT NULL DEFAULT 'PLN',
+                    assembly_payload JSONB NULL,
+                    release_payload JSONB NULL,
+                    approved_at TIMESTAMP NULL,
+                    approved_by VARCHAR(191) NULL,
                     created_by VARCHAR(191) NULL,
                     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     CONSTRAINT uniq_pc_build_reference UNIQUE(reference_code),
                     CONSTRAINT fk_pc_build_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
-                    CONSTRAINT fk_pc_build_profile FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                    CONSTRAINT fk_pc_build_profile FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL,
+                    CONSTRAINT fk_pc_build_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
                 )
             SQL);
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)');
 
             $pdo->exec(<<<SQL
                 CREATE TABLE IF NOT EXISTS pc_build_components (
@@ -424,6 +575,40 @@ final class SchemaManager
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_build ON pc_build_leftovers(build_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_profile ON pc_build_leftovers(profile_id)');
 
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_workflow (
+                    id SERIAL PRIMARY KEY,
+                    build_id INT NOT NULL,
+                    step VARCHAR(32) NOT NULL,
+                    payload JSONB NULL,
+                    completed_at TIMESTAMP NULL,
+                    completed_by VARCHAR(191) NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uniq_pc_build_workflow_step UNIQUE(build_id, step),
+                    CONSTRAINT fk_pc_build_workflow_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_workflow_step ON pc_build_workflow(step)');
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_journal (
+                    id SERIAL PRIMARY KEY,
+                    build_id INT NOT NULL,
+                    step VARCHAR(32) NOT NULL,
+                    entry_type VARCHAR(64) NOT NULL,
+                    message TEXT NOT NULL,
+                    data JSONB NULL,
+                    created_by VARCHAR(191) NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_pc_build_journal_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_build ON pc_build_journal(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_step ON pc_build_journal(step)');
+
+            self::ensurePcBuildEnhancements($pdo);
+
             return;
         }
 
@@ -433,16 +618,29 @@ final class SchemaManager
                 reference_code VARCHAR(64) NOT NULL,
                 case_id INT UNSIGNED NOT NULL,
                 case_profile_id INT UNSIGNED NULL,
-                status VARCHAR(32) NOT NULL DEFAULT 'planning',
+                customer_id INT UNSIGNED NULL,
+                assigned_employee VARCHAR(191) NULL,
+                status VARCHAR(64) NOT NULL DEFAULT 'draft',
+                current_step VARCHAR(32) NOT NULL DEFAULT 'information',
                 summary TEXT NULL,
+                planning_payload JSON NULL,
+                planning_total_cents INT NOT NULL DEFAULT 0,
+                planning_currency VARCHAR(16) NOT NULL DEFAULT 'PLN',
+                assembly_payload JSON NULL,
+                release_payload JSON NULL,
+                approved_at TIMESTAMP NULL DEFAULT NULL,
+                approved_by VARCHAR(191) NULL,
                 created_by VARCHAR(191) NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY uniq_pc_build_reference (reference_code),
                 INDEX idx_pc_builds_case (case_id),
                 INDEX idx_pc_builds_status (status),
+                INDEX idx_pc_builds_customer (customer_id),
+                INDEX idx_pc_builds_step (current_step),
                 CONSTRAINT fk_pc_build_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
-                CONSTRAINT fk_pc_build_profile FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                CONSTRAINT fk_pc_build_profile FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL,
+                CONSTRAINT fk_pc_build_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
 
@@ -477,6 +675,40 @@ final class SchemaManager
                 CONSTRAINT fk_pc_build_leftover_profile FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS pc_build_workflow (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                build_id INT UNSIGNED NOT NULL,
+                step VARCHAR(32) NOT NULL,
+                payload JSON NULL,
+                completed_at TIMESTAMP NULL DEFAULT NULL,
+                completed_by VARCHAR(191) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_pc_build_workflow_step (build_id, step),
+                INDEX idx_pc_build_workflow_step (step),
+                CONSTRAINT fk_pc_build_workflow_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS pc_build_journal (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                build_id INT UNSIGNED NOT NULL,
+                step VARCHAR(32) NOT NULL,
+                entry_type VARCHAR(64) NOT NULL,
+                message TEXT NOT NULL,
+                data JSON NULL,
+                created_by VARCHAR(191) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_pc_build_journal_build (build_id),
+                INDEX idx_pc_build_journal_step (step),
+                CONSTRAINT fk_pc_build_journal_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        self::ensurePcBuildEnhancements($pdo);
     }
 
     private static function ensureEmployeesTable(PDO $pdo): void

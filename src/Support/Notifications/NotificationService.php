@@ -30,6 +30,14 @@ final class NotificationService
         $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body);
     }
 
+    public function sendPcBuildRelease(?int $caseId, ?int $customerId, string $recipient, array $payload): void
+    {
+        $subject = $payload['subject'] ?? 'Twój zestaw PC jest gotowy do odbioru';
+        $body = $this->renderTemplate('pc_build_release', $payload);
+
+        $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body);
+    }
+
     public function sendSms(?int $caseId, ?int $customerId, string $recipient, array $payload): void
     {
         $body = $this->renderTemplate('sms_generic', $payload);
@@ -85,6 +93,13 @@ final class NotificationService
                 $safePayload['customer_name'] ?? 'klant',
                 $safePayload['pickup_code'] ?? '—',
                 $safePayload['pickup_date'] ?? '—'
+            ),
+             'pc_build_release' => sprintf(
+                "Dzień dobry %s,\n\nZestaw PC %s jest gotowy do przekazania. Sposób wydania: %s dnia %s. W załączniku znajdziesz potwierdzenie wydania. W razie pytań skontaktuj się z nami.\n\nPozdrawiamy,\nZespół Digivriend",
+                $safePayload['customer_name'] ?? 'klient',
+                $safePayload['build_reference'] ?? 'Twój zestaw',
+                $safePayload['delivery_method'] ?? 'odbiór w salonie',
+                $safePayload['release_date'] ?? date('d-m-Y')
             ),
             'sms_generic' => sprintf(
                 "%s",
