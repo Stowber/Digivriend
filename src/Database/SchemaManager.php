@@ -201,6 +201,282 @@ final class SchemaManager
         self::ensureWarehouseItemsTable($pdo);
         self::ensureWarehouseMovementsTable($pdo);
         self::ensureWarehouseIndexes($pdo);
+        self::ensureHardwareProfilesTable($pdo);
+        self::ensureWarehouseItemProfilesTable($pdo);
+        self::ensurePcBuildTables($pdo);
+    }
+
+    private static function ensureHardwareProfilesTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS hardware_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    manufacturer TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    description TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(type, manufacturer, model)
+                )
+            SQL);
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS hardware_profiles (
+                    id SERIAL PRIMARY KEY,
+                    type VARCHAR(64) NOT NULL,
+                    manufacturer VARCHAR(191) NOT NULL,
+                    model VARCHAR(191) NOT NULL,
+                    description TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uniq_hardware_profile UNIQUE(type, manufacturer, model)
+                )
+            SQL);
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS hardware_profiles (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                type VARCHAR(64) NOT NULL,
+                manufacturer VARCHAR(191) NOT NULL,
+                model VARCHAR(191) NOT NULL,
+                description TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_hardware_profile (type, manufacturer, model)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureWarehouseItemProfilesTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS warehouse_item_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item_id INTEGER NOT NULL,
+                    profile_id INTEGER NOT NULL,
+                    relation_type TEXT NOT NULL DEFAULT 'compatible',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(item_id, profile_id, relation_type),
+                    FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                    FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_item_profiles_profile ON warehouse_item_profiles(profile_id)');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS warehouse_item_profiles (
+                    id SERIAL PRIMARY KEY,
+                    item_id INT NOT NULL,
+                    profile_id INT NOT NULL,
+                    relation_type VARCHAR(32) NOT NULL DEFAULT 'compatible',
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uniq_item_profile UNIQUE(item_id, profile_id, relation_type),
+                    CONSTRAINT fk_item_profile_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_item_profile_profile FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_item_profiles_profile ON warehouse_item_profiles(profile_id)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS warehouse_item_profiles (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                item_id INT UNSIGNED NOT NULL,
+                profile_id INT UNSIGNED NOT NULL,
+                relation_type VARCHAR(32) NOT NULL DEFAULT 'compatible',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_item_profile (item_id, profile_id, relation_type),
+                INDEX idx_item_profiles_profile (profile_id),
+                CONSTRAINT fk_item_profile_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                CONSTRAINT fk_item_profile_profile FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensurePcBuildTables(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_builds (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reference_code TEXT NOT NULL,
+                    case_id INTEGER NOT NULL,
+                    case_profile_id INTEGER NULL,
+                    status TEXT NOT NULL DEFAULT 'planning',
+                    summary TEXT NULL,
+                    created_by TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(reference_code),
+                    FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                    FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_components (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    build_id INTEGER NOT NULL,
+                    item_id INTEGER NOT NULL,
+                    quantity INTEGER NOT NULL DEFAULT 1,
+                    notes TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE,
+                    FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_components_build ON pc_build_components(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_components_item ON pc_build_components(item_id)');
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_leftovers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    build_id INTEGER NOT NULL,
+                    item_id INTEGER NOT NULL,
+                    profile_id INTEGER NULL,
+                    quantity INTEGER NOT NULL DEFAULT 0,
+                    notes TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE,
+                    FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                    FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_build ON pc_build_leftovers(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_profile ON pc_build_leftovers(profile_id)');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_builds (
+                    id SERIAL PRIMARY KEY,
+                    reference_code VARCHAR(64) NOT NULL,
+                    case_id INT NOT NULL,
+                    case_profile_id INT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'planning',
+                    summary TEXT NULL,
+                    created_by VARCHAR(191) NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uniq_pc_build_reference UNIQUE(reference_code),
+                    CONSTRAINT fk_pc_build_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_pc_build_profile FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_components (
+                    id SERIAL PRIMARY KEY,
+                    build_id INT NOT NULL,
+                    item_id INT NOT NULL,
+                    quantity INT NOT NULL DEFAULT 1,
+                    notes TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_pc_build_component_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_pc_build_component_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_components_build ON pc_build_components(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_components_item ON pc_build_components(item_id)');
+
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_leftovers (
+                    id SERIAL PRIMARY KEY,
+                    build_id INT NOT NULL,
+                    item_id INT NOT NULL,
+                    profile_id INT NULL,
+                    quantity INT NOT NULL DEFAULT 0,
+                    notes TEXT NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_pc_build_leftover_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_pc_build_leftover_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                    CONSTRAINT fk_pc_build_leftover_profile FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_build ON pc_build_leftovers(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_leftovers_profile ON pc_build_leftovers(profile_id)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS pc_builds (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                reference_code VARCHAR(64) NOT NULL,
+                case_id INT UNSIGNED NOT NULL,
+                case_profile_id INT UNSIGNED NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'planning',
+                summary TEXT NULL,
+                created_by VARCHAR(191) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_pc_build_reference (reference_code),
+                INDEX idx_pc_builds_case (case_id),
+                INDEX idx_pc_builds_status (status),
+                CONSTRAINT fk_pc_build_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+                CONSTRAINT fk_pc_build_profile FOREIGN KEY (case_profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS pc_build_components (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                build_id INT UNSIGNED NOT NULL,
+                item_id INT UNSIGNED NOT NULL,
+                quantity INT NOT NULL DEFAULT 1,
+                notes TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_pc_build_components_build (build_id),
+                INDEX idx_pc_build_components_item (item_id),
+                CONSTRAINT fk_pc_build_component_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE,
+                CONSTRAINT fk_pc_build_component_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS pc_build_leftovers (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                build_id INT UNSIGNED NOT NULL,
+                item_id INT UNSIGNED NOT NULL,
+                profile_id INT UNSIGNED NULL,
+                quantity INT NOT NULL DEFAULT 0,
+                notes TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_pc_build_leftovers_build (build_id),
+                INDEX idx_pc_build_leftovers_profile (profile_id),
+                CONSTRAINT fk_pc_build_leftover_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE,
+                CONSTRAINT fk_pc_build_leftover_item FOREIGN KEY (item_id) REFERENCES warehouse_items(id) ON DELETE CASCADE,
+                CONSTRAINT fk_pc_build_leftover_profile FOREIGN KEY (profile_id) REFERENCES hardware_profiles(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
     }
 
     private static function ensureEmployeesTable(PDO $pdo): void

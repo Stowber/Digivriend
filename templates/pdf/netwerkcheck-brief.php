@@ -220,38 +220,39 @@ $companyLogoDataUri = $companyLogoDataUri ?? '';
 
     .tearoff {
       position: relative;
-      margin: 36px auto 0;
-      padding: 20px 22px 18px;
-      max-width: 320px;
+      margin: 32px 0 0;
+      padding: 18px 28px;
+      width: 100%;
       border: 1.5px dashed var(--accent);
-      border-radius: 22px;
+      border-radius: 18px;
       background: #fff;
       box-shadow: 0 12px 28px rgba(31, 37, 51, 0.12);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 14px;
     }
 
     .tearoff::before {
       content: '✂️';
       position: absolute;
       top: -12px;
-      right: 18px;
+      right: 32px;
       background: #fff;
       padding: 0 4px;
       font-size: 13px;
     }
 
     .tearoff__header {
-      display: flex;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
       align-items: center;
     }
 
     .tearoff__logo-wrapper {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
       background: #fff5ef;
       border: 1px solid rgba(240, 90, 40, 0.25);
       display: flex;
@@ -277,12 +278,12 @@ $companyLogoDataUri = $companyLogoDataUri ?? '';
     .tearoff__heading {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
 
     .tearoff__title {
       margin: 0;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
       color: var(--accent);
       letter-spacing: 0.02em;
@@ -290,28 +291,28 @@ $companyLogoDataUri = $companyLogoDataUri ?? '';
 
     .tearoff__subtitle {
       margin: 0;
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--text-muted);
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     .tearoff__body {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
     }
 
     .tearoff__section {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      display: grid;
+      row-gap: 8px;
     }
 
     .tearoff__section-title {
       margin: 0;
-      font-size: 10.5px;
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
       color: #6b758b;
     }
 
@@ -320,31 +321,31 @@ $companyLogoDataUri = $companyLogoDataUri ?? '';
       padding: 0;
       margin: 0;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       gap: 6px;
     }
 
     .tearoff__chiplist--single {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     }
 
     .tearoff__chip {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 8px;
-      border: 1px dashed rgba(240, 90, 40, 0.45);
-      border-radius: 10px;
-      font-size: 11.5px;
+      padding: 6px 10px;
+      border: 1px solid rgba(240, 90, 40, 0.35);
+      border-radius: 8px;
+      font-size: 11px;
       color: var(--text-main);
-      background: rgba(240, 90, 40, 0.05);
+      background: rgba(240, 90, 40, 0.04);
     }
 
     .tearoff__checkbox {
-      width: 12px;
-      height: 12px;
-      border: 1.4px solid var(--accent);
-      border-radius: 4px;
+     width: 11px;
+      height: 11px;
+      border: 1.3px solid var(--accent);
+      border-radius: 3px;
       background: #fff;
       flex-shrink: 0;
     }
@@ -352,31 +353,37 @@ $companyLogoDataUri = $companyLogoDataUri ?? '';
     .tearoff__footer {
       border-top: 1px dashed rgba(240, 90, 40, 0.4);
       padding-top: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+      column-gap: 18px;
+      align-items: center;
     }
 
     .tearoff__note {
       margin: 0;
       font-size: 10.5px;
       color: var(--text-muted);
-      line-height: 1.45;
-      text-align: center;
+      line-height: 1.4;
+    }
+
+    .tearoff__signature {
+      display: grid;
+      row-gap: 6px;
+      justify-items: stretch;
     }
 
     .tearoff__line {
       height: 1px;
-      background: rgba(31, 37, 51, 0.1);
-      margin-top: 4px;
+      background: rgba(31, 37, 51, 0.16);
     }
 
     .tearoff__line-label {
       margin: 0;
       font-size: 10px;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #a0a7b7;
+      color: #8e96a8;
+      text-align: right;
     }
   </style>
 </head>
@@ -499,8 +506,10 @@ $companyLogoDataUri = $companyLogoDataUri ?? '';
       </div>
       <div class="tearoff__footer">
         <p class="tearoff__note">Noteer uw naam of huisnummer en bevestig de kaart bij de deur zodat onze specialist zich direct kan melden.</p>
-        <div class="tearoff__line"></div>
-        <p class="tearoff__line-label">Naam / Huisnummer</p>
+        <div class="tearoff__signature">
+          <div class="tearoff__line"></div>
+          <p class="tearoff__line-label">Naam / Huisnummer</p>
+        </div>
       </div>
     </div>
   </main>

@@ -16,6 +16,7 @@ if (!function_exists('render_main_nav')) {
             'calendar' => ['label' => 'Kalendarz', 'href' => 'calendar.php'],
             'documents' => ['label' => 'Documenten', 'href' => 'documents.php'],
             'inventory' => ['label' => 'Magazyn', 'href' => 'magazyn.php'],
+            'pc_builder' => ['label' => 'Budowa PC', 'href' => 'pc-builder.php'],
             'employees' => ['label' => 'Pracownicy', 'href' => 'employees.php'],
         ];
 
