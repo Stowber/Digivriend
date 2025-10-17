@@ -216,65 +216,106 @@
     }
 
     .tearoff {
-      margin-top: 28px;
+      margin-top: 32px;
       border-top: 2px dashed var(--border-color);
-      padding-top: 18px;
+      padding: 26px 26px 22px;
+      background: linear-gradient(180deg, #ffffff 0%, rgba(240, 90, 40, 0.05) 100%);
+      border-radius: 0 0 16px 16px;
+    }
+
+    .tearoff__header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .tearoff__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      letter-spacing: 0.08em;
     }
 
     .tearoff__title {
-      margin: 0 0 10px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-      text-align: center;
       color: var(--text-main);
     }
 
+    .tearoff__subtitle {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
     .tearoff__grid {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
       gap: 18px;
-      justify-content: space-between;
-      flex-wrap: wrap;
     }
 
     .tearoff__column {
-      flex: 1 1 180px;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 20px rgba(240, 90, 40, 0.12);
+      padding: 16px 18px;
     }
 
     .tearoff__column h3 {
-      margin: 0 0 8px;
+      margin: 0 0 10px;
       font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      color: var(--accent);
     }
 
     .tearoff__list {
       list-style: none;
       padding: 0;
       margin: 0;
+      display: grid;
+      gap: 8px;
     }
 
     .tearoff__list li {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 4px 0;
-      border-bottom: 1px dotted var(--border-color);
-      font-size: 12px;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed rgba(240, 90, 40, 0.25);
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .tearoff__list li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
 
     .tearoff__checkbox {
-      width: 14px;
-      height: 14px;
-      border: 1px solid var(--border-color);
-      border-radius: 3px;
+      width: 16px;
+      height: 16px;
+      border: 1.6px solid var(--accent);
+      border-radius: 4px;
+      background: #fff;
+      box-shadow: inset 0 0 0 2px #fff;
     }
 
     .tearoff__note {
-      margin: 14px 0 0;
-      font-size: 11px;
+      margin: 18px 0 0;
+      font-size: 11.5px;
       color: var(--text-muted);
       text-align: center;
     }
@@ -352,7 +393,13 @@
       Digivriend
     </p>
     <div class="tearoff">
-      <p class="tearoff__title">Afspraakherinnering voor op de deur</p>
+      <div class="tearoff__header">
+        <span class="tearoff__icon">DV</span>
+        <div>
+          <p class="tearoff__title">Afspraakherinnering voor op de deur</p>
+          <p class="tearoff__subtitle">Knip deze strook uit, vink het gewenste moment aan en hang hem zichtbaar aan uw deur.</p>
+        </div>
+      </div>
       <div class="tearoff__grid">
         <div class="tearoff__column">
           <h3>Dag</h3>
@@ -385,7 +432,7 @@
           </ul>
         </div>
       </div>
-      <p class="tearoff__note">Knip deze strook uit, vink het gewenste moment aan en hang hem zichtbaar aan uw deur.</p>
+      <p class="tearoff__note">Vul uw voorkeuren duidelijk in en bevestig de kaart bij de deurklink of op ooghoogte voor onze specialist.</p>
     </div>
   </main>
   <footer class="footer">
