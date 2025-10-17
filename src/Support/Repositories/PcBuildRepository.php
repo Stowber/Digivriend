@@ -200,6 +200,84 @@ final class PcBuildRepository
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function metrics(): array
+    {
+        $statusCounts = array_fill_keys(array_keys(self::STATUS_LABELS), 0);
+        $otherStatuses = 0;
+
+        $statusStatement = $this->pdo->query('SELECT status, COUNT(*) AS total FROM pc_builds GROUP BY status');
+        if ($statusStatement !== false) {
+            foreach ($statusStatement->fetchAll() ?: [] as $row) {
+                $status = (string) ($row['status'] ?? '');
+                $count = (int) ($row['total'] ?? 0);
+
+                if ($status === '' || $count <= 0) {
+                    continue;
+                }
+
+                if (isset($statusCounts[$status])) {
+                    $statusCounts[$status] = $count;
+                } else {
+                    $otherStatuses += $count;
+                }
+            }
+        }
+
+        $totalBuilds = array_sum($statusCounts) + $otherStatuses;
+
+        $componentStatement = $this->pdo->query('SELECT COALESCE(SUM(quantity), 0) AS total FROM pc_build_components');
+        $componentCount = 0;
+        if ($componentStatement !== false) {
+            $componentValue = $componentStatement->fetchColumn();
+            $componentCount = (int) ($componentValue ?: 0);
+        }
+
+        $leftoverStatement = $this->pdo->query('SELECT COALESCE(SUM(quantity), 0) AS total FROM pc_build_leftovers');
+        $leftoverCount = 0;
+        if ($leftoverStatement !== false) {
+            $leftoverValue = $leftoverStatement->fetchColumn();
+            $leftoverCount = (int) ($leftoverValue ?: 0);
+        }
+
+        $activeCasesStatement = $this->pdo->query(
+            "SELECT COUNT(DISTINCT case_id) FROM pc_builds WHERE status != 'completed' AND case_id IS NOT NULL"
+        );
+        $activeCases = 0;
+        if ($activeCasesStatement !== false) {
+            $activeCasesValue = $activeCasesStatement->fetchColumn();
+            $activeCases = (int) ($activeCasesValue ?: 0);
+        }
+
+        $latestStatement = $this->pdo->query(
+            'SELECT reference_code, created_at, updated_at, status FROM pc_builds ORDER BY updated_at DESC LIMIT 1'
+        );
+        $latestBuild = null;
+        if ($latestStatement !== false) {
+            $latestRow = $latestStatement->fetch();
+            if ($latestRow !== false) {
+                $latestBuild = [
+                    'reference_code' => (string) ($latestRow['reference_code'] ?? ''),
+                    'status' => (string) ($latestRow['status'] ?? ''),
+                    'updated_at' => (string) ($latestRow['updated_at'] ?? ''),
+                    'created_at' => (string) ($latestRow['created_at'] ?? ''),
+                ];
+            }
+        }
+
+        return [
+            'status_counts' => $statusCounts,
+            'other_statuses' => $otherStatuses,
+            'total_builds' => $totalBuilds,
+            'total_components' => $componentCount,
+            'total_leftovers' => $leftoverCount,
+            'active_cases' => $activeCases,
+            'latest_build' => $latestBuild,
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     private function fetchComponents(int $buildId): array

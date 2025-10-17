@@ -27,6 +27,16 @@ $caseProfileOptions = array_filter(
 );
 
 $buildStatusLabels = $pcBuildRepository->statusLabels();
+$metrics = $pcBuildRepository->metrics();
+$buildStatusCounts = is_array($metrics['status_counts'] ?? null)
+    ? $metrics['status_counts']
+    : array_fill_keys(array_keys($buildStatusLabels), 0);
+$otherStatusCount = (int) ($metrics['other_statuses'] ?? 0);
+$totalBuilds = (int) ($metrics['total_builds'] ?? 0);
+$totalComponents = (int) ($metrics['total_components'] ?? 0);
+$totalLeftovers = (int) ($metrics['total_leftovers'] ?? 0);
+$activeCases = (int) ($metrics['active_cases'] ?? 0);
+$latestBuild = is_array($metrics['latest_build'] ?? null) ? $metrics['latest_build'] : null;
 
 $errors = [
     'profile' => [],
@@ -311,6 +321,7 @@ foreach ($builds as $build) {
         $buildDetails[$buildId] = null;
     }
 }
+$buildCount = count($builds);
 
 $csrfToken = Csrf::token();
 $typeLabels = $profileRepository->typeLabels();
@@ -324,6 +335,7 @@ $typeLabels = $profileRepository->typeLabels();
   <title>Budowa PC - Digivriend</title>
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/pc-builder.css">
+  <script src="js/pc-builder.js" defer></script>
 </head>
 <body>
   <header class="main-header">
@@ -355,6 +367,71 @@ $typeLabels = $profileRepository->typeLabels();
     <?php if ($successMessage !== null): ?>
       <div class="alert alert--success" role="status"><?= htmlspecialchars($successMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
     <?php endif; ?>
+
+    <section class="pc-builder__metrics" aria-label="Panel automatyzacji budów">
+      <article class="pc-builder__metric-card">
+        <header>
+          <p class="pc-builder__metric-label">Łączna liczba budów</p>
+          <p class="pc-builder__metric-value" data-build-total><?= $totalBuilds ?></p>
+        </header>
+        <p class="pc-builder__metric-subtitle">
+          Dane odświeżane automatycznie na podstawie wpisów w systemie serwisowym.
+        </p>
+        <p class="pc-builder__metric-footnote">Aktywnych spraw: <strong><?= $activeCases ?></strong></p>
+      </article>
+
+      <article class="pc-builder__metric-card">
+        <header>
+          <p class="pc-builder__metric-label">Statusy budów</p>
+        </header>
+        <ul class="pc-builder__metric-list">
+          <?php foreach ($buildStatusLabels as $statusKey => $statusLabel): ?>
+            <li>
+              <span><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <strong data-status-count="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?= (int) ($buildStatusCounts[$statusKey] ?? 0) ?>
+              </strong>
+            </li>
+          <?php endforeach; ?>
+          <?php if ($otherStatusCount > 0): ?>
+            <li>
+              <span>Inne</span>
+              <strong><?= $otherStatusCount ?></strong>
+            </li>
+          <?php endif; ?>
+        </ul>
+      </article>
+
+      <article class="pc-builder__metric-card">
+        <header>
+          <p class="pc-builder__metric-label">Komponenty przypisane</p>
+          <p class="pc-builder__metric-value"><?= $totalComponents ?></p>
+        </header>
+        <p class="pc-builder__metric-subtitle">Łączna liczba sztuk użyta we wszystkich trwających budowach.</p>
+        <p class="pc-builder__metric-footnote">Pozostałości w magazynie: <strong><?= $totalLeftovers ?></strong></p>
+      </article>
+
+      <article class="pc-builder__metric-card">
+        <header>
+          <p class="pc-builder__metric-label">Ostatnia aktywność</p>
+          <?php if ($latestBuild !== null && ($latestBuild['reference_code'] ?? '') !== ''): ?>
+            <p class="pc-builder__metric-value">
+              <?= htmlspecialchars((string) $latestBuild['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </p>
+          <?php else: ?>
+            <p class="pc-builder__metric-value">—</p>
+          <?php endif; ?>
+        </header>
+        <?php if ($latestBuild !== null): ?>
+          <p class="pc-builder__metric-subtitle">
+            Status: <strong><?= htmlspecialchars((string) ($buildStatusLabels[$latestBuild['status']] ?? $latestBuild['status'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+          </p>
+          <p class="pc-builder__metric-footnote">Zaktualizowano: <?= htmlspecialchars((string) ($latestBuild['updated_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php else: ?>
+          <p class="pc-builder__metric-subtitle">Brak danych o ostatniej budowie.</p>
+        <?php endif; ?>
+      </article>
+    </section>
 
     <section class="pc-builder__forms" aria-label="Zarządzanie profilami i budowami">
       <div class="pc-builder__form-card">
@@ -406,12 +483,29 @@ $typeLabels = $profileRepository->typeLabels();
 
           <label>
             Karta serwisowa
-            <select name="case_id" required>
+            <select name="case_id" required data-case-select>
               <option value="">-- wybierz --</option>
               <?php foreach ($caseOptions as $case): ?>
                 <?php $selected = (string) $case['id'] === $createBuildValues['case_id'] ? 'selected' : ''; ?>
-                <option value="<?= (int) $case['id'] ?>" <?= $selected ?>>
-                  <?= htmlspecialchars(($case['reference_code'] ?? '') . ' - ' . ($case['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                <?php
+                    $caseReference = (string) ($case['reference_code'] ?? '');
+                    $caseCustomer = (string) ($case['full_name'] ?? '');
+                    $caseSummary = trim((string) ($case['summary'] ?? ''));
+                    $autoSummary = trim(
+                        ($caseCustomer !== '' ? 'Budowa PC dla ' . $caseCustomer : 'Budowa PC')
+                        . ($caseReference !== '' ? ' (' . $caseReference . ')' : '')
+                        . ($caseSummary !== '' ? ' – ' . $caseSummary : '')
+                    );
+                ?>
+                <option
+                  value="<?= (int) $case['id'] ?>"
+                  <?= $selected ?>
+                  data-case-reference="<?= htmlspecialchars($caseReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                  data-case-customer="<?= htmlspecialchars($caseCustomer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                  data-case-description="<?= htmlspecialchars($caseSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                  data-auto-summary="<?= htmlspecialchars($autoSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                >
+                  <?= htmlspecialchars(($caseReference !== '' ? $caseReference . ' — ' : '') . $caseCustomer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -445,7 +539,8 @@ $typeLabels = $profileRepository->typeLabels();
 
           <label>
             Podsumowanie
-            <textarea name="summary" rows="3"><?= htmlspecialchars($createBuildValues['summary'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+            <textarea name="summary" rows="3" data-build-summary data-autofill="case"><?= htmlspecialchars($createBuildValues['summary'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+            <small class="form-hint">Wybór karty automatycznie uzupełni podsumowanie i pomoże w generowaniu kodów.</small>
           </label>
 
           <?php if (isset($errors['build']['general'])): ?><p class="form-error"><?= htmlspecialchars($errors['build']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p><?php endif; ?>
@@ -488,6 +583,9 @@ $typeLabels = $profileRepository->typeLabels();
                 <header>
                   <h4><?= htmlspecialchars($item['name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
                   <p>Kod: <?= htmlspecialchars($item['reference_code'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <?php if (($item['barcode'] ?? '') !== ''): ?>
+                    <p>EAN: <?= htmlspecialchars((string) $item['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <?php endif; ?>
                 </header>
                 <dl>
                   <div>
@@ -515,31 +613,92 @@ $typeLabels = $profileRepository->typeLabels();
 
     <section class="pc-builder__builds" aria-label="Lista budów">
       <h2>Ostatnie budowy</h2>
+      <div class="pc-builder__build-tools">
+        <div class="pc-builder__search">
+          <label>
+            <span>Wyszukaj budowę</span>
+            <input type="search" name="build_search" placeholder="Kod, klient, status..." data-build-search>
+          </label>
+        </div>
+        <div class="pc-builder__status-filter" role="group" aria-label="Filtr statusu">
+          <?php foreach ($buildStatusLabels as $statusKey => $statusLabel): ?>
+            <button
+              type="button"
+              class="pc-builder__status-button"
+              data-filter-status="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+              data-active="false"
+            >
+              <span><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <small><?= (int) ($buildStatusCounts[$statusKey] ?? 0) ?></small>
+            </button>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <p class="pc-builder__build-counter">Widoczne budowy: <strong data-build-count><?= $buildCount ?></strong> / <?= $buildCount ?></p>
       <?php if ($builds === []): ?>
         <p>Brak zleceń budowy PC. Dodaj nowe, aby rozpocząć śledzenie komponentów.</p>
       <?php endif; ?>
 
       <?php foreach ($builds as $build): ?>
-        <?php $buildId = (int) ($build['id'] ?? 0); ?>
-        <?php $details = $buildDetails[$buildId] ?? null; ?>
-        <article class="pc-builder__build" id="build-<?= $buildId ?>" <?= $highlightBuildId === $buildId ? 'data-highlight="true"' : '' ?>>
-          <header>
-            <div>
-              <h3><?= htmlspecialchars($build['reference_code'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-              <p>Klient: <?= htmlspecialchars($build['customer_name'] ?? 'brak danych', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <p>Case: <?= htmlspecialchars($build['case_reference_code'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <p>Status: <?= htmlspecialchars($buildStatusLabels[$build['status']] ?? (string) $build['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php
+            $buildId = (int) ($build['id'] ?? 0);
+            $details = $buildDetails[$buildId] ?? null;
+            $buildReference = (string) ($build['reference_code'] ?? '');
+            $buildStatus = (string) ($build['status'] ?? '');
+            $buildCustomer = (string) ($build['customer_name'] ?? '');
+            $buildCaseReference = (string) ($build['case_reference_code'] ?? '');
+            $buildSummaryText = trim((string) ($build['summary'] ?? ''));
+            $buildCaseSummary = trim((string) ($build['case_summary'] ?? ''));
+            $searchTokens = strtolower(trim(implode(' ', array_filter([
+                $buildReference,
+                $buildCustomer,
+                $buildCaseReference,
+                $buildSummaryText,
+                $buildCaseSummary,
+            ]))));
+            $highlightAttribute = $highlightBuildId === $buildId ? ' data-highlight="true"' : '';
+        ?>
+        <article
+          class="pc-builder__build"
+          id="build-<?= $buildId ?>"
+          data-build-item="true"
+          data-status="<?= htmlspecialchars($buildStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          data-search="<?= htmlspecialchars($searchTokens, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          data-build-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          data-build-customer="<?= htmlspecialchars($buildCustomer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          <?= $highlightAttribute ?>
+        >
+          <header class="pc-builder__build-header">
+            <div class="pc-builder__build-main">
+              <h3><?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+              <p>Klient: <?= htmlspecialchars($buildCustomer !== '' ? $buildCustomer : 'brak danych', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <p>Case: <?= htmlspecialchars($buildCaseReference !== '' ? $buildCaseReference : 'brak', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php if ($buildSummaryText !== ''): ?>
+                <p>Opis: <?= htmlspecialchars($buildSummaryText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php elseif ($buildCaseSummary !== ''): ?>
+                <p>Opis sprawy: <?= htmlspecialchars($buildCaseSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
             </div>
-            <div>
+            <div class="pc-builder__build-meta">
               <p>Profil obudowy: <?= htmlspecialchars((($build['profile_manufacturer'] ?? '') . ' ' . ($build['profile_model'] ?? '')) ?: 'brak', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <p>Zaktualizowano: <?= htmlspecialchars($build['updated_at'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            </div>
+            <div class="pc-builder__build-actions">
+              <span class="pc-builder__status-badge" data-status="<?= htmlspecialchars($buildStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?= htmlspecialchars($buildStatusLabels[$buildStatus] ?? $buildStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </span>
+              <?php if ($buildReference !== ''): ?>
+                <button type="button" class="btn btn--ghost btn--small" data-copy-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  Kopiuj kod
+                </button>
+              <?php endif; ?>
             </div>
           </header>
 
           <div class="pc-builder__build-body">
             <section>
               <h4>Dodaj komponent</h4>
-              <form method="post" class="form-inline">
+              <form method="post" class="form-inline" data-component-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <input type="hidden" name="action" value="add-component">
                 <input type="hidden" name="build_id" value="<?= $buildId ?>">
@@ -549,8 +708,25 @@ $typeLabels = $profileRepository->typeLabels();
                   <select name="item_id" required>
                     <option value="">-- wybierz --</option>
                     <?php foreach ($itemOptions as $item): ?>
-                      <option value="<?= (int) $item['id'] ?>">
-                        <?= htmlspecialchars(($item['name'] ?? '') . ' [' . ($item['barcode'] ?? 'brak kodu') . ']', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <?php
+                          $itemName = (string) ($item['name'] ?? '');
+                          $itemBarcode = (string) ($item['barcode'] ?? '');
+                          $itemStatus = (string) ($item['status'] ?? '');
+                          $optionLabel = $itemName;
+                          if ($itemBarcode !== '') {
+                              $optionLabel .= ' [' . $itemBarcode . ']';
+                          }
+                          if ($itemStatus !== '') {
+                              $optionLabel .= ' — ' . $itemStatus;
+                          }
+                      ?>
+                      <option
+                        value="<?= (int) $item['id'] ?>"
+                        data-item-name="<?= htmlspecialchars($itemName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-item-barcode="<?= htmlspecialchars($itemBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-item-status="<?= htmlspecialchars($itemStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      >
+                        <?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       </option>
                     <?php endforeach; ?>
                   </select>
@@ -577,8 +753,19 @@ $typeLabels = $profileRepository->typeLabels();
                 <?php if ($details !== null && ($details['components'] ?? []) !== []): ?>
                   <ul>
                     <?php foreach ($details['components'] as $component): ?>
+                        <?php
+                          $componentReference = (string) ($component['item_reference'] ?? '');
+                          $componentBarcode = (string) ($component['item_barcode'] ?? '');
+                      ?>
                       <li>
                         <?= htmlspecialchars(($component['item_name'] ?? '') . ' × ' . (string) ($component['quantity'] ?? 1), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        <?php if ($componentReference !== '' || $componentBarcode !== ''): ?>
+                          <small class="pc-builder__code">
+                            <?php if ($componentReference !== ''): ?>Kod: <?= htmlspecialchars($componentReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+                            <?php if ($componentReference !== '' && $componentBarcode !== ''): ?> • <?php endif; ?>
+                            <?php if ($componentBarcode !== ''): ?>EAN: <?= htmlspecialchars($componentBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+                          </small>
+                        <?php endif; ?>
                         <?php if (($component['notes'] ?? '') !== ''): ?>
                           <small><?= htmlspecialchars($component['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                         <?php endif; ?>
@@ -593,7 +780,7 @@ $typeLabels = $profileRepository->typeLabels();
 
             <section>
               <h4>Dodaj pozostałość</h4>
-              <form method="post" class="form-grid">
+              <form method="post" class="form-grid" data-leftover-form data-build-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <input type="hidden" name="action" value="add-leftover">
                 <input type="hidden" name="build_id" value="<?= $buildId ?>">
@@ -615,12 +802,15 @@ $typeLabels = $profileRepository->typeLabels();
 
                 <label>
                   Lokalizacja
-                  <input type="text" name="location" value="Magazyn PC">
+                  <input type="text" name="location" value="Magazyn PC" data-location-autofill>
                 </label>
 
                 <label>
                   Kod referencyjny (opcjonalnie)
-                  <input type="text" name="reference_code" placeholder="np. WH-ŚRUBKI">
+                  <div class="pc-builder__field-with-action">
+                    <input type="text" name="reference_code" placeholder="np. WH-ŚRUBKI">
+                    <button type="button" class="btn btn--ghost btn--small" data-generate-reference>Generuj</button>
+                  </div>
                 </label>
 
                 <label>
@@ -652,8 +842,23 @@ $typeLabels = $profileRepository->typeLabels();
                 <?php if ($details !== null && ($details['leftovers'] ?? []) !== []): ?>
                   <ul>
                     <?php foreach ($details['leftovers'] as $leftover): ?>
+                        <?php
+                          $leftoverReference = (string) ($leftover['item_reference'] ?? '');
+                          $leftoverBarcode = (string) ($leftover['item_barcode'] ?? '');
+                      ?>
                       <li>
                         <?= htmlspecialchars(($leftover['item_name'] ?? '') . ' × ' . (string) ($leftover['quantity'] ?? 0), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        <?php if ($leftoverReference !== '' || $leftoverBarcode !== ''): ?>
+                          <small class="pc-builder__code">
+                            <?php if ($leftoverReference !== ''): ?>Kod: <?= htmlspecialchars($leftoverReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+                            <?php if ($leftoverReference !== '' && $leftoverBarcode !== ''): ?> • <?php endif; ?>
+                            <?php if ($leftoverBarcode !== ''): ?>EAN: <?= htmlspecialchars($leftoverBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+                          </small>
+
+                        <?php endif; ?>
+                        <?php if (($leftover['notes'] ?? '') !== ''): ?>
+                          <small><?= htmlspecialchars((string) $leftover['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                        <?php endif; ?>
                         <?php if (($leftover['profile_manufacturer'] ?? '') !== ''): ?>
                           <small>Profil: <?= htmlspecialchars(($leftover['profile_manufacturer'] ?? '') . ' ' . ($leftover['profile_model'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                         <?php endif; ?>
