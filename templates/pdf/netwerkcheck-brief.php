@@ -1,3 +1,6 @@
+<?php
+$companyLogoDataUri = $companyLogoDataUri ?? '';
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
