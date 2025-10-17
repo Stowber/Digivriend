@@ -66,6 +66,57 @@ final class PcBuildRepository
         return $statement->fetchAll() ?: [];
     }
 
+    /**
+     * @return array{items: array<int, array<string, mixed>>, pagination: array<string, int>}
+     */
+    public function paginatedBuilds(int $page, int $perPage = 20): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min(200, $perPage));
+        $offset = ($page - 1) * $perPage;
+
+        $baseSelect = 'FROM pc_builds pb '
+            . 'LEFT JOIN cases c ON c.id = pb.case_id '
+            . 'LEFT JOIN customers cust ON cust.id = c.customer_id '
+            . 'LEFT JOIN hardware_profiles hp ON hp.id = pb.case_profile_id';
+
+        $statement = $this->pdo->prepare(
+            'SELECT pb.*, c.reference_code AS case_reference_code, c.summary AS case_summary, '
+            . 'cust.full_name AS customer_name, hp.type AS profile_type, hp.manufacturer AS profile_manufacturer, '
+            . 'hp.model AS profile_model '
+            . $baseSelect
+            . ' ORDER BY pb.updated_at DESC LIMIT :limit OFFSET :offset'
+        );
+
+        $statement->bindValue('limit', $perPage, PDO::PARAM_INT);
+        $statement->bindValue('offset', $offset, PDO::PARAM_INT);
+        $statement->execute();
+
+        $items = $statement->fetchAll() ?: [];
+
+        $countStatement = $this->pdo->query('SELECT COUNT(*) FROM pc_builds');
+        $total = 0;
+        if ($countStatement !== false) {
+            $countValue = $countStatement->fetchColumn();
+            $total = (int) ($countValue ?: 0);
+        }
+
+        $totalPages = $perPage > 0 ? (int) ceil($total / $perPage) : 1;
+        if ($totalPages < 1) {
+            $totalPages = 1;
+        }
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'total_pages' => $totalPages,
+            ],
+        ];
+    }
+
     public function findBuild(int $buildId): ?array
     {
         $statement = $this->pdo->prepare(

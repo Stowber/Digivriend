@@ -375,6 +375,7 @@ $filteredLeftovers = $filteredProfile !== null
     : [];
 
 $builds = $pcBuildRepository->listBuilds(null, 60);
+$recentBuilds = array_slice($builds, 0, 5);
 $buildDetails = [];
 foreach ($builds as $build) {
     $buildId = (int) ($build['id'] ?? 0);
@@ -497,6 +498,69 @@ $typeLabels = $profileRepository->typeLabels();
           <p class="pc-builder__metric-subtitle">Brak danych o ostatniej budowie.</p>
         <?php endif; ?>
       </article>
+    </section>
+
+    <section class="pc-builder__recent" aria-label="Najnowsze buildy">
+      <div class="pc-builder__section-header">
+        <div>
+          <h2>Najnowsze buildy</h2>
+          <p>Podgląd ostatnich konfiguracji przygotowanych przez zespół serwisowy.</p>
+        </div>
+        <a class="btn" href="pc-builds.php">Wszystkie buildy</a>
+      </div>
+      <?php if ($recentBuilds === []): ?>
+        <p>Brak zarejestrowanych budów. Dodaj nowy zestaw, aby rozpocząć pracę.</p>
+      <?php else: ?>
+        <ul class="pc-builder__recent-list">
+          <?php foreach ($recentBuilds as $recentBuild): ?>
+            <?php
+                $recentId = (int) ($recentBuild['id'] ?? 0);
+                if ($recentId <= 0) {
+                    continue;
+                }
+                $recentReference = (string) ($recentBuild['reference_code'] ?? '');
+                $recentStatus = (string) ($recentBuild['status'] ?? '');
+                $recentCustomer = (string) ($recentBuild['customer_name'] ?? '');
+                $recentCaseReference = (string) ($recentBuild['case_reference_code'] ?? '');
+                $recentSummary = trim((string) ($recentBuild['summary'] ?? ''));
+                $recentCaseSummary = trim((string) ($recentBuild['case_summary'] ?? ''));
+                $recentUpdated = (string) ($recentBuild['updated_at'] ?? '');
+                $statusLabel = $buildStatusLabels[$recentStatus] ?? $recentStatus;
+            ?>
+            <li>
+              <button
+                type="button"
+                class="pc-builder__recent-item"
+                data-build-modal-trigger="<?= $recentId ?>"
+                data-status="<?= htmlspecialchars($recentStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+              >
+                <span class="pc-builder__recent-title">
+                  <?= htmlspecialchars($recentReference !== '' ? $recentReference : 'Brak kodu', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                </span>
+                <span class="pc-builder__recent-status">
+                  <?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                </span>
+                <?php if ($recentCustomer !== ''): ?>
+                  <span class="pc-builder__recent-meta">Klient: <?= htmlspecialchars($recentCustomer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php endif; ?>
+                <?php if ($recentCaseReference !== ''): ?>
+                  <span class="pc-builder__recent-meta">Case: <?= htmlspecialchars($recentCaseReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php endif; ?>
+                <?php if ($recentSummary !== ''): ?>
+                  <span class="pc-builder__recent-summary"><?= htmlspecialchars($recentSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php elseif ($recentCaseSummary !== ''): ?>
+                  <span class="pc-builder__recent-summary"><?= htmlspecialchars($recentCaseSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php endif; ?>
+                <?php if ($recentUpdated !== ''): ?>
+                  <time class="pc-builder__recent-meta" datetime="<?= htmlspecialchars($recentUpdated, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    Aktualizacja: <?= htmlspecialchars($recentUpdated, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                  </time>
+                <?php endif; ?>
+              </button>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </section>
 
     <section class="pc-builder__forms" aria-label="Zarządzanie profilami i budowami">
@@ -678,7 +742,7 @@ $typeLabels = $profileRepository->typeLabels();
     </section>
 
     <section class="pc-builder__builds" aria-label="Lista budów">
-      <h2>Ostatnie budowy</h2>
+      <h2>Lista budów roboczych</h2>
       <div class="pc-builder__build-tools">
         <div class="pc-builder__search">
           <label>
@@ -723,6 +787,7 @@ $typeLabels = $profileRepository->typeLabels();
                 $buildCaseSummary,
             ]))));
             $highlightAttribute = $highlightBuildId === $buildId ? ' data-highlight="true"' : '';
+            $canEdit = $buildStatus !== 'completed';
 
             $normalizeStageText = static function (string $value): string {
                 if (function_exists('mb_strtolower')) {
@@ -769,6 +834,7 @@ $typeLabels = $profileRepository->typeLabels();
           data-search="<?= htmlspecialchars($searchTokens, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
           data-build-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
           data-build-customer="<?= htmlspecialchars($buildCustomer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          data-build-editable="<?= $canEdit ? 'true' : 'false' ?>"
           <?= $highlightAttribute ?>
         >
           <header class="pc-builder__build-header">
@@ -790,12 +856,18 @@ $typeLabels = $profileRepository->typeLabels();
               <span class="pc-builder__status-badge" data-status="<?= htmlspecialchars($buildStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <?= htmlspecialchars($buildStatusLabels[$buildStatus] ?? $buildStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
               </span>
+              <button type="button" class="btn btn--ghost btn--small" data-build-modal-trigger="<?= $buildId ?>">
+                Podgląd
+              </button>
               <?php if ($buildReference !== ''): ?>
                 <button type="button" class="btn btn--ghost btn--small" data-copy-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                   Kopiuj kod
                 </button>
               <?php endif; ?>
             </div>
+            <?php if (!$canEdit): ?>
+                  <p class="pc-builder__readonly-message">Budowa została zatwierdzona. Edycja komponentów jest zablokowana.</p>
+                <?php endif; ?>
           </header>
 
           <div class="pc-builder__build-body">
@@ -806,136 +878,137 @@ $typeLabels = $profileRepository->typeLabels();
                   <p>Prowadź montaż krok po kroku — wybierz sekcję komputera i przypisz odpowiedni element z magazynu.</p>
                 </div>
               </header>
-              <div class="pc-builder__assembly-grid" data-assembly>
-                <div class="pc-builder__visual" aria-hidden="true">
-                  <div class="pc-builder__visual-frame">
-                    <?php $stageIndex = 1; foreach ($componentStages as $stageKey => $stageData): ?>
-                      <?php
-                          $stageCompleted = $stageStates[$stageKey]['completed'] ?? false;
-                        $slotClass = 'pc-builder__slot pc-builder__slot--' . htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                        if ($stageCompleted) {
-                            $slotClass .= ' is-complete';
-                        }
-                      ?>
-                      <button
-                        type="button"
-                        class="<?= $slotClass ?>"
-                        data-slot="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        aria-label="Etap <?= $stageIndex ?>: <?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                      >
-                        <span><?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                      </button>
-                      <?php $stageIndex += 1; ?>
-                    <?php endforeach; ?>
-                  </div>
-                </div>
-                <div class="pc-builder__stage-panel">
-                  <div class="pc-builder__stage-info">
-                    <h5 data-stage-title data-default="Wybierz element">Wybierz element</h5>
-                    <p data-stage-description data-default="Kliknij sekcję na wizualizacji lub wybierz ją z listy kroków poniżej.">Kliknij sekcję na wizualizacji lub wybierz ją z listy kroków poniżej.</p>
-                    <p class="pc-builder__stage-subtitle" data-stage-subtitle></p>
-                  </div>
-                  <ul class="pc-builder__stage-list">
-                    <?php $stageIndex = 1; foreach ($componentStages as $stageKey => $stageData): ?>
-                      <?php
-                        $stageCompleted = $stageStates[$stageKey]['completed'] ?? false;
-                        $stageClasses = 'pc-builder__stage-button' . ($stageCompleted ? ' is-complete' : '');
-                        $keywordsJson = json_encode(isset($stageData['keywords']) && is_array($stageData['keywords']) ? $stageData['keywords'] : [], JSON_UNESCAPED_UNICODE);
-                        if (!is_string($keywordsJson)) {
-                            $keywordsJson = '[]';
-                        }
-                      ?>
-                      <li>
+              <?php if ($canEdit): ?>
+                <div class="pc-builder__assembly-grid" data-assembly>
+                  <div class="pc-builder__visual" aria-hidden="true">
+                    <div class="pc-builder__visual-frame">
+                      <?php $stageIndex = 1; foreach ($componentStages as $stageKey => $stageData): ?>
+                        <?php
+                            $stageCompleted = $stageStates[$stageKey]['completed'] ?? false;
+                            $slotClass = 'pc-builder__slot pc-builder__slot--' . htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                            if ($stageCompleted) {
+                                $slotClass .= ' is-complete';
+                            }
+                        ?>
                         <button
                           type="button"
-                          class="<?= $stageClasses ?>"
-                          data-stage="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                          data-stage-label="<?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                          data-stage-subtitle="<?= htmlspecialchars($stageData['subtitle'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                          data-stage-description="<?= htmlspecialchars($stageData['description'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                          data-stage-keywords="<?= htmlspecialchars($keywordsJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                          data-stage-note="<?= htmlspecialchars($stageData['note'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                          aria-pressed="false"
+                          class="<?= $slotClass ?>"
+                          data-slot="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                          aria-label="Etap <?= $stageIndex ?>: <?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                         >
-                          <span class="pc-builder__stage-index"><?= $stageIndex ?></span>
-                          <span class="pc-builder__stage-copy">
-                            <span class="pc-builder__stage-label"><?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                            <?php if (($stageData['subtitle'] ?? '') !== ''): ?>
-                              <small><?= htmlspecialchars($stageData['subtitle'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
-                            <?php endif; ?>
-                          </span>
-                          <span class="pc-builder__stage-status" aria-hidden="true"></span>
+                          <span><?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                         </button>
-                      </li>
                       <?php $stageIndex += 1; ?>
-                    <?php endforeach; ?>
-                  </ul>
-                </div>
-                <div class="pc-builder__form-panel">
-                  <form method="post" class="form-grid pc-builder__component-form" data-component-form>
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                    <input type="hidden" name="action" value="add-component">
-                    <input type="hidden" name="build_id" value="<?= $buildId ?>">
-
-                    <label>
-                      Pozycja magazynowa
-                      <select name="item_id" required>
-                        <option value="">-- wybierz --</option>
-                        <?php foreach ($itemOptions as $item): ?>
-                          <?php
-                              $itemName = (string) ($item['name'] ?? '');
-                              $itemBarcode = (string) ($item['barcode'] ?? '');
-                              $itemStatus = (string) ($item['status'] ?? '');
-                              $optionLabel = $itemName;
-                              if ($itemBarcode !== '') {
-                                  $optionLabel .= ' [' . $itemBarcode . ']';
-                              }
-                              if ($itemStatus !== '') {
-                                  $optionLabel .= ' — ' . $itemStatus;
-                              }
-                          ?>
-                          <option
-                            value="<?= (int) $item['id'] ?>"
-                            data-item-name="<?= htmlspecialchars($itemName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                            data-item-barcode="<?= htmlspecialchars($itemBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                            data-item-status="<?= htmlspecialchars($itemStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      <?php endforeach; ?>
+                    </div>
+                  </div>
+                  <div class="pc-builder__stage-panel">
+                    <div class="pc-builder__stage-info">
+                      <h5 data-stage-title data-default="Wybierz element">Wybierz element</h5>
+                      <p data-stage-description data-default="Kliknij sekcję na wizualizacji lub wybierz ją z listy kroków poniżej.">Kliknij sekcję na wizualizacji lub wybierz ją z listy kroków poniżej.</p>
+                      <p class="pc-builder__stage-subtitle" data-stage-subtitle></p>
+                    </div>
+                    <ul class="pc-builder__stage-list">
+                      <?php $stageIndex = 1; foreach ($componentStages as $stageKey => $stageData): ?>
+                        <?php
+                          $stageCompleted = $stageStates[$stageKey]['completed'] ?? false;
+                          $stageClasses = 'pc-builder__stage-button' . ($stageCompleted ? ' is-complete' : '');
+                          $keywordsJson = json_encode(isset($stageData['keywords']) && is_array($stageData['keywords']) ? $stageData['keywords'] : [], JSON_UNESCAPED_UNICODE);
+                          if (!is_string($keywordsJson)) {
+                              $keywordsJson = '[]';
+                          }
+                        ?>
+                        <li>
+                          <button
+                            type="button"
+                            class="<?= $stageClasses ?>"
+                            data-stage="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-stage-label="<?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-stage-subtitle="<?= htmlspecialchars($stageData['subtitle'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-stage-description="<?= htmlspecialchars($stageData['description'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-stage-keywords="<?= htmlspecialchars($keywordsJson, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            data-stage-note="<?= htmlspecialchars($stageData['note'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            aria-pressed="false"
                           >
-                            <?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                          </option>
-                        <?php endforeach; ?>
-                      </select>
-                    </label>
-                    <?php if ($highlightBuildId === $buildId && isset($errors['component']['item_id'])): ?>
-                      <p class="form-error"><?= htmlspecialchars($errors['component']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-                    <?php endif; ?>
-
-                    <p class="pc-builder__hint" data-stage-hint>System filtruje listę na podstawie wybranego etapu. W każdej chwili możesz pokazać wszystkie pozycje.</p>
-                    <p class="pc-builder__no-suggestions" data-no-suggestions hidden>Brak elementów pasujących do tej kategorii. Pokaż wszystkie pozycje lub wybierz inny etap.</p>
-
-                    <div class="pc-builder__form-row">
+                            <span class="pc-builder__stage-index"><?= $stageIndex ?></span>
+                            <span class="pc-builder__stage-copy">
+                              <span class="pc-builder__stage-label"><?= htmlspecialchars($stageData['label'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                              <?php if (($stageData['subtitle'] ?? '') !== ''): ?>
+                                <small><?= htmlspecialchars($stageData['subtitle'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                              <?php endif; ?>
+                            </span>
+                            <span class="pc-builder__stage-status" aria-hidden="true"></span>
+                          </button>
+                        </li>
+                        <?php $stageIndex += 1; ?>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
+                  <div class="pc-builder__form-panel">
+                    <form method="post" class="form-grid pc-builder__component-form" data-component-form>
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                      <input type="hidden" name="action" value="add-component">
+                      <input type="hidden" name="build_id" value="<?= $buildId ?>">
                       <label>
-                        Ilość
-                        <input type="number" name="quantity" value="1" min="1" step="1" required>
+                        Pozycja magazynowa
+                        <select name="item_id" required>
+                          <option value="">-- wybierz --</option>
+                          <?php foreach ($itemOptions as $item): ?>
+                            <?php
+                                $itemName = (string) ($item['name'] ?? '');
+                                $itemBarcode = (string) ($item['barcode'] ?? '');
+                                $itemStatus = (string) ($item['status'] ?? '');
+                                $optionLabel = $itemName;
+                                if ($itemBarcode !== '') {
+                                    $optionLabel .= ' [' . $itemBarcode . ']';
+                                }
+                                if ($itemStatus !== '') {
+                                    $optionLabel .= ' — ' . $itemStatus;
+                                }
+                            ?>
+                            <option
+                              value="<?= (int) $item['id'] ?>"
+                              data-item-name="<?= htmlspecialchars($itemName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                              data-item-barcode="<?= htmlspecialchars($itemBarcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                              data-item-status="<?= htmlspecialchars($itemStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            >
+                              <?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                            </option>
+                          <?php endforeach; ?>
+                        </select>
                       </label>
-                      <label>
-                        Notatki
-                        <input type="text" name="notes" placeholder="np. montaż">
-                      </label>
-                    </div>
-                    <?php if ($highlightBuildId === $buildId && isset($errors['component']['quantity'])): ?>
-                      <p class="form-error"><?= htmlspecialchars($errors['component']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-                    <?php endif; ?>
+                      <?php if ($highlightBuildId === $buildId && isset($errors['component']['item_id'])): ?>
+                        <p class="form-error"><?= htmlspecialchars($errors['component']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                      <?php endif; ?>
 
-                    <div class="pc-builder__form-actions">
-                      <button type="button" class="btn btn--ghost btn--small" data-show-all-options>Pokaż wszystkie pozycje</button>
-                      <button type="submit" class="btn">Dodaj</button>
+                      <p class="pc-builder__hint" data-stage-hint>System filtruje listę na podstawie wybranego etapu. W każdej chwili możesz pokazać wszystkie pozycje.</p>
+                      <p class="pc-builder__no-suggestions" data-no-suggestions hidden>Brak elementów pasujących do tej kategorii. Pokaż wszystkie pozycje lub wybierz inny etap.</p>
+
+                      <div class="pc-builder__form-row">
+                        <label>
+                          Ilość
+                          <input type="number" name="quantity" value="1" min="1" step="1" required>
+                        </label>
+                        <label>
+                          Notatki
+                          <input type="text" name="notes" placeholder="np. montaż">
+                        </label>
+                      </div>
+                      <?php if ($highlightBuildId === $buildId && isset($errors['component']['quantity'])): ?>
+                        <p class="form-error"><?= htmlspecialchars($errors['component']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                      <?php endif; ?>
+
+                      <div class="pc-builder__form-actions">
+                        <button type="button" class="btn btn--ghost btn--small" data-show-all-options>Pokaż wszystkie pozycje</button>
+                        <button type="submit" class="btn">Dodaj</button>
+                      </div>
+                    </form>
+                    <?php if ($highlightBuildId === $buildId && isset($errors['component']['general'])): ?>
+                      <p class="form-error"><?= htmlspecialchars($errors['component']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                    <?php endif; ?>
                     </div>
-                  </form>
-                  <?php if ($highlightBuildId === $buildId && isset($errors['component']['general'])): ?>
-                    <p class="form-error"><?= htmlspecialchars($errors['component']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-                  <?php endif; ?>
                 </div>
-              </div>
+              <?php endif; ?>
 
               <div class="pc-builder__component-list">
                 <h5>Wykorzystane komponenty</h5>
@@ -967,63 +1040,67 @@ $typeLabels = $profileRepository->typeLabels();
               </div>
             </section>
 
-            <section>
+            <section class="pc-builder__leftovers">
               <h4>Dodaj pozostałość</h4>
-              <form method="post" class="form-grid" data-leftover-form data-build-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <input type="hidden" name="action" value="add-leftover">
-                <input type="hidden" name="build_id" value="<?= $buildId ?>">
+              <?php if ($canEdit): ?>
+                <form method="post" class="form-grid" data-leftover-form data-build-reference="<?= htmlspecialchars($buildReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="action" value="add-leftover">
+                  <input type="hidden" name="build_id" value="<?= $buildId ?>">
 
-                <label>
-                  Nazwa pozostałości
-                  <input type="text" name="name" required>
-                </label>
+                  <label>
+                    Nazwa pozostałości
+                    <input type="text" name="name" required>
+                  </label>
 
-                <label>
-                  Ilość
-                  <input type="number" name="quantity" value="1" min="0" step="1" required>
-                </label>
+                  <label>
+                    Ilość
+                    <input type="number" name="quantity" value="1" min="0" step="1" required>
+                  </label>
 
-                <label>
-                  Kategoria
-                  <input type="text" name="category" value="leftover">
-                </label>
+                  <label>
+                    Kategoria
+                    <input type="text" name="category" value="leftover">
+                  </label>
 
-                <label>
-                  Lokalizacja
-                  <input type="text" name="location" value="Magazyn PC" data-location-autofill>
-                </label>
+                  <label>
+                    Lokalizacja
+                    <input type="text" name="location" value="Magazyn PC" data-location-autofill>
+                  </label>
 
-                <label>
-                  Kod referencyjny (opcjonalnie)
-                  <div class="pc-builder__field-with-action">
-                    <input type="text" name="reference_code" placeholder="np. WH-ŚRUBKI">
-                    <button type="button" class="btn btn--ghost btn--small" data-generate-reference>Generuj</button>
-                  </div>
-                </label>
+                  <label>
+                    Kod referencyjny (opcjonalnie)
+                    <div class="pc-builder__field-with-action">
+                      <input type="text" name="reference_code" placeholder="np. WH-ŚRUBKI">
+                      <button type="button" class="btn btn--ghost btn--small" data-generate-reference>Generuj</button>
+                    </div>
+                  </label>
 
-                <label>
-                  Profil kompatybilności
-                  <select name="profile_id">
-                    <option value="">-- brak --</option>
-                    <?php foreach ($profileOptions as $profile): ?>
-                      <?php $selected = $build['case_profile_id'] && (int) $profile['id'] === (int) $build['case_profile_id'] ? 'selected' : ''; ?>
-                      <option value="<?= (int) $profile['id'] ?>" <?= $selected ?>>
-                        <?= htmlspecialchars(($profile['manufacturer'] ?? '') . ' ' . ($profile['model'] ?? '') . ' (' . ($profile['type'] ?? '') . ')', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                      </option>
-                    <?php endforeach; ?>
-                  </select>
-                </label>
+                  <label>
+                    Profil kompatybilności
+                    <select name="profile_id">
+                      <option value="">-- brak --</option>
+                      <?php foreach ($profileOptions as $profile): ?>
+                        <?php $selected = $build['case_profile_id'] && (int) $profile['id'] === (int) $build['case_profile_id'] ? 'selected' : ''; ?>
+                        <option value="<?= (int) $profile['id'] ?>" <?= $selected ?>>
+                          <?= htmlspecialchars(($profile['manufacturer'] ?? '') . ' ' . ($profile['model'] ?? '') . ' (' . ($profile['type'] ?? '') . ')', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        </option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
 
-                <label>
-                  Notatki
-                  <textarea name="notes" rows="3"></textarea>
-                </label>
+                  <label>
+                    Notatki
+                    <textarea name="notes" rows="3"></textarea>
+                  </label>
 
-                <button type="submit" class="btn">Zapisz pozostałość</button>
-              </form>
-              <?php if ($highlightBuildId === $buildId && isset($errors['leftover']['general'])): ?>
-                <p class="form-error"><?= htmlspecialchars($errors['leftover']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <button type="submit" class="btn">Zapisz pozostałość</button>
+                </form>
+                <?php if ($highlightBuildId === $buildId && isset($errors['leftover']['general'])): ?>
+                  <p class="form-error"><?= htmlspecialchars($errors['leftover']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <?php endif; ?>
+              <?php else: ?>
+                <p class="pc-builder__readonly-message">Budowa została zatwierdzona. Dodawanie pozostałości jest zablokowane.</p>
               <?php endif; ?>
 
               <div class="pc-builder__leftover-history">
@@ -1063,6 +1140,7 @@ $typeLabels = $profileRepository->typeLabels();
         </article>
       <?php endforeach; ?>
     </section>
+    <?php require __DIR__ . '/templates/partials/pc-build-detail-modal.php'; ?>
   </main>
 </body>
 </html>
