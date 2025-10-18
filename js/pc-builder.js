@@ -69,6 +69,9 @@
         : {};
       const components = payload && Array.isArray(payload.components) ? payload.components : [];
       const leftovers = payload && Array.isArray(payload.leftovers) ? payload.leftovers : [];
+      const workflow = payload && Array.isArray(payload.workflow) ? payload.workflow : [];
+      const documents = payload && Array.isArray(payload.documents) ? payload.documents : [];
+      const journal = payload && Array.isArray(payload.journal) ? payload.journal : [];
       const statusKey = escapeHtml(typeof build.status === 'string' ? build.status : '');
       const statusLabelRaw = typeof payload === 'object' && payload !== null && typeof payload.status_label === 'string'
         ? payload.status_label
@@ -167,11 +170,77 @@
         ? `<ul class="pc-build-modal__list">${leftoverItems}</ul>`
         : '<p class="pc-build-modal__placeholder">Brak zarejestrowanych pozostałości.</p>';
 
+        const workflowItems = workflow.map((entry) => {
+        const step = escapeHtml(typeof entry.step === 'string' ? entry.step : '');
+        const completedAt = escapeHtml(typeof entry.completed_at === 'string' ? entry.completed_at : '');
+        const completedBy = escapeHtml(typeof entry.completed_by === 'string' ? entry.completed_by : '');
+        const status = completedAt !== '' ? 'Zakończono' : 'W toku';
+        const metaParts = [];
+        if (completedAt !== '') {
+          metaParts.push(`<time datetime="${completedAt}">${completedAt}</time>`);
+        }
+        if (completedBy !== '') {
+          metaParts.push(`przez ${completedBy}`);
+        }
+        const metaHtmlItem = metaParts.length > 0 ? ` <small>${metaParts.join(' • ')}</small>` : '';
+        return `<li><strong>${step !== '' ? step : 'Krok'}</strong> – ${status}${metaHtmlItem}</li>`;
+      }).join('');
+      const workflowHtml = workflowItems !== ''
+        ? `<ul class="pc-build-modal__list">${workflowItems}</ul>`
+        : '<p class="pc-build-modal__placeholder">Brak danych o postępie.</p>';
+
+      const documentItems = documents.map((document) => {
+        const type = escapeHtml(typeof document.type === 'string' ? document.type : '');
+        const status = escapeHtml(typeof document.status === 'string' ? document.status : '');
+        const filePath = escapeHtml(typeof document.file_path === 'string' ? document.file_path : '');
+        const recipient = escapeHtml(typeof document.recipient === 'string' ? document.recipient : '');
+        const createdAt = escapeHtml(typeof document.created_at === 'string' ? document.created_at : '');
+        const meta = [];
+        if (status !== '') {
+          meta.push(`status: ${status}`);
+        }
+        if (recipient !== '') {
+          meta.push(`adresat: ${recipient}`);
+        }
+        if (createdAt !== '') {
+          meta.push(createdAt);
+        }
+        const metaHtmlItem = meta.length > 0 ? `<small>${meta.join(' • ')}</small>` : '';
+        const linkHtml = filePath !== ''
+          ? `<a href="${filePath}" target="_blank" rel="noopener" class="pc-build-modal__link">Pobierz</a>`
+          : '';
+        return `<li><span>${type !== '' ? type : 'Dokument'}</span>${metaHtmlItem}${linkHtml}</li>`;
+      }).join('');
+      const documentsHtml = documentItems !== ''
+        ? `<ul class="pc-build-modal__list">${documentItems}</ul>`
+        : '<p class="pc-build-modal__placeholder">Brak wygenerowanych dokumentów.</p>';
+
+      const journalItems = journal.map((entry) => {
+        const createdAt = escapeHtml(typeof entry.created_at === 'string' ? entry.created_at : '');
+        const createdBy = escapeHtml(typeof entry.created_by === 'string' ? entry.created_by : '');
+        const message = escapeHtml(typeof entry.message === 'string' ? entry.message : '');
+        const meta = [];
+        if (createdAt !== '') {
+          meta.push(`<time datetime="${createdAt}">${createdAt}</time>`);
+        }
+        if (createdBy !== '') {
+          meta.push(`przez ${createdBy}`);
+        }
+        const metaHtmlItem = meta.length > 0 ? `<small>${meta.join(' • ')}</small>` : '';
+        return `<li>${message !== '' ? message : 'Aktualizacja'}${metaHtmlItem}</li>`;
+      }).join('');
+      const journalHtml = journalItems !== ''
+        ? `<ul class="pc-build-modal__list">${journalItems}</ul>`
+        : '<p class="pc-build-modal__placeholder">Brak wpisów dziennika.</p>';
+
       setModalContent(
         `<div class="pc-build-modal__summary">${metaHtml}${summaryBlock}${noticeBlock}</div>`
         + '<div class="pc-build-modal__grid">'
         + `<section class="pc-build-modal__section"><h3>Komponenty</h3>${componentsHtml}</section>`
         + `<section class="pc-build-modal__section"><h3>Pozostałości</h3>${leftoversHtml}</section>`
+        + `<section class="pc-build-modal__section"><h3>Etapy</h3>${workflowHtml}</section>`
+        + `<section class="pc-build-modal__section"><h3>Dokumenty</h3>${documentsHtml}</section>`
+        + `<section class="pc-build-modal__section"><h3>Dziennik</h3>${journalHtml}</section>`
         + '</div>'
       );
     }

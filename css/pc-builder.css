@@ -1029,6 +1029,19 @@
   color: #475569;
 }
 
+.pc-build-modal__link {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  color: #0a84ff;
+  text-decoration: underline;
+}
+
+.pc-build-modal__link:hover,
+.pc-build-modal__link:focus-visible {
+  text-decoration: none;
+}
+
 .pc-build-modal__notice {
   margin: 0;
   font-size: 0.9rem;

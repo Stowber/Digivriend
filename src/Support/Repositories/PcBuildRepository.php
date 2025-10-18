@@ -8,6 +8,7 @@ use App\Support\Clock;
 use PDO;
 use RuntimeException;
 use JsonException;
+use Throwable;
 
 final class PcBuildRepository
 {
@@ -308,12 +309,15 @@ final class PcBuildRepository
         $workflow = $this->fetchWorkflow($buildId);
         $journal = $this->fetchJournal($buildId);
 
+        $documents = $this->fetchDocuments($buildId);
+
         return [
             'build' => $build,
             'components' => $components,
             'leftovers' => $leftovers,
             'workflow' => $workflow,
             'journal' => $journal,
+            'documents' => $documents,
         ];
     }
 
@@ -428,6 +432,69 @@ final class PcBuildRepository
 
         $this->saveWorkflowStep($buildId, 'planning', $planningData, $username);
         $this->recordJournalEntry($buildId, 'planning', 'update', 'Zaktualizowano plan komponentów.', $planningData, $username);
+    }
+
+    public function syncComponentsFromPlanningPayload(int $buildId, array $planningPayload): void
+    {
+        $components = [];
+        $componentRows = is_array($planningPayload['components'] ?? null) ? $planningPayload['components'] : [];
+
+        foreach ($componentRows as $component) {
+            $itemIdRaw = $component['item_id'] ?? null;
+            if ($itemIdRaw === null) {
+                continue;
+            }
+
+            $itemId = filter_var($itemIdRaw, FILTER_VALIDATE_INT);
+            if ($itemId === false || $itemId <= 0) {
+                continue;
+            }
+
+            $components[] = [
+                'item_id' => (int) $itemId,
+                'quantity' => max(1, (int) ($component['quantity'] ?? 1)),
+                'notes' => isset($component['notes']) && $component['notes'] !== ''
+                    ? (string) $component['notes']
+                    : null,
+            ];
+        }
+
+        $this->syncComponents($buildId, $components);
+    }
+
+    /**
+     * @param array<int, array{item_id: int, quantity: int, notes: ?string}> $components
+     */
+    public function syncComponents(int $buildId, array $components): void
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            $delete = $this->pdo->prepare('DELETE FROM pc_build_components WHERE build_id = :build_id');
+            $delete->execute(['build_id' => $buildId]);
+
+            if ($components !== []) {
+                $insert = $this->pdo->prepare(
+                    'INSERT INTO pc_build_components (build_id, item_id, quantity, notes, created_at) '
+                    . 'VALUES (:build_id, :item_id, :quantity, :notes, :created_at)'
+                );
+
+                foreach ($components as $component) {
+                    $insert->execute([
+                        'build_id' => $buildId,
+                        'item_id' => $component['item_id'],
+                        'quantity' => max(1, $component['quantity']),
+                        'notes' => $this->normalizeNullableString($component['notes']),
+                        'created_at' => Clock::nowFormatted(),
+                    ]);
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            throw new RuntimeException('Nie udało się zaktualizować komponentów buildu.', 0, $exception);
+        }
     }
 
     public function updatePlanningPayload(int $buildId, array $planningPayload, ?string $username = null, ?string $journalMessage = null): void
@@ -644,6 +711,19 @@ final class PcBuildRepository
             . 'INNER JOIN warehouse_items wi ON wi.id = pbl.item_id '
             . 'LEFT JOIN hardware_profiles hp ON hp.id = pbl.profile_id '
             . 'WHERE pbl.build_id = :build_id ORDER BY pbl.created_at DESC'
+        );
+        $statement->execute(['build_id' => $buildId]);
+
+        return $statement->fetchAll() ?: [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchDocuments(int $buildId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT * FROM pc_build_documents WHERE build_id = :build_id ORDER BY created_at DESC'
         );
         $statement->execute(['build_id' => $buildId]);
 

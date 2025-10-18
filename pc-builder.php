@@ -420,6 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $planningFormData['currency'],
                             Auth::username()
                         );
+                        $pcBuildRepository->syncComponentsFromPlanningPayload((int) $selectedBuildId, $planningPayload);
                         $planPdfPath = __DIR__ . '/' . $planPdfRelative;
                         generatePcBuildPlanPdf($pdo, (int) $selectedBuildId, $planPdfPath);
                         $pcBuildDocumentRepository->log(

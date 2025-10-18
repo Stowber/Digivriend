@@ -31,6 +31,9 @@ $payload = [
     'build' => $build,
     'components' => is_array($details['components'] ?? null) ? $details['components'] : [],
     'leftovers' => is_array($details['leftovers'] ?? null) ? $details['leftovers'] : [],
+    'workflow' => is_array($details['workflow'] ?? null) ? $details['workflow'] : [],
+    'journal' => is_array($details['journal'] ?? null) ? $details['journal'] : [],
+    'documents' => is_array($details['documents'] ?? null) ? $details['documents'] : [],
     'status_label' => $statusLabel,
     'editable' => $editable,
 ];
