@@ -505,6 +505,25 @@ final class SchemaManager
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_build ON pc_build_journal(build_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_step ON pc_build_journal(step)');
 
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_documents (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    build_id INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    recipient TEXT NULL,
+                    error_message TEXT NULL,
+                    metadata TEXT NULL,
+                    sent_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_documents_build ON pc_build_documents(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_documents_status ON pc_build_documents(status)');
+
             self::ensurePcBuildEnhancements($pdo);
 
             return;
@@ -607,6 +626,25 @@ final class SchemaManager
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_build ON pc_build_journal(build_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_journal_step ON pc_build_journal(step)');
 
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS pc_build_documents (
+                    id SERIAL PRIMARY KEY,
+                    build_id INT NOT NULL,
+                    type VARCHAR(64) NOT NULL,
+                    status VARCHAR(32) NOT NULL,
+                    file_path TEXT NOT NULL,
+                    recipient VARCHAR(191) NULL,
+                    error_message TEXT NULL,
+                    metadata TEXT NULL,
+                    sent_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_pc_build_documents_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+                )
+            SQL);
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_documents_build ON pc_build_documents(build_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_documents_status ON pc_build_documents(status)');
+
             self::ensurePcBuildEnhancements($pdo);
 
             return;
@@ -705,6 +743,25 @@ final class SchemaManager
                 INDEX idx_pc_build_journal_build (build_id),
                 INDEX idx_pc_build_journal_step (step),
                 CONSTRAINT fk_pc_build_journal_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS pc_build_documents (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                build_id INT UNSIGNED NOT NULL,
+                type VARCHAR(64) NOT NULL,
+                status VARCHAR(32) NOT NULL,
+                file_path VARCHAR(255) NOT NULL,
+                recipient VARCHAR(191) NULL,
+                error_message TEXT NULL,
+                metadata TEXT NULL,
+                sent_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_pc_build_documents_build (build_id),
+                INDEX idx_pc_build_documents_status (status),
+                CONSTRAINT fk_pc_build_documents_build FOREIGN KEY (build_id) REFERENCES pc_builds(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
 

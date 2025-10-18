@@ -6,21 +6,26 @@ use App\Http\Response;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Services\InventoryService;
+use App\Support\Clock;
 use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\CustomerRepository;
+use App\Support\Repositories\PcBuildDocumentRepository;
 use App\Support\Repositories\PcBuildRepository;
 use App\Support\Repositories\WarehouseRepository;
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/templates/partials/main-nav.php';
+require_once __DIR__ . '/generate-pc-build-summary.php';
 require_once __DIR__ . '/generate-pc-build-plan.php';
 require_once __DIR__ . '/generate-pc-build-release.php';
+require_once __DIR__ . '/generate-pc-build-delivery.php';
 
 $pcBuildRepository = new PcBuildRepository($pdo);
 $warehouseRepository = new WarehouseRepository($pdo);
 $customerRepository = new CustomerRepository($pdo);
 $notificationService = new NotificationService($pdo);
+$pcBuildDocumentRepository = new PcBuildDocumentRepository($pdo);
 $inventoryService = new InventoryService($warehouseRepository);
 
 $caseOptions = $warehouseRepository->caseOptions(200);
@@ -210,8 +215,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $informationFormData['assigned_employee'] !== '' ? $informationFormData['assigned_employee'] : null,
                             Auth::username()
                         );
-                        $_SESSION['pc_builder_success'] = 'Zapisano dane podstawowe budowy.';
-                        Response::redirect('pc-builder.php?build_id=' . (int) $selectedBuildId);
+                        $summaryPdfRelative = 'storage/documents/pc-builds/summary-' . (int) $selectedBuildId . '.pdf';
+                        $summaryPdfPath = __DIR__ . '/' . $summaryPdfRelative;
+                        $summaryGenerated = false;
+
+                        try {
+                            generatePcBuildSummaryPdf($pdo, (int) $selectedBuildId, $summaryPdfPath);
+                            $pcBuildDocumentRepository->log(
+                                (int) $selectedBuildId,
+                                'information_summary',
+                                'generated',
+                                $summaryPdfRelative,
+                                null,
+                                null,
+                                ['step' => 'information', 'document' => 'summary']
+                            );
+                            $summaryGenerated = true;
+                        } catch (Throwable $documentException) {
+                            $pcBuildDocumentRepository->log(
+                                (int) $selectedBuildId,
+                                'information_summary',
+                                'failed',
+                                $summaryPdfRelative,
+                                null,
+                                $documentException->getMessage(),
+                                ['step' => 'information', 'document' => 'summary']
+                            );
+                            $errors['information']['general'] = 'Nie udało się wygenerować podsumowania buildu.';
+                        }
+
+                        if ($summaryGenerated) {
+                            $_SESSION['pc_builder_success'] = 'Zapisano dane podstawowe budowy i wygenerowano podsumowanie PDF.';
+                            Response::redirect('pc-builder.php?build_id=' . (int) $selectedBuildId);
+                        }
                     } catch (Throwable $exception) {
                         $errors['information']['general'] = 'Nie udało się zaktualizować danych budowy.';
                     }
@@ -386,6 +422,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                         $planPdfPath = __DIR__ . '/' . $planPdfRelative;
                         generatePcBuildPlanPdf($pdo, (int) $selectedBuildId, $planPdfPath);
+                        $pcBuildDocumentRepository->log(
+                            (int) $selectedBuildId,
+                            'planning_plan',
+                            'generated',
+                            $planPdfRelative,
+                            null,
+                            null,
+                            ['step' => 'planning', 'document' => 'plan']
+                        );
                         $_SESSION['pc_builder_success'] = 'Zapisano plan komponentów i wygenerowano kosztorys PDF.';
                         Response::redirect('pc-builder.php?build_id=' . (int) $selectedBuildId);
                     } catch (Throwable $exception) {
@@ -586,11 +631,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $releasePdfPath = __DIR__ . '/' . $releasePdfRelative;
                         generatePcBuildReleasePdf($pdo, (int) $selectedBuildId, $releasePdfPath);
+                        $pcBuildDocumentRepository->log(
+                            (int) $selectedBuildId,
+                            'release_protocol',
+                            'generated',
+                            $releasePdfRelative,
+                            null,
+                            null,
+                            ['step' => 'release', 'document' => 'protocol']
+                        );
+
+                        $deliveryPdfRelative = 'storage/documents/pc-builds/delivery-' . (int) $selectedBuildId . '.pdf';
+                        $deliveryPdfPath = __DIR__ . '/' . $deliveryPdfRelative;
+
+                        try {
+                            generatePcBuildDeliveryPdf($pdo, (int) $selectedBuildId, $deliveryPdfPath);
+                            $pcBuildDocumentRepository->log(
+                                (int) $selectedBuildId,
+                                'delivery_confirmation',
+                                'generated',
+                                $deliveryPdfRelative,
+                                null,
+                                null,
+                                ['step' => 'release', 'document' => 'delivery']
+                            );
+                        } catch (Throwable $documentException) {
+                            $pcBuildDocumentRepository->log(
+                                (int) $selectedBuildId,
+                                'delivery_confirmation',
+                                'failed',
+                                $deliveryPdfRelative,
+                                null,
+                                $documentException->getMessage(),
+                                ['step' => 'release', 'document' => 'delivery']
+                            );
+                            $errors['release']['general'] = 'Nie udało się wygenerować potwierdzenia odbioru.';
+                            throw $documentException;
+                        }
 
                         $updatedBuild = $pcBuildRepository->findBuild((int) $selectedBuildId);
                         $recipient = isset($updatedBuild['customer_email']) ? (string) $updatedBuild['customer_email'] : '';
+                        $emailNote = '';
                         if ($recipient !== '') {
-                            $notificationService->sendPcBuildRelease(
+                            $emailResult = $notificationService->sendPcBuildRelease(
                                 isset($updatedBuild['case_id']) ? (int) $updatedBuild['case_id'] : null,
                                 isset($updatedBuild['customer_id']) ? (int) $updatedBuild['customer_id'] : null,
                                 $recipient,
@@ -600,14 +683,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'delivery_method' => $releasePayload['delivery_method'],
                                     'release_date' => $releasePayload['release_date'],
                                     'subject' => 'Potwierdzenie wydania zestawu PC ' . (string) ($updatedBuild['reference_code'] ?? ''),
+                                    ],
+                                [
+                                    [
+                                        'path' => $deliveryPdfPath,
+                                        'name' => sprintf('potwierdzenie-odbioru-%d.pdf', (int) $selectedBuildId),
+                                        'mime' => 'application/pdf',
+                                    ],
                                 ]
                             );
+
+                            if ($emailResult['success']) {
+                                $pcBuildDocumentRepository->log(
+                                    (int) $selectedBuildId,
+                                    'delivery_confirmation',
+                                    'emailed',
+                                    $deliveryPdfRelative,
+                                    $recipient,
+                                    null,
+                                    ['step' => 'release', 'document' => 'delivery', 'action' => 'email'],
+                                    Clock::nowFormatted()
+                                );
+                                $emailNote = ' Wysłano potwierdzenie e-mailem do klienta.';
+                            } else {
+                                $pcBuildDocumentRepository->log(
+                                    (int) $selectedBuildId,
+                                    'delivery_confirmation',
+                                    'failed',
+                                    $deliveryPdfRelative,
+                                    $recipient,
+                                    $emailResult['error'] ?? null,
+                                    ['step' => 'release', 'document' => 'delivery', 'action' => 'email']
+                                );
+                                $emailNote = ' Nie udało się wysłać e-maila do klienta.';
+                            }
                         }
 
-                        $_SESSION['pc_builder_success'] = 'Budowa została zatwierdzona i wygenerowano protokół wydania.';
+                        $_SESSION['pc_builder_success'] = 'Budowa została zatwierdzona i wygenerowano dokumenty wydania.' . $emailNote;
                         Response::redirect('pc-builder.php?build_id=' . (int) $selectedBuildId);
                     } catch (Throwable $exception) {
-                        $errors['release']['general'] = 'Nie udało się zapisać danych wydania.';
+                        if (!isset($errors['release']['general'])) {
+                            $errors['release']['general'] = 'Nie udało się zapisać danych wydania.';
+                        }
                     }
                 }
                 break;
