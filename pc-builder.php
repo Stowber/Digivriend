@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Response;
 use App\Security\Auth;
 use App\Security\Csrf;
+use App\Services\InventoryService;
 use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Repositories\PcBuildRepository;
@@ -20,6 +21,7 @@ $pcBuildRepository = new PcBuildRepository($pdo);
 $warehouseRepository = new WarehouseRepository($pdo);
 $customerRepository = new CustomerRepository($pdo);
 $notificationService = new NotificationService($pdo);
+$inventoryService = new InventoryService($warehouseRepository);
 
 $caseOptions = $warehouseRepository->caseOptions(200);
 $customerOptions = $customerRepository->listCustomers(null, 200);
@@ -86,7 +88,13 @@ $informationFormData = [
 $planningFormData = [
     'currency' => 'PLN',
     'notes' => '',
+    'margin_percent' => '0',
     'components' => [],
+    'totals' => [
+        'subtotal_cents' => 0,
+        'margin_cents' => 0,
+        'total_cents' => 0,
+    ],
 ];
 
 $assemblyFormData = [
@@ -217,67 +225,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $planningFormData['currency'] = 'PLN';
                 }
                 $planningFormData['notes'] = trim((string) ($_POST['notes'] ?? ''));
-                $rawComponents = $_POST['components'] ?? [];
+                $planningFormData['margin_percent'] = trim((string) ($_POST['margin_percent'] ?? '0'));
+                $rawComponents = is_array($_POST['components'] ?? null) ? $_POST['components'] : [];
                 $componentsPayload = [];
-                $totalCostCents = 0;
+                $shortages = [];
+                $subtotalCents = 0;
+                $marginPercentValue = $inventoryService->parsePercentage($planningFormData['margin_percent']);
 
                 if ($selectedBuildId === null || $selectedBuildId <= 0) {
                     $errors['planning']['general'] = 'Nie wybrano budowy do aktualizacji planu.';
                 }
 
+                $existingPlanningPayload = [];
+                $existingComponentsByCategory = [];
+                if ($selectedBuildId !== null && $selectedBuildId > 0) {
+                    try {
+                        $currentDetails = $pcBuildRepository->buildDetails((int) $selectedBuildId);
+                        $existingPlanningPayload = is_array($currentDetails['build']['planning_payload'] ?? null)
+                            ? $currentDetails['build']['planning_payload']
+                            : [];
+                        foreach (is_array($existingPlanningPayload['components'] ?? null) ? $existingPlanningPayload['components'] : [] as $existingComponent) {
+                            $category = (string) ($existingComponent['category'] ?? '');
+                            if ($category !== '') {
+                                $existingComponentsByCategory[$category] = $existingComponent;
+                            }
+                        }
+                    } catch (Throwable $exception) {
+                        $existingPlanningPayload = [];
+                        $existingComponentsByCategory = [];
+                    }
+                }
+
                 foreach ($componentCategories as $categoryKey => $categoryLabel) {
+                    $planningFormData['components'][$categoryKey] = [
+                        'item_id' => '',
+                        'label' => '',
+                        'quantity' => 1,
+                        'notes' => '',
+                        'unit_price_cents' => 0,
+                        'availability' => [
+                            'available_quantity' => null,
+                            'missing_quantity' => 0,
+                            'is_available' => true,
+                        ],
+                        'unit_price_input' => '',
+                    ];
                     $componentInput = is_array($rawComponents[$categoryKey] ?? null) ? $rawComponents[$categoryKey] : [];
                     $itemIdRaw = $componentInput['item_id'] ?? '';
-                    $itemId = $itemIdRaw !== '' ? filter_var($itemIdRaw, FILTER_VALIDATE_INT) : null;
+                    $itemIdValue = $itemIdRaw !== '' ? filter_var($itemIdRaw, FILTER_VALIDATE_INT) : null;
+                    $itemId = $itemIdValue !== false && $itemIdValue !== null ? (int) $itemIdValue : null;
                     $quantity = isset($componentInput['quantity']) ? (int) $componentInput['quantity'] : 0;
-                    $quantity = $quantity > 0 ? $quantity : 0;
                     $notes = trim((string) ($componentInput['notes'] ?? ''));
                     $customLabel = trim((string) ($componentInput['custom_name'] ?? ''));
-                    $manualPrice = trim((string) ($componentInput['unit_price'] ?? ''));
+                    $manualPriceInput = trim((string) ($componentInput['unit_price'] ?? ''));
+                    $manualPriceCents = $manualPriceInput !== '' ? $inventoryService->parsePriceToCents($manualPriceInput) : null;
 
-                    if (($itemId === null || $itemId === false) && $customLabel === '' && $notes === '') {
+                    if ($itemId !== null) {
+                        $planningFormData['components'][$categoryKey]['item_id'] = (string) $itemId;
+                    }
+                    if ($quantity > 0) {
+                        $planningFormData['components'][$categoryKey]['quantity'] = $quantity;
+                    }
+                    if ($customLabel !== '') {
+                        $planningFormData['components'][$categoryKey]['label'] = $customLabel;
+                    }
+                    $planningFormData['components'][$categoryKey]['notes'] = $notes;
+                    if ($manualPriceInput !== '') {
+                        $planningFormData['components'][$categoryKey]['unit_price_input'] = $manualPriceInput;
+                    }
+
+                    $existingComponent = $existingComponentsByCategory[$categoryKey] ?? [];
+                    $preparedComponent = $inventoryService->prepareComponent(
+                        $categoryKey,
+                        $itemId,
+                        $quantity,
+                        $customLabel,
+                        $manualPriceCents,
+                        $notes,
+                        $existingComponent
+                    );
+
+                    if ($preparedComponent === null) {
                         continue;
                     }
 
-                    $unitPriceCents = 0;
-                    $itemName = $customLabel;
-                    $itemReference = null;
-
-                    if ($itemId !== null && $itemId !== false) {
-                        try {
-                            $item = $warehouseRepository->findItem((int) $itemId);
-                        } catch (Throwable $exception) {
-                            $item = null;
-                        }
-                        if ($item === null) {
-                            $errors['planning']['components'] = 'Nie znaleziono jednego z wybranych komponentów.';
-                            break;
-                        }
-                        $itemName = (string) ($item['name'] ?? $itemName);
-                        $itemReference = (string) ($item['reference_code'] ?? null);
-                        $unitPriceCents = (int) ($item['unit_price_cents'] ?? 0);
+                    if (isset($preparedComponent['errors']['not_found'])) {
+                        $errors['planning']['components'] = 'Nie znaleziono jednego z wybranych komponentów.';
+                        continue;
                     }
 
-                    if ($manualPrice !== '') {
-                        $normalized = str_replace([' ', ','], ['', '.'], $manualPrice);
-                        if (is_numeric($normalized)) {
-                            $unitPriceCents = (int) round(((float) $normalized) * 100);
-                        }
-                    }
+                    $componentPayload = $preparedComponent['payload'];
+                    $componentsPayload[] = $componentPayload;
 
-                    $componentTotal = $unitPriceCents * max(1, $quantity === 0 ? 1 : $quantity);
-                    $totalCostCents += $componentTotal;
-
-                    $componentsPayload[] = [
-                        'category' => $categoryKey,
-                        'label' => $itemName,
-                        'item_id' => $itemId !== null && $itemId !== false ? (int) $itemId : null,
-                        'item_reference' => $itemReference,
-                        'quantity' => max(1, $quantity === 0 ? 1 : $quantity),
-                        'unit_price_cents' => max(0, $unitPriceCents),
-                        'total_price_cents' => max(0, $componentTotal),
-                        'notes' => $notes,
+                    $availability = $preparedComponent['availability'];
+                    $planningFormData['components'][$categoryKey] = [
+                        'item_id' => $componentPayload['item_id'] !== null ? (string) $componentPayload['item_id'] : '',
+                        'label' => (string) ($componentPayload['label'] ?? ''),
+                        'quantity' => (int) ($componentPayload['quantity'] ?? 1),
+                        'notes' => (string) ($componentPayload['notes'] ?? ''),
+                        'unit_price_cents' => (int) ($componentPayload['unit_price_cents'] ?? 0),
+                        'availability' => $availability,
+                        'unit_price_input' => $manualPriceInput !== '' ? $manualPriceInput : '',
                     ];
+
+                    $subtotalCents += (int) ($componentPayload['total_price_cents'] ?? 0);
+
+                    if (!$availability['is_available']) {
+                        $shortages[] = [
+                            'category' => $categoryLabel,
+                            'label' => (string) ($componentPayload['label'] ?? $categoryLabel),
+                            'required' => (int) ($componentPayload['quantity'] ?? 1),
+                            'available' => (int) ($availability['available_quantity'] ?? 0),
+                        ];
+                    }
+                }
+
+                $marginCents = $inventoryService->calculateMargin(max(0, $subtotalCents), $marginPercentValue);
+                $totalCostCents = max(0, $subtotalCents + $marginCents);
+                $planningFormData['totals'] = [
+                    'subtotal_cents' => max(0, $subtotalCents),
+                    'margin_cents' => $marginCents,
+                    'total_cents' => $totalCostCents,
+                ];
+
+                if ($shortages !== []) {
+                    $messages = [];
+                    foreach ($shortages as $shortage) {
+                        $messages[] = sprintf(
+                            '%s – dostępne %d z %d.',
+                            $shortage['label'] !== '' ? $shortage['label'] : $shortage['category'],
+                            (int) $shortage['available'],
+                            (int) $shortage['required']
+                        );
+                    }
+                    $errors['planning']['inventory'] = 'Nie można zapisać planu. ' . implode(' ', $messages);
                 }
 
                 if ($errors['planning'] === [] && $selectedBuildId !== null && $selectedBuildId > 0) {
@@ -288,11 +369,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'notes' => $planningFormData['notes'],
                             'plan_pdf_path' => $planPdfRelative,
                             'generated_at' => date('c'),
+                            'financials' => [
+                                'subtotal_cents' => max(0, $subtotalCents),
+                                'margin_percent' => $marginPercentValue,
+                                'margin_cents' => $marginCents,
+                                'total_cents' => $totalCostCents,
+                            ],
+                            'currency' => $planningFormData['currency'],
                         ];
                         $pcBuildRepository->savePlanningData(
                             (int) $selectedBuildId,
                             $planningPayload,
-                            max(0, $totalCostCents),
+                            $totalCostCents,
                             $planningFormData['currency'],
                             Auth::username()
                         );
@@ -317,6 +405,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($selectedBuildId === null || $selectedBuildId <= 0) {
                     $errors['assembly']['general'] = 'Nie wybrano budowy do zapisania checklisty.';
+                }
+
+                if ($errors['assembly'] === []) {
+                    $planningPayloadForInventory = [];
+                    $caseIdForInventory = null;
+
+                    try {
+                        $buildDetails = $pcBuildRepository->buildDetails((int) $selectedBuildId);
+                        $buildData = is_array($buildDetails['build'] ?? null) ? $buildDetails['build'] : [];
+                        $planningPayloadForInventory = is_array($buildData['planning_payload'] ?? null)
+                            ? $buildData['planning_payload']
+                            : [];
+                        $caseIdForInventory = isset($buildData['case_id']) ? (int) $buildData['case_id'] : null;
+                    } catch (Throwable $exception) {
+                        $errors['assembly']['general'] = 'Nie udało się pobrać planu komponentów do rezerwacji.';
+                    }
+
+                    if (
+                        $errors['assembly'] === []
+                        && $planningPayloadForInventory !== []
+                        && is_array($planningPayloadForInventory['components'] ?? null)
+                        && $planningPayloadForInventory['components'] !== []
+                    ) {
+                        $reservationResult = $inventoryService->reservePlannedComponents(
+                            $planningPayloadForInventory,
+                            (int) $selectedBuildId,
+                            $caseIdForInventory,
+                            Auth::username()
+                        );
+
+                        if ($reservationResult['errors'] !== []) {
+                            $errors['assembly']['general'] = implode(' ', $reservationResult['errors']);
+                        } else {
+                            try {
+                                $pcBuildRepository->updatePlanningPayload(
+                                    (int) $selectedBuildId,
+                                    $reservationResult['updated_payload'],
+                                    Auth::username(),
+                                    'Zarezerwowano komponenty w magazynie.'
+                                );
+                            } catch (Throwable $exception) {
+                                $errors['assembly']['general'] = 'Nie udało się zaktualizować rezerwacji magazynowych.';
+                            }
+                        }
+                    }
                 }
 
                 if ($errors['assembly'] === []) {
@@ -381,6 +514,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $errors['release']['signature_file'] = 'Nie udało się zapisać pliku z podpisem.';
                             } else {
                                 $signatureRelativePath = 'storage/documents/pc-builds/signatures/' . $signatureFilename;
+                            }
+                        }
+                    }
+                }
+
+                if ($errors['release'] === []) {
+                    $planningPayloadForInventory = [];
+                    $caseIdForInventory = null;
+
+                    try {
+                        $buildDetails = $pcBuildRepository->buildDetails((int) $selectedBuildId);
+                        $buildData = is_array($buildDetails['build'] ?? null) ? $buildDetails['build'] : [];
+                        $planningPayloadForInventory = is_array($buildData['planning_payload'] ?? null)
+                            ? $buildData['planning_payload']
+                            : [];
+                        $caseIdForInventory = isset($buildData['case_id']) ? (int) $buildData['case_id'] : null;
+                    } catch (Throwable $exception) {
+                        $errors['release']['general'] = 'Nie udało się pobrać planu komponentów do rozliczenia.';
+                    }
+
+                    if (
+                        $errors['release'] === []
+                        && $planningPayloadForInventory !== []
+                        && is_array($planningPayloadForInventory['components'] ?? null)
+                        && $planningPayloadForInventory['components'] !== []
+                    ) {
+                        $consumptionResult = $inventoryService->finalizePlannedComponents(
+                            $planningPayloadForInventory,
+                            (int) $selectedBuildId,
+                            $caseIdForInventory,
+                            Auth::username()
+                        );
+
+                        if ($consumptionResult['errors'] !== []) {
+                            $errors['release']['general'] = implode(' ', $consumptionResult['errors']);
+                        } else {
+                            try {
+                                $pcBuildRepository->updatePlanningPayload(
+                                    (int) $selectedBuildId,
+                                    $consumptionResult['updated_payload'],
+                                    Auth::username(),
+                                    'Zużyto zarezerwowane komponenty do buildu.'
+                                );
+                            } catch (Throwable $exception) {
+                                $errors['release']['general'] = 'Nie udało się zaktualizować danych magazynowych.';
                             }
                         }
                     }
@@ -519,6 +697,31 @@ if ($selectedBuild !== null && $errors['information'] === []) {
 
 if ($planningPayload !== [] && $errors['planning'] === []) {
     $planningFormData['notes'] = (string) ($planningPayload['notes'] ?? '');
+    if ($selectedBuild !== null) {
+        $planningFormData['currency'] = (string) ($selectedBuild['planning_currency'] ?? $planningFormData['currency']);
+    }
+
+    $financials = is_array($planningPayload['financials'] ?? null) ? $planningPayload['financials'] : [];
+    $subtotalFromPayload = (int) ($financials['subtotal_cents'] ?? 0);
+    $marginFromPayload = (int) ($financials['margin_cents'] ?? 0);
+    $totalFromPayload = (int) ($financials['total_cents'] ?? ($selectedBuild['planning_total_cents'] ?? ($subtotalFromPayload + $marginFromPayload)));
+
+    if ($marginFromPayload <= 0 && $totalFromPayload > $subtotalFromPayload) {
+        $marginFromPayload = $totalFromPayload - $subtotalFromPayload;
+    }
+
+    $planningFormData['totals'] = [
+        'subtotal_cents' => max(0, $subtotalFromPayload),
+        'margin_cents' => max(0, $marginFromPayload),
+        'total_cents' => max(0, $totalFromPayload),
+    ];
+
+    $marginPercentValue = (float) ($financials['margin_percent'] ?? 0.0);
+    $marginPercentFormatted = rtrim(rtrim(number_format($marginPercentValue, 2, '.', ''), '0'), '.');
+    if ($marginPercentFormatted === '') {
+        $marginPercentFormatted = '0';
+    }
+    $planningFormData['margin_percent'] = $marginPercentFormatted;
     $componentsByCategory = [];
     foreach (is_array($planningPayload['components'] ?? null) ? $planningPayload['components'] : [] as $component) {
         $category = (string) ($component['category'] ?? '');
@@ -526,12 +729,21 @@ if ($planningPayload !== [] && $errors['planning'] === []) {
     }
     foreach ($componentCategories as $categoryKey => $categoryLabel) {
         $component = $componentsByCategory[$categoryKey] ?? [];
+        $requiredQuantity = max(1, (int) ($component['quantity'] ?? 1));
+        $availableQuantity = isset($component['available_quantity']) ? (int) $component['available_quantity'] : null;
+        $missingQuantity = $availableQuantity !== null ? max(0, $requiredQuantity - $availableQuantity) : 0;
         $planningFormData['components'][$categoryKey] = [
             'item_id' => isset($component['item_id']) ? (string) $component['item_id'] : '',
             'label' => (string) ($component['label'] ?? ''),
-            'quantity' => (int) ($component['quantity'] ?? 1),
+            'quantity' => $requiredQuantity,
             'notes' => (string) ($component['notes'] ?? ''),
             'unit_price_cents' => (int) ($component['unit_price_cents'] ?? 0),
+            'availability' => [
+                'available_quantity' => $availableQuantity,
+                'missing_quantity' => $missingQuantity,
+                'is_available' => $missingQuantity === 0,
+            ],
+            'unit_price_input' => '',
         ];
     }
 }
@@ -786,6 +998,12 @@ $csrfToken = Csrf::token();
                         'quantity' => 1,
                         'notes' => '',
                         'unit_price_cents' => 0,
+                        'availability' => [
+                            'available_quantity' => null,
+                            'missing_quantity' => 0,
+                            'is_available' => true,
+                        ],
+                        'unit_price_input' => '',
                     ];
                     $selectedItemId = $componentData['item_id'] !== '' ? (int) $componentData['item_id'] : null;
                     if ($selectedItemId && !isset($itemOptionsById[$selectedItemId])) {
@@ -795,6 +1013,26 @@ $csrfToken = Csrf::token();
                             'unit_price_cents' => $componentData['unit_price_cents'],
                         ];
                     }
+                    $availability = is_array($componentData['availability'] ?? null)
+                        ? $componentData['availability']
+                        : [
+                            'available_quantity' => null,
+                            'missing_quantity' => 0,
+                            'is_available' => true,
+                        ];
+                    $unitPriceValue = (string) ($componentData['unit_price_input'] ?? '');
+                    if ($unitPriceValue === '') {
+                        $componentUnitPriceCents = (int) ($componentData['unit_price_cents'] ?? 0);
+                        $unitPriceValue = $componentUnitPriceCents > 0
+                            ? number_format($componentUnitPriceCents / 100, 2, ',', ' ')
+                            : '';
+                    }
+                    $availableQuantityDisplay = isset($availability['available_quantity']) && $availability['available_quantity'] !== null
+                        ? (int) $availability['available_quantity']
+                        : null;
+                    $missingQuantityDisplay = isset($availability['missing_quantity'])
+                        ? max(0, (int) $availability['missing_quantity'])
+                        : 0;
                   ?>
                   <fieldset class="pc-builder-wizard__component" <?= $isApproved ? 'disabled' : '' ?>>
                     <legend><?= htmlspecialchars($categoryLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></legend>
@@ -819,15 +1057,23 @@ $csrfToken = Csrf::token();
                     </label>
                     <label>
                       Cena jednostkowa (<?= htmlspecialchars($planningFormData['currency'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>)
-                      <input type="text" name="components[<?= htmlspecialchars($categoryKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>][unit_price]" value="<?= $componentData['unit_price_cents'] > 0 ? number_format($componentData['unit_price_cents'] / 100, 2, ',', ' ') : '' ?>" <?= $isApproved ? 'disabled' : '' ?>>
+                      <input type="text" name="components[<?= htmlspecialchars($categoryKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>][unit_price]" value="<?= htmlspecialchars($unitPriceValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $isApproved ? 'disabled' : '' ?>>
                     </label>
                     <label>
                       Uwagi
                       <textarea name="components[<?= htmlspecialchars($categoryKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>][notes]" rows="2" <?= $isApproved ? 'disabled' : '' ?>><?= htmlspecialchars($componentData['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                     </label>
+                    <?php if (($componentData['item_id'] ?? '') !== '' && isset($availability['is_available']) && !$availability['is_available']): ?>
+                      <p class="form-error">Brakuje <?= $missingQuantityDisplay ?> szt. (dostępne <?= $availableQuantityDisplay !== null ? $availableQuantityDisplay : 0 ?>).</p>
+                    <?php endif; ?>
                   </fieldset>
                 <?php endforeach; ?>
               </div>
+
+              <label>
+                Marża (%)
+                <input type="text" name="margin_percent" value="<?= htmlspecialchars($planningFormData['margin_percent'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="8" <?= $isApproved ? 'disabled' : '' ?>>
+              </label>
 
               <label>
                 Waluta
@@ -839,8 +1085,20 @@ $csrfToken = Csrf::token();
                 <textarea name="notes" rows="3" <?= $isApproved ? 'disabled' : '' ?>><?= htmlspecialchars($planningFormData['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
               </label>
 
+              <?php
+                $subtotalDisplay = number_format(($planningFormData['totals']['subtotal_cents'] ?? 0) / 100, 2, ',', ' ');
+                $marginDisplay = number_format(($planningFormData['totals']['margin_cents'] ?? 0) / 100, 2, ',', ' ');
+                $totalDisplay = number_format(($planningFormData['totals']['total_cents'] ?? 0) / 100, 2, ',', ' ');
+              ?>
+              <div class="pc-builder-wizard__totals">
+                <p>Wartość komponentów: <strong><?= $subtotalDisplay ?> <?= htmlspecialchars($planningFormData['currency'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong></p>
+                <p>Marża (<?= htmlspecialchars($planningFormData['margin_percent'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>%): <strong><?= $marginDisplay ?> <?= htmlspecialchars($planningFormData['currency'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong></p>
+                <p><strong>Łączny koszt: <?= $totalDisplay ?> <?= htmlspecialchars($planningFormData['currency'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong></p>
+              </div>
+
               <?php if (isset($errors['planning']['general'])): ?><p class="form-error"><?= htmlspecialchars($errors['planning']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p><?php endif; ?>
               <?php if (isset($errors['planning']['components'])): ?><p class="form-error"><?= htmlspecialchars($errors['planning']['components'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p><?php endif; ?>
+              <?php if (isset($errors['planning']['inventory'])): ?><p class="form-error"><?= htmlspecialchars($errors['planning']['inventory'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p><?php endif; ?>
 
               <button type="submit" class="btn" <?= $isApproved ? 'disabled' : '' ?>>Zapisz plan i kosztorys</button>
               <?php if (($planningPayload['plan_pdf_path'] ?? '') !== ''): ?>

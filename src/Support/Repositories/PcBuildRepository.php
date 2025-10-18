@@ -430,6 +430,19 @@ final class PcBuildRepository
         $this->recordJournalEntry($buildId, 'planning', 'update', 'Zaktualizowano plan komponentów.', $planningData, $username);
     }
 
+    public function updatePlanningPayload(int $buildId, array $planningPayload, ?string $username = null, ?string $journalMessage = null): void
+    {
+        $this->requireEditableBuild($buildId);
+
+        $this->updateBuildColumns($buildId, [
+            'planning_payload' => $this->encodePayload($planningPayload),
+        ]);
+
+        if ($journalMessage !== null && trim($journalMessage) !== '') {
+            $this->recordJournalEntry($buildId, 'planning', 'update', $journalMessage, $planningPayload, $username);
+        }
+    }
+
     public function saveAssemblyData(int $buildId, array $assemblyData, ?string $username = null): void
     {
         $build = $this->requireEditableBuild($buildId);

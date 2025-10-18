@@ -1193,4 +1193,27 @@ body.pc-build-modal-open {
   .pc-builder__build-actions {
     align-items: flex-start;
   }
+  }
+
+.pc-builder-wizard__totals {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pc-builder-wizard__totals p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #1f2937;
+}
+
+.pc-builder-wizard__totals p strong {
+  font-weight: 700;
 }

@@ -21,7 +21,17 @@ if (!function_exists('generatePcBuildPlanPdf')) {
         $components = is_array($planning['components'] ?? null) ? $planning['components'] : [];
         $currency = (string) ($build['planning_currency'] ?? 'PLN');
         $totalCents = (int) ($build['planning_total_cents'] ?? 0);
+        $financials = is_array($planning['financials'] ?? null) ? $planning['financials'] : [];
+        $subtotalCents = (int) ($financials['subtotal_cents'] ?? $totalCents);
+        $marginCents = (int) ($financials['margin_cents'] ?? max(0, $totalCents - $subtotalCents));
+        $marginPercent = (float) ($financials['margin_percent'] ?? 0.0);
         $totalFormatted = number_format($totalCents / 100, 2, ',', ' ');
+        $subtotalFormatted = number_format($subtotalCents / 100, 2, ',', ' ');
+        $marginFormatted = number_format($marginCents / 100, 2, ',', ' ');
+        $marginPercentFormatted = rtrim(rtrim(number_format($marginPercent, 2, ',', ' '), '0'), ',');
+        if ($marginPercentFormatted === '') {
+            $marginPercentFormatted = '0';
+        }
 
         $reference = (string) ($build['reference_code'] ?? '');
         $caseReference = (string) ($build['case_reference_code'] ?? '');
@@ -102,7 +112,11 @@ if (!function_exists('generatePcBuildPlanPdf')) {
                 </tbody>
             </table>
 
-            <p class="total">Łączny koszt: <?= $totalFormatted ?> <?= htmlspecialchars($currency, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            <p class="total">
+                Wartość komponentów: <?= $subtotalFormatted ?> <?= htmlspecialchars($currency, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><br>
+                Marża (<?= htmlspecialchars($marginPercentFormatted, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>%): <?= $marginFormatted ?> <?= htmlspecialchars($currency, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><br>
+                <strong>Łączny koszt: <?= $totalFormatted ?> <?= htmlspecialchars($currency, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+            </p>
 
             <?php if ($notes !== ''): ?>
                 <div class="notes">
