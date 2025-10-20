@@ -775,6 +775,7 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
     // 2) Wykryj binarkę Chrome/Chromium
     $chromeBinary = detectChromeBinary();
     if ($chromeBinary === null) {
+        error_log('[Chromium PDF] Geen geschikt Chromium/Chrome uitvoerbaar bestand gevonden.');
         @unlink($tmpHtmlPath);
         return null;
     }
@@ -828,6 +829,9 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
 
     if (!$success) {
         error_log('[Chromium PDF] Exit code: ' . $exitCode . ' Output: ' . implode("\n", $output));
+        if (is_file($outputPdfPath)) {
+            @unlink($outputPdfPath);
+        }
         return null;
     }
 
@@ -844,8 +848,40 @@ function detectChromeBinary(): ?string
     $candidates = [];
 
     // Priorytet: zmienna środowiskowa
-    if ($env = getenv('CHROME_BINARY')) {
-        $candidates[] = $env;
+    foreach ([
+        'CHROME_BINARY',
+        'CHROMIUM_BINARY',
+        'CHROME_PATH',
+        'CHROMIUM_PATH',
+    ] as $envKey) {
+        $env = getenv($envKey);
+        if ($env) {
+            $candidates[] = $env;
+        }
+    }
+
+    if (DIRECTORY_SEPARATOR === '\\') {
+        $programFiles = getenv('ProgramFiles') ?: null;
+        $programFilesX86 = getenv('ProgramFiles(x86)') ?: null;
+        $localAppData = getenv('LOCALAPPDATA') ?: null;
+
+        $windowsCandidates = [];
+
+        foreach (array_filter([$programFiles, $programFilesX86]) as $basePath) {
+            $windowsCandidates[] = $basePath . '\\Google\\Chrome\\Application\\chrome.exe';
+            $windowsCandidates[] = $basePath . '\\Chromium\\Application\\chrome.exe';
+            $windowsCandidates[] = $basePath . '\\Microsoft\\Edge\\Application\\msedge.exe';
+            $windowsCandidates[] = $basePath . '\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
+        }
+
+        if ($localAppData) {
+            $windowsCandidates[] = $localAppData . '\\Google\\Chrome\\Application\\chrome.exe';
+            $windowsCandidates[] = $localAppData . '\\Chromium\\Application\\chrome.exe';
+            $windowsCandidates[] = $localAppData . '\\Microsoft\\Edge\\Application\\msedge.exe';
+            $windowsCandidates[] = $localAppData . '\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
+        }
+
+        $candidates = array_merge($candidates, $windowsCandidates);
     }
 
     // Typowe nazwy w Linux
@@ -864,12 +900,44 @@ function detectChromeBinary(): ?string
     ]);
 
     foreach ($candidates as $bin) {
-        if (is_executable($bin)) {
+        if ($bin === null || $bin === '') {
+            continue;
+        }
+
+        if (is_executable($bin) || (DIRECTORY_SEPARATOR === '\\' && is_file($bin))) {
             return $bin;
         }
     }
 
-    // Ostatecznie: spróbuj z PATH
+    if (DIRECTORY_SEPARATOR === '\\') {
+        $whereCommands = [
+            'where chrome',
+            'where chromium',
+            'where msedge',
+            'where brave',
+        ];
+
+        foreach ($whereCommands as $command) {
+            $output = shell_exec($command . ' 2>NUL');
+            if (!$output) {
+                continue;
+            }
+
+            foreach (preg_split('/\r?\n/', trim($output)) as $line) {
+                if ($line === '') {
+                    continue;
+                }
+
+                if (is_file($line)) {
+                    return $line;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Ostatecznie: spróbuj z PATH (Unix)
     $which = trim(shell_exec('which chromium 2>/dev/null') ?? '');
     if ($which !== '') return $which;
 
