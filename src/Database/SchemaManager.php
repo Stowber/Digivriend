@@ -121,6 +121,7 @@ final class SchemaManager
 
         if ($driver === 'sqlite') {
             self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'customer_id', 'INTEGER NULL');
+            self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'status', "TEXT NOT NULL DEFAULT 'draft'");
             self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'assigned_employee', 'TEXT NULL');
             self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'current_step', "TEXT NOT NULL DEFAULT 'information'");
             self::addSqliteColumnIfMissing($pdo, 'pc_builds', 'planning_payload', 'TEXT NULL');
@@ -504,10 +505,6 @@ final class SchemaManager
                     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
                 )
             SQL);
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)');
 
             $pdo->exec(<<<SQL
                 CREATE TABLE IF NOT EXISTS pc_build_components (
@@ -594,6 +591,31 @@ final class SchemaManager
 
             self::ensurePcBuildEnhancements($pdo);
 
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'pc_builds',
+                ['case_id'],
+                'CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'pc_builds',
+                ['status'],
+                'CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'pc_builds',
+                ['customer_id'],
+                'CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'pc_builds',
+                ['current_step'],
+                'CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)'
+            );
+
             return;
         }
 
@@ -625,10 +647,6 @@ final class SchemaManager
                     CONSTRAINT fk_pc_build_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
                 )
             SQL);
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)');
-            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)');
 
             $pdo->exec(<<<SQL
                 CREATE TABLE IF NOT EXISTS pc_build_components (
@@ -714,6 +732,11 @@ final class SchemaManager
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_build_documents_status ON pc_build_documents(status)');
 
             self::ensurePcBuildEnhancements($pdo);
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_case ON pc_builds(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_status ON pc_builds(status)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_customer ON pc_builds(customer_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_pc_builds_step ON pc_builds(current_step)');
 
             return;
         }
