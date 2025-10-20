@@ -226,7 +226,7 @@ try {
           body {
             font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
             color: #111827;
-            background: #E9EDF6
+            background: #E9EDF6;
             font-size: 10pt;
             line-height: 1.48;
           }
@@ -338,6 +338,8 @@ try {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 16pt;
             align-content: stretch;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .panel {
             background: rgba(255,255,255,0.94);
@@ -348,6 +350,8 @@ try {
             flex-direction: column;
             gap: 12pt;
             box-shadow: 0 14pt 36pt rgba(15, 23, 42, 0.08);
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .panel--summary {
             padding: 0;
@@ -435,9 +439,11 @@ try {
             border-radius: 16pt;
             padding: 18pt 20pt;
             display: flex;
-            justify-content: space-between;
-            gap: 16pt;
-            align-items: center;
+            flex-direction: column;
+            gap: 14pt;
+            align-items: stretch;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .highlight-box small {
             font-size: 8pt;
@@ -451,14 +457,14 @@ try {
           }
           .barcode-shell {
             background: #fff;
-            padding: 8pt 12pt;
-            border-radius: 10pt;
+            padding: 12pt;
+            border-radius: 12pt;
             border: 0.5pt solid #CBD5F5;
           }
           .barcode {
-            width: 140pt;
-            max-width: 100%;
+            width: 100%;
             height: auto;
+            display: block;
           }
 
           .steps {
@@ -473,10 +479,13 @@ try {
             display: flex;
             gap: 10pt;
             align-items: flex-start;
-            background: rgba(243, 244, 255, 0.9);
-            border: 0.75pt solid rgba(195, 206, 255, 0.8);
+            background: rgba(255,255,255,0.94);
+            border: 0.75pt solid rgba(210,216,236,0.9);
             border-radius: 12pt;
-            padding: 10pt 12pt;
+            padding: 12pt 14pt;
+            box-shadow: 0 8pt 22pt rgba(15,23,42,0.05);
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .step-number {
             width: 26pt;
@@ -494,22 +503,30 @@ try {
           .step-content { font-size: 9.3pt; color: #1F2937; }
 
           .checklist {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10pt 14pt;
+            display: flex;
+            flex-direction: column;
+            gap: 10pt;
           }
           .checklist-item {
             display: flex;
-            gap: 8pt;
+            gap: 10pt;
             align-items: flex-start;
             font-size: 9pt;
             color: #1F2937;
+            background: rgba(255,255,255,0.94);
+            border: 0.75pt solid rgba(210,216,236,0.9);
+            border-radius: 12pt;
+            padding: 10pt 12pt;
+            box-shadow: 0 6pt 18pt rgba(15,23,42,0.04);
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .checklist-bullet {
             width: 12pt;
             height: 12pt;
             border-radius: 4pt;
             background: #34D399;
+            margin-top: 2pt;
           }
 
           .clamp-box {
@@ -553,6 +570,8 @@ try {
             flex-direction: column;
             gap: 10pt;
             box-shadow: 0 12pt 30pt rgba(15,23,42,0.06);
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .terms-card ul {
             margin: 0;
@@ -572,6 +591,8 @@ try {
             display: flex;
             gap: 10pt;
             align-items: flex-start;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .timeline-step strong {
             min-width: 64pt;
@@ -586,6 +607,8 @@ try {
           .cost-table {
             width: 100%;
             border-collapse: collapse;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .cost-table th,
           .cost-table td {
@@ -781,7 +804,7 @@ try {
                 <ul>
                   <li>Gebruik van originele of gelijkwaardige onderdelen, met standaardgarantie van 3 maanden op de uitgevoerde reparatie.</li>
                   <li>Software- of dataproblemen vallen buiten hardwaregarantie; wij adviseren altijd een eigen back-up te maken.</li>
-                  <li>Niet opgehaalde apparaten worden na 3 maanden opgeslagen en kunnen conform de voorwaarden worden afgevoerd.</li>
+                  <li>Niet opgehaalde apparaten leveren na 30 dagen opslagkosten op (€ 2,50 p/dag) en kunnen na 3 maanden conform de voorwaarden worden afgevoerd.</li>
                 </ul>
               </section>
 
