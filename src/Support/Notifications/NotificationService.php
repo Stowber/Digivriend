@@ -278,10 +278,14 @@ final class NotificationService
             $message = implode("\r\n", $parts);
         }
 
-        $mailer = strtolower((string) Env::get('MAIL_MAILER', 'mail'));
+        $mailer = strtolower((string) Env::get('MAIL_MAILER', 'log'));
 
         if ($mailer === 'smtp') {
             return $this->sendViaSmtp($recipient, $subject, $message, $headers, $fromAddress);
+        }
+
+        if ($mailer === 'log') {
+            return ['success' => true, 'error' => null];
         }
 
         $sent = mail(
