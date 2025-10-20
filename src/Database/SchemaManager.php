@@ -2294,6 +2294,20 @@ final class SchemaManager
 
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status)');
 
+            $pdo->exec('ALTER TABLE notifications ADD COLUMN IF NOT EXISTS case_id INT NULL');
+            $pdo->exec('ALTER TABLE notifications ADD COLUMN IF NOT EXISTS customer_id INT NULL');
+
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE notifications ADD CONSTRAINT fk_notifications_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL',
+                ['duplicate', 'already exists']
+            );
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE notifications ADD CONSTRAINT fk_notifications_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL',
+                ['duplicate', 'already exists']
+            );
+
             return;
         }
 
