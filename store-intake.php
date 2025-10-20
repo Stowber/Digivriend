@@ -195,6 +195,7 @@ try {
         }
     }
 
+    /* ===================== NOWY HTML/CSS ===================== */
     ob_start();
     ?>
     <!DOCTYPE html>
@@ -203,298 +204,207 @@ try {
       <meta charset="UTF-8">
       <title>Intake bevestiging <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
       <style>
-        * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
-        background: #f3f4f6;
-        color: #111827;
-      }
-      .sheet {
-        max-width: 770px;
-        margin: 0 auto;
-        padding: 24px 28px;
-        background: #ffffff;
-        border-radius: 16px;
-        border: 1px solid rgba(17, 24, 39, 0.08);
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-      }
-      .sheet__header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 18px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.35);
-      }
-      .brand {
-        display: flex;
-        gap: 16px;
-        align-items: flex-start;
-      }
-      .brand__logo {
-        width: 58px;
-        height: auto;
-      }
-      .eyebrow {
-        margin: 0;
-        font-size: 6.2px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: #f05a28;
-      }
-      h1 {
-        margin: 6px 0 8px;
-        font-size: 18px;
-        line-height: 1.25;
-        color: #0f172a;
-      }
-      .intro {
-        margin: 0;
-        font-size: 7.5px;
-        color: #475569;
-        line-height: 1.55;
-        max-width: 360px;
-      }
-      .reference-card {
-        min-width: 180px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        background: linear-gradient(155deg, rgba(240, 90, 40, 0.1), rgba(240, 90, 40, 0));
-        border: 1px solid rgba(240, 90, 40, 0.18);
-        text-align: right;
-      }
-      .reference-card__label {
-        display: block;
-        font-size: 6px;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        color: #f05a28;
-      }
-      .reference-card__value {
-        display: block;
-        margin-top: 4px;
-        font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        color: #ef4444;
-      }
-      .reference-card__hint {
-        display: block;
-        margin-top: 6px;
-        font-size: 6.2px;
-        color: #6b7280;
-      }
-      .summary {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-      }
-      .summary--full {
-        grid-template-columns: minmax(0, 1fr);
-      }
-      .card {
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 12px;
-        padding: 14px 16px;
-        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .card__title {
-        margin: 0;
-        font-size: 7px;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        color: #64748b;
-      }
-      .definition-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        gap: 8px;
-      }
-      .definition {
-        display: grid;
-        grid-template-columns: 120px 1fr;
-        gap: 6px;
-        align-items: start;
-      }
-      .definition dt {
-        font-size: 7px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: #9ca3af;
-        margin: 0;
-      }
-      .definition dd {
-        margin: 0;
-        font-size: 9px;
-        font-weight: 600;
-        color: #1f2937;
-      }
-      .stacked dt {
-        grid-column: span 2;
-        margin-bottom: 2px;
-      }
-      .stacked dd {
-        grid-column: span 2;
-      }
-      .notes {
-        font-size: 8.2px;
-        color: #334155;
-        line-height: 1.6;
-        white-space: pre-wrap;
-      }
-      .muted {
-        font-size: 6.4px;
-        color: #94a3b8;
-      }
-      .access-pass {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        padding: 12px 16px;
-        border: 1px dashed rgba(240, 90, 40, 0.4);
-        border-radius: 12px;
-        background: rgba(240, 90, 40, 0.05);
-      }
-      .access-pass__label {
-        margin: 0;
-        font-size: 7px;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        color: #f97316;
-      }
-      .access-pass__value {
-        margin: 4px 0 0;
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        color: #f05a28;
-      }
-      .access-pass img {
-        max-width: 120px;
-        height: auto;
-      }
-      footer {
-        font-size: 6.4px;
-        color: #94a3b8;
-        line-height: 1.6;
-        text-align: right;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="sheet">
-      <header class="sheet__header">
-        <div class="brand">
-          <img src="logo.png" alt="Digivriend logo" class="brand__logo">
-          <div>
+        /* STRONA */
+        @page { size: A4; margin: 28pt 32pt 30pt; }
+        * { box-sizing: border-box; }
+        html, body { margin:0; padding:0; }
+        body {
+          font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+          color:#0B1220; background:#fff;
+          line-height:1.45; font-size:10pt;
+          word-wrap:break-word;
+        }
+        img { display:block; }
+
+        /* TYPO */
+        h1, h2 { margin:0; font-weight:700; color:#0B1220; }
+        h1 { font-size:16pt; margin-bottom:2pt; }
+        h2 { font-size:9pt; text-transform:uppercase; letter-spacing:.12em; color:#7A8798; }
+        .eyebrow { font-size:7pt; text-transform:uppercase; letter-spacing:.18em; color:#F05A28; margin:0 0 4pt; }
+        .muted { color:#6E7B8F; }
+        .strong { font-weight:600; }
+
+        /* LAYOUT */
+        .container { }
+        .header {
+          display:table; width:100%;
+          border-bottom:.6pt solid #E6EAF2;
+          padding-bottom:10pt; margin-bottom:16pt;
+        }
+        .brand, .ref { display:table-cell; vertical-align:top; }
+        .brand { width:68%; }
+        .ref   { width:32%; text-align:right; }
+        .logo { height:26pt; width:auto; margin-bottom:8pt; }
+        .intro { margin-top:6pt; color:#3F4A5A; max-width:380pt; }
+
+        .ref-badge {
+          display:inline-block; text-align:right;
+          padding:8pt 10pt; border:.6pt solid #F4C6B4; border-radius:8pt; background:#FFF6F1;
+          min-width:160pt;
+        }
+        .ref-label { font-size:7pt; letter-spacing:.14em; text-transform:uppercase; color:#F05A28; display:block; }
+        .ref-value { font-size:12pt; font-weight:700; letter-spacing:.08em; color:#D83F19; display:block; margin-top:2pt; }
+        .ref-hint  { font-size:7pt; color:#6B7280; margin-top:2pt; display:block; }
+
+        .section { margin-bottom:16pt; }
+        .grid     { width:100%; border-collapse:separate; border-spacing:0 12pt; }
+        .col      { width:50%; padding-right:10pt; }
+        .col:last-child { padding-right:0; }
+
+        .card {
+          border:.6pt solid #E6EAF2; border-radius:10pt; padding:12pt 14pt; background:#FAFBFC;
+        }
+        dl { margin:0; }
+        .row { display:table; width:100%; margin-top:7pt; }
+        .row:first-child { margin-top:0; }
+        .dt { display:table-cell; width:120pt; font-size:8pt; color:#7A8798; letter-spacing:.06em; text-transform:uppercase; vertical-align:top; }
+        .dd { display:table-cell; color:#111827; font-weight:600; }
+
+        .notes { margin-top:6pt; white-space:pre-wrap; }
+
+        /* PASS / BARCODE */
+        .pass {
+          border:.6pt dashed #F05A28; border-radius:10pt; background:#FFF3EE;
+          padding:12pt 14pt;
+        }
+        .pass-grid { display:table; width:100%; }
+        .pass-left, .pass-right { display:table-cell; vertical-align:middle; }
+        .pass-left  { width:65%; }
+        .pass-right { width:35%; text-align:right; }
+        .pass-label { font-size:8pt; text-transform:uppercase; letter-spacing:.14em; color:#E25A2D; margin:0; }
+        .pass-value { margin:4pt 0 0; font-size:13pt; font-weight:700; letter-spacing:.12em; color:#F05A28; }
+        .barcode-wrap { display:inline-block; padding:6pt; background:#fff; border:.6pt solid #F4C6B4; border-radius:6pt; }
+        .barcode { max-width:150pt; height:auto; }
+
+        /* STOPKA */
+        footer { margin-top:16pt; border-top:.6pt solid #E6EAF2; padding-top:8pt; font-size:8pt; color:#6E7B8F; text-align:right; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+
+        <!-- HEADER -->
+        <div class="header">
+          <div class="brand">
+            <img src="logo.png" alt="Digivriend logo" class="logo">
             <p class="eyebrow">Intake bevestiging</p>
             <h1>Uw intake afspraak is bevestigd</h1>
-            <p class="intro">Beste <?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>,<br>
-              We kijken ernaar uit u te verwelkomen. Neem dit document mee naar het servicepunt en houd de referentiecode bij de hand.</p>
+            <p class="intro">
+              Beste <?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>,
+              neem dit document mee naar het servicepunt en houd de referentiecode bij de hand.
+            </p>
+          </div>
+          <div class="ref">
+            <span class="ref-badge">
+              <span class="ref-label">Referentie</span>
+              <span class="ref-value"><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <span class="ref-hint">Afspraak op <?= htmlspecialchars($formattedAppointment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            </span>
           </div>
         </div>
-        <div class="reference-card">
-          <span class="reference-card__label">Referentie</span>
-          <span class="reference-card__value"><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="reference-card__hint">Afspraak op <?= htmlspecialchars($formattedAppointment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+
+        <!-- 2-KOLUMNOWA SIATKA -->
+        <div class="section">
+          <table class="grid">
+            <tr>
+              <td class="col">
+                <div class="card">
+                  <h2>Afspraakgegevens</h2>
+                  <dl>
+                    <div class="row">
+                      <div class="dt">Datum &amp; tijd</div>
+                      <div class="dd"><?= htmlspecialchars($formattedAppointment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    </div>
+                    <div class="row">
+                      <div class="dt">Locatie</div>
+                      <div class="dd strong">Digivriend Servicepunt</div>
+                    </div>
+                    <div class="row">
+                      <div class="dt">Behandelaar</div>
+                      <div class="dd"><?= htmlspecialchars(Auth::username(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    </div>
+                  </dl>
+                </div>
+              </td>
+              <td class="col">
+                <div class="card">
+                  <h2>Klantgegevens</h2>
+                  <dl>
+                    <div class="row">
+                      <div class="dt">Naam</div>
+                      <div class="dd"><?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    </div>
+                    <div class="row">
+                      <div class="dt">Contact</div>
+                      <div class="dd"><?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><br><?= htmlspecialchars($phone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    </div>
+                    <div class="row">
+                      <div class="dt">Adres</div>
+                      <div class="dd"><?= $formattedAddress ?></div>
+                    </div>
+                  </dl>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
-      </header>
 
-        <section class="summary">
-        <article class="card">
-          <h2 class="card__title">Afspraakgegevens</h2>
-          <dl class="definition-list">
-            <div class="definition">
-              <dt>Datum &amp; tijd</dt>
-              <dd><?= htmlspecialchars($formattedAppointment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-            <div class="definition">
-              <dt>Locatie</dt>
-              <dd>Digivriend Servicepunt</dd>
-            </div>
-            <div class="definition">
-              <dt>Behandelaar</dt>
-              <dd><?= htmlspecialchars(Auth::username(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-          </dl>
-        </article>
+        <!-- URZĄDZENIE -->
+        <div class="section">
+          <div class="card">
+            <h2>Apparaatinformatie</h2>
+            <dl>
+              <div class="row">
+                <div class="dt">Type</div>
+                <div class="dd"><?= htmlspecialchars($deviceType !== '' ? $deviceType : 'Niet opgegeven', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </div>
+              <div class="row">
+                <div class="dt">Details</div>
+                <div class="dd"><?= htmlspecialchars($deviceInfo !== '' ? $deviceInfo : 'Onbekend apparaat', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </div>
+              <div class="row">
+                <div class="dt">Serienummer</div>
+                <div class="dd"><?= htmlspecialchars($deviceSerial !== '' ? $deviceSerial : 'Niet beschikbaar', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </div>
+            </dl>
+          </div>
+        </div>
 
-        <article class="card">
-          <h2 class="card__title">Klantgegevens</h2>
-          <dl class="definition-list">
-            <div class="definition">
-              <dt>Naam</dt>
-              <dd><?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-            <div class="definition stacked">
-              <dt>Contact</dt>
-              <dd><?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><br><?= htmlspecialchars($phone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-            <div class="definition stacked">
-              <dt>Adres</dt>
-              <dd><?= $formattedAddress ?></dd>
-            </div>
-          </dl>
-        </article>
-      </section>
-
-      <section class="summary summary--full">
-        <article class="card">
-          <h2 class="card__title">Apparaatinformatie</h2>
-          <dl class="definition-list">
-            <div class="definition">
-              <dt>Type</dt>
-              <dd><?= htmlspecialchars($deviceType !== '' ? $deviceType : 'Niet opgegeven', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-            <div class="definition stacked">
-              <dt>Details</dt>
-              <dd><?= htmlspecialchars($deviceInfo !== '' ? $deviceInfo : 'Onbekend apparaat', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-            <div class="definition">
-              <dt>Serienummer</dt>
-              <dd><?= htmlspecialchars($deviceSerial !== '' ? $deviceSerial : 'Niet beschikbaar', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-            </div>
-          </dl>
-        </article>
-      </section>
-
-      <?php if ($problemDescription !== ''): ?>
-        <section class="summary summary--full">
-          <article class="card">
-            <h2 class="card__title">Probleemomschrijving</h2>
+        <!-- PROBLEM -->
+        <?php if ($problemDescription !== ''): ?>
+        <div class="section">
+          <div class="card">
+            <h2>Probleemomschrijving</h2>
             <div class="notes"><?= nl2br(htmlspecialchars($problemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
             <?php if ($problemSummaryTruncated): ?>
-              <p class="muted">De omschrijving is ingekort om het document op één pagina te houden.</p>
+              <div class="muted" style="margin-top:6pt;">De omschrijving is ingekort om het document op één pagina te houden.</div>
             <?php endif; ?>
-          </article>
-        </section>
-      <?php endif; ?>
-
-        <div class="access-pass">
-        <div>
-          <p class="access-pass__label">Toegangscode bij aankomst</p>
-          <p class="access-pass__value"><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
         </div>
-        <img src="<?= htmlspecialchars($barcodeDataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" alt="Barcode voor intake">
-      </div>
+        <?php endif; ?>
 
-      <footer>
-          Bewaar dit document als bevestiging van uw intakeafspraak. Voor vragen kunt u contact opnemen met Digivriend via <?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> of telefonisch.
-      </footer>
-    </div>
+        <!-- PASS / BARCODE -->
+        <div class="section">
+          <div class="pass">
+            <div class="pass-grid">
+              <div class="pass-left">
+                <p class="pass-label">Toegangscode bij aankomst</p>
+                <div class="pass-value"><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </div>
+              <div class="pass-right">
+                <span class="barcode-wrap">
+                  <img class="barcode" src="<?= htmlspecialchars($barcodeDataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" alt="Barcode voor intake">
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer>
+          Bewaar dit document als bevestiging van uw intakeafspraak. Voor vragen kunt u contact opnemen met Digivriend via
+          <?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> of telefonisch.
+        </footer>
+      </div>
     </body>
     </html>
     <?php
@@ -503,6 +413,8 @@ try {
     $options = new Options();
     $options->set('isRemoteEnabled', true);
     $options->set('isHtml5ParserEnabled', true);
+    $options->set('defaultFont', 'DejaVu Sans');
+    $options->set('isFontSubsettingEnabled', true);
 
     $dompdf = new Dompdf($options);
     $dompdf->loadHtml($documentHtml, 'UTF-8');
@@ -587,6 +499,7 @@ echo json_encode([
     'notification_error' => $emailError,
 ], JSON_THROW_ON_ERROR);
 
+/** Generuje unikalny kod referencyjny */
 function generateIntakeReferenceCode(CaseRepository $caseRepository): string
 {
     do {
