@@ -52,6 +52,27 @@
   grid-column: 1 / -1;
 }
 
+.case-self-assign {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.case-self-assign h2 {
+  margin: 0;
+}
+
+.case-self-assign__form {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.case-self-assign .btn[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .details-list {
   display: grid;
   gap: 12px;

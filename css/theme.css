@@ -746,6 +746,19 @@ tbody tr:last-child td {
   color: #0f766e;
 }
 
+.status-pill--gepland,
+.status-pill--intake,
+.status-pill--open {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+.status-pill--gesloten,
+.status-pill--opgehaald {
+  background: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
 .search-bar {
   display: flex;
   flex-wrap: wrap;

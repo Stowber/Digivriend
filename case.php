@@ -103,6 +103,15 @@ $activeCaseAssignments = array_values(array_filter(
     $caseAssignments,
     static fn (array $assignment): bool => empty($assignment['unassigned_at'])
 ));
+$currentEmployeeProfile = $employeeRepository->findByUsername(Auth::username());
+$currentEmployeeId = $currentEmployeeProfile !== null ? (int) $currentEmployeeProfile['id'] : null;
+$userAlreadyAssigned = false;
+foreach ($activeCaseAssignments as $assignment) {
+    if ((int) ($assignment['employee_id'] ?? 0) === $currentEmployeeId) {
+        $userAlreadyAssigned = true;
+        break;
+    }
+}
 
 $errors = [];
 $checklistErrors = [];
@@ -125,7 +134,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $noteRepository->add((int) $caseId, (int) $caseRecord['customer_id'], Auth::username(), $body);
                 $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'note_added', ['body' => $body]);
                 break;
-              case 'update-note':
+              case 'self-assign':
+                if ($currentEmployeeId === null) {
+                    throw new ValidationException(['general' => 'Er is geen medewerkerprofiel gekoppeld aan dit account.']);
+                }
+
+                if ($userAlreadyAssigned) {
+                    Response::redirect('case.php?id=' . (int) $caseId . '&assigned=1');
+                }
+
+                $assignmentRows = [];
+                foreach ($activeCaseAssignments as $assignment) {
+                    $assignmentRows[] = [
+                        'employee_id' => (int) ($assignment['employee_id'] ?? 0),
+                        'type' => (string) ($assignment['assignment_type'] ?? 'primary'),
+                        'notes' => isset($assignment['notes']) ? (string) $assignment['notes'] : null,
+                    ];
+                }
+
+                $assignmentRows[] = [
+                    'employee_id' => $currentEmployeeId,
+                    'type' => 'primary',
+                    'notes' => null,
+                ];
+
+                $caseRepository->syncAssignments((int) $caseId, $assignmentRows, Auth::username());
+                $assignedName = $currentEmployeeProfile['full_name'] ?? Auth::username();
+                $noteRepository->add(
+                    (int) $caseId,
+                    (int) $caseRecord['customer_id'],
+                    Auth::username(),
+                    sprintf('Case toegewezen aan %s.', $assignedName)
+                );
+                $auditLogger->log(
+                    (int) $caseId,
+                    Auth::id(),
+                    Auth::username(),
+                    'case_self_assigned',
+                    ['employee_id' => $currentEmployeeId]
+                );
+
+                Response::redirect('case.php?id=' . (int) $caseId . '&assigned=1');
+            case 'update-note':
                 $noteId = filter_var($_POST['note_id'] ?? null, FILTER_VALIDATE_INT);
                 if (!$noteId) {
                     throw new ValidationException(['general' => 'Ongeldige notitie geselecteerd.']);
@@ -269,6 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $notes = $noteRepository->forCase((int) $caseId);
 $csrfToken = Csrf::token();
 $checklists = $checklistRepository->forCase((int) $caseId);
+$assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN);
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -290,12 +341,15 @@ $checklists = $checklistRepository->forCase((int) $caseId);
         </span>
       </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">
-        <?php render_main_nav('repairs'); ?>
+        <?php render_main_nav('devices'); ?>
       </nav>
     </div>
   </header>
 
   <main class="container case-view">
+    <?php if ($assignmentSuccess): ?>
+      <div class="alert alert--success">Je bent nu verantwoordelijk voor dit dossier.</div>
+    <?php endif; ?>
     <?php if (!empty($errors['general'])): ?>
       <?php $generalMessage = is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general']; ?>
       <div class="alert alert--danger"><?= htmlspecialchars($generalMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
@@ -312,6 +366,22 @@ $checklists = $checklistRepository->forCase((int) $caseId);
     </section>
 
     <section class="case-staff">
+      <article class="info-card info-card--wide">
+        <div class="case-self-assign">
+          <h2>Werkvoorbereiding</h2>
+          <p class="muted">Neem dit dossier in behandeling zodat het zichtbaar wordt in jouw werkoverzicht.</p>
+          <form method="post" class="case-self-assign__form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="self-assign">
+            <button type="submit" class="btn btn--primary" <?= ($userAlreadyAssigned || $currentEmployeeId === null) ? 'disabled' : '' ?>>
+              <?= $currentEmployeeId === null ? 'Koppel medewerkerprofiel' : ($userAlreadyAssigned ? 'Reeds toegewezen' : 'Przyjmij zlecenie') ?>
+            </button>
+          </form>
+          <?php if ($currentEmployeeId === null): ?>
+            <p class="form-error">Er is geen medewerkerprofiel gekoppeld aan dit account. Vraag een beheerder om jouw gegevens te koppelen.</p>
+          <?php endif; ?>
+        </div>
+      </article>
       <article class="info-card info-card--wide">
         <h2>Zespół i priorytety</h2>
         <form method="post" class="case-meta-form">

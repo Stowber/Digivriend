@@ -86,6 +86,15 @@ final class CaseRepository
         return $case !== false ? $case : null;
     }
 
+    public function findByReferenceCode(string $referenceCode): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM cases WHERE reference_code = :reference LIMIT 1');
+        $statement->execute(['reference' => $referenceCode]);
+        $case = $statement->fetch();
+
+        return $case !== false ? $case : null;
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -127,6 +136,34 @@ final class CaseRepository
         $statement = $this->pdo->prepare($sql);
         foreach ($parameters as $placeholder => $value) {
             $statement->bindValue($placeholder, $value);
+        }
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll() ?: [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function recentCaseOverview(int $limit = 25, ?string $type = null): array
+    {
+        $sql = 'SELECT c.*, cust.full_name, cust.email, cust.phone, cust.address, cust.postal_code, cust.city,'
+            . ' dev.brand AS device_brand, dev.model AS device_model, dev.serial_number AS device_serial, dev.device_type'
+            . ' FROM cases c'
+            . ' INNER JOIN customers cust ON cust.id = c.customer_id'
+            . ' LEFT JOIN devices dev ON dev.id = c.device_id';
+
+        $params = [];
+        if ($type !== null && $type !== '' && $type !== 'all') {
+            $sql .= ' WHERE c.type = :type';
+            $params['type'] = $type;
+        }
+
+        $sql .= ' ORDER BY c.created_at DESC LIMIT :limit';
+        $statement = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $statement->bindValue($key, $value);
         }
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();

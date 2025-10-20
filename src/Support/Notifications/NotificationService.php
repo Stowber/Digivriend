@@ -55,6 +55,30 @@ final class NotificationService
         ];
     }
 
+    public function sendIntakeConfirmation(
+        ?int $caseId,
+        ?int $customerId,
+        string $recipient,
+        array $payload,
+        array $attachments = []
+    ): array {
+        $subject = $payload['subject'] ?? 'Bevestiging intake afspraak';
+        $body = $this->renderTemplate('intake_confirmation', $payload);
+
+        $result = $this->sendEmail($recipient, $subject, $body, $attachments);
+        $status = $result['success'] ? 'sent' : 'failed';
+        $error = $result['error'] ?? null;
+        $sentAt = $result['success'] ? Clock::nowFormatted() : null;
+
+        $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body, $status, $error, $sentAt);
+
+        return [
+            'success' => $result['success'],
+            'status' => $status,
+            'error' => $error,
+        ];
+    }
+
     public function sendSms(?int $caseId, ?int $customerId, string $recipient, array $payload): void
     {
         $body = $this->renderTemplate('sms_generic', $payload);
@@ -124,7 +148,14 @@ final class NotificationService
                 $safePayload['pickup_code'] ?? '—',
                 $safePayload['pickup_date'] ?? '—'
             ),
-             'pc_build_release' => sprintf(
+             'intake_confirmation' => sprintf(
+                "Beste %s,\n\nBedankt voor het plannen van uw intake. Wij verwachten u op %s in onze vestiging. Neem deze bevestiging en uw apparaat mee. Uw referentiecode is %s.\n\nBeschrijving: %s\n\nTot snel,\nDigivriend",
+                $safePayload['customer_name'] ?? 'klant',
+                $safePayload['appointment_at'] ?? 'het afgesproken tijdstip',
+                $safePayload['reference_code'] ?? '—',
+                $safePayload['notes'] ?? '—'
+            ),
+            'pc_build_release' => sprintf(
                 "Dzień dobry %s,\n\nZestaw PC %s jest gotowy do przekazania. Sposób wydania: %s dnia %s. W załączniku znajdziesz potwierdzenie wydania. W razie pytań skontaktuj się z nami.\n\nPozdrawiamy,\nZespół Digivriend",
                 $safePayload['customer_name'] ?? 'klient',
                 $safePayload['build_reference'] ?? 'Twój zestaw',

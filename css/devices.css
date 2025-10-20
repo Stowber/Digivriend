@@ -121,6 +121,24 @@
   font-size: 0.875rem;
 }
 
+.table__primary {
+  font-weight: 600;
+}
+
+.table__secondary {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.table-row--highlight {
+  animation: highlightRow 1.6s ease-in-out;
+}
+
+@keyframes highlightRow {
+  0% { background-color: rgba(240, 90, 40, 0.18); }
+  100% { background-color: transparent; }
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;

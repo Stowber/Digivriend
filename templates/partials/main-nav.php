@@ -7,12 +7,9 @@ if (!function_exists('render_main_nav')) {
     {
         $items = [
             'dashboard' => ['label' => 'Dashboard', 'href' => 'index.php'],
+            'intake' => ['label' => 'Klant registratie', 'href' => 'intake.php'],
             'devices' => ['label' => 'Klanten & apparaten', 'href' => 'devices.php'],
-            'intake' => ['label' => 'Przyjęcie urządzenia', 'href' => 'device-intake.php'],
-            'pickup' => ['label' => 'Ophaalbevestiging', 'href' => 'ophaalbevestiging.php'],
-            'repairs' => ['label' => 'Naprawy', 'href' => 'reparatie-onderzoek.php'],
             'data_recovery' => ['label' => 'Data Recovery', 'href' => 'data-recovery.php'],
-            'customer_reports' => ['label' => 'Klant Melding', 'href' => 'klant-melding.php'],
             'calendar' => ['label' => 'Kalendarz', 'href' => 'calendar.php'],
             'documents' => ['label' => 'Documenten', 'href' => 'documents.php'],
             'inventory' => ['label' => 'Magazyn', 'href' => 'magazyn.php'],

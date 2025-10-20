@@ -42,6 +42,22 @@ final class EmployeeRepository
         return $record !== false ? $record : null;
     }
 
+    public function findByUsername(string $username): ?array
+    {
+        $normalized = strtolower(trim($username));
+        if ($normalized === '') {
+            return null;
+        }
+
+        $statement = $this->pdo->prepare(
+            'SELECT * FROM employees WHERE LOWER(email) = :username OR LOWER(full_name) = :username LIMIT 1'
+        );
+        $statement->execute(['username' => $normalized]);
+        $record = $statement->fetch();
+
+        return $record !== false ? $record : null;
+    }
+
     public function create(
         string $fullName,
         ?string $email,
