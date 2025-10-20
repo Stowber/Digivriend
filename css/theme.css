@@ -205,6 +205,15 @@ main {
   color: rgba(15, 23, 42, 0.74);
 }
 
+.main-nav a.nav-link--danger:not(.btn) {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.main-nav a.nav-link--danger:not(.btn)::after {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
 .main-nav a:not(.btn)::after {
   content: "";
   position: absolute;
@@ -225,6 +234,13 @@ main {
   border-color: rgba(240, 90, 40, 0.16);
 }
 
+.main-nav a.nav-link--danger:not(.btn):hover,
+.main-nav a.nav-link--danger:not(.btn):focus {
+  color: #7f1d1d;
+  background: rgba(185, 28, 28, 0.12);
+  border-color: rgba(185, 28, 28, 0.28);
+}
+
 .main-nav a:not(.btn):hover::after,
 .main-nav a:not(.btn):focus::after {
   transform: scaleX(1);
@@ -234,6 +250,12 @@ main {
   color: var(--color-primary);
   background: rgba(240, 90, 40, 0.12);
   border-color: transparent;
+}
+
+.main-nav a[aria-current="page"].nav-link--danger:not(.btn) {
+  color: #7f1d1d;
+  background: rgba(185, 28, 28, 0.18);
+  border-color: rgba(185, 28, 28, 0.3);
 }
 
 .main-nav a[aria-current="page"]:not(.btn)::after {

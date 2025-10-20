@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Security\Auth;
+
 if (!function_exists('render_main_nav')) {
     function render_main_nav(string $currentKey): void
     {
@@ -17,20 +19,41 @@ if (!function_exists('render_main_nav')) {
             'employees' => ['label' => 'Pracownicy', 'href' => 'employees.php'],
         ];
 
+        if (Auth::role() === 'admin') {
+            $items['dump_database'] = [
+                'label' => 'DUMPDATABASE',
+                'href' => 'dumpdatabase.php',
+                'class' => 'nav-link--danger',
+            ];
+        }
+
         $logoutItem = ['label' => 'Afmelden', 'href' => 'logout.php', 'class' => 'btn btn--ghost'];
 
         echo '<ul>';
 
         foreach ($items as $key => $item) {
-            $attributes = '';
+            $attributes = [];
             if ($currentKey === $key) {
-                $attributes = ' aria-current="page"';
+                $attributes['aria-current'] = 'page';
+            }
+
+            if (isset($item['class']) && is_string($item['class']) && $item['class'] !== '') {
+                $attributes['class'] = $item['class'];
+            }
+
+            $attributeString = '';
+            foreach ($attributes as $name => $value) {
+                $attributeString .= sprintf(
+                    ' %s="%s"',
+                    htmlspecialchars((string) $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                    htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                );
             }
 
             echo sprintf(
                 '<li><a href="%s"%s>%s</a></li>',
                 htmlspecialchars($item['href'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
-                $attributes,
+                $attributeString,
                 htmlspecialchars($item['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
             );
         }
