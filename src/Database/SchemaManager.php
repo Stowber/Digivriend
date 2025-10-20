@@ -1165,6 +1165,7 @@ final class SchemaManager
             SQL);
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_period ON appointments(start_at, end_at)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)');
+            self::ensureAppointmentRelations($pdo);
 
             return;
         }
@@ -1197,6 +1198,7 @@ final class SchemaManager
             SQL);
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_period ON appointments(start_at, end_at)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)');
+            self::ensureAppointmentRelations($pdo);
 
             return;
         }
@@ -1228,6 +1230,63 @@ final class SchemaManager
                 CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
+        self::ensureAppointmentRelations($pdo);
+    }
+
+    private static function ensureAppointmentRelations(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'appointments', 'case_id', 'INTEGER NULL');
+            self::addSqliteColumnIfMissing($pdo, 'appointments', 'customer_id', 'INTEGER NULL');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            $pdo->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS case_id INT NULL');
+            $pdo->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS customer_id INT NULL');
+
+            try {
+                $pdo->exec('ALTER TABLE appointments ADD CONSTRAINT fk_appointments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL');
+            } catch (PDOException $exception) {
+                if (!self::containsKeyword($exception, ['already exists', 'duplicate'])) {
+                    throw $exception;
+                }
+            }
+
+            try {
+                $pdo->exec('ALTER TABLE appointments ADD CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL');
+            } catch (PDOException $exception) {
+                if (!self::containsKeyword($exception, ['already exists', 'duplicate'])) {
+                    throw $exception;
+                }
+            }
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE appointments ADD COLUMN case_id INT UNSIGNED NULL AFTER end_at',
+            ['duplicate column', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE appointments ADD COLUMN customer_id INT UNSIGNED NULL AFTER case_id',
+            ['duplicate column', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE appointments ADD CONSTRAINT fk_appointments_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE SET NULL',
+            ['duplicate', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE appointments ADD CONSTRAINT fk_appointments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL',
+            ['duplicate', 'already exists']
+        );
     }
 
     private static function ensureAppointmentAttendeesTable(PDO $pdo): void
