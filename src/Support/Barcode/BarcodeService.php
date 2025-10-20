@@ -81,26 +81,47 @@ final class BarcodeService
         $barWidth = 3;
         $wideWidth = $barWidth * 3;
         $height = 120;
-        $textHeight = 16;
         $spacing = $barWidth;
 
-        $totalWidth = 0;
         $characters = str_split($encoded);
+        $columns = [];
 
         foreach ($characters as $character) {
             $pattern = self::CODE39_PATTERNS[$character] ?? null;
             if ($pattern === null) {
                 continue;
             }
-            for ($i = 0; $i < strlen($pattern); $i++) {
-                $totalWidth += $pattern[$i] === 'n' ? $barWidth : $wideWidth;
+            $patternLength = strlen($pattern);
+            for ($i = 0; $i < $patternLength; $i++) {
+                $width = $pattern[$i] === 'n' ? $barWidth : $wideWidth;
+                $isBar = $i % 2 === 0;
+                for ($w = 0; $w < $width; $w++) {
+                    $columns[] = $isBar;
+                }
             }
-            $totalWidth += $spacing;
+            for ($s = 0; $s < $spacing; $s++) {
+                $columns[] = false;
+            }
         }
 
-        if ($totalWidth <= 0) {
-            $totalWidth = 200;
+        if ($columns === []) {
+            $columns = array_fill(0, 200, false);
         }
+
+        if (function_exists('imagecreatetruecolor') || function_exists('imagecreate')) {
+            return self::renderWithGd($columns, $height, $data);
+        }
+
+        return self::renderWithoutGd($columns, $height);
+    }
+
+    /**
+     * @param array<int, bool> $columns
+     */
+    private static function renderWithGd(array $columns, int $height, string $data): string
+    {
+        $totalWidth = count($columns);
+        $textHeight = 16;
 
         $imageHeight = $height + $textHeight + 10;
         $image = function_exists('imagecreatetruecolor')
@@ -115,22 +136,10 @@ final class BarcodeService
         $black = imagecolorallocate($image, 0, 0, 0);
         imagefill($image, 0, 0, $white);
 
-        $x = 0;
-        foreach ($characters as $character) {
-            $pattern = self::CODE39_PATTERNS[$character] ?? null;
-            if ($pattern === null) {
-                continue;
+        foreach ($columns as $x => $isBar) {
+            if ($isBar) {
+                imageline($image, $x, 0, $x, $height, $black);
             }
-
-            for ($i = 0; $i < strlen($pattern); $i++) {
-                $width = $pattern[$i] === 'n' ? $barWidth : $wideWidth;
-                if ($i % 2 === 0) {
-                    imagefilledrectangle($image, $x, 0, $x + $width - 1, $height, $black);
-                }
-                $x += $width;
-            }
-
-            $x += $spacing;
         }
 
         $textX = max(0, (int) (($totalWidth - imagefontwidth(5) * strlen($data)) / 2));
@@ -143,5 +152,43 @@ final class BarcodeService
         imagedestroy($image);
 
         return $pngData;
+    }
+
+    /**
+     * @param array<int, bool> $columns
+     */
+    private static function renderWithoutGd(array $columns, int $height): string
+    {
+        $width = count($columns);
+        $rows = [];
+
+        for ($y = 0; $y < $height; $y++) {
+            $row = chr(0); // filter type 0
+            foreach ($columns as $isBar) {
+                $row .= $isBar ? chr(0) : chr(255);
+            }
+            $rows[] = $row;
+        }
+
+        $rawData = implode('', $rows);
+        $compressed = gzcompress($rawData);
+        if ($compressed === false) {
+            throw new \RuntimeException('Kan barcode-afbeelding niet genereren (compressie mislukt).');
+        }
+
+        $png = "\x89PNG\r\n\x1a\n";
+        $png .= self::createChunk('IHDR', pack('N', $width) . pack('N', $height) . "\x08\x00\x00\x00\x00");
+        $png .= self::createChunk('IDAT', $compressed);
+        $png .= self::createChunk('IEND', '');
+
+        return $png;
+    }
+
+    private static function createChunk(string $type, string $data): string
+    {
+        $length = pack('N', strlen($data));
+        $crc = pack('N', crc32($type . $data));
+
+        return $length . $type . $data . $crc;
     }
 }
