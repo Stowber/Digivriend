@@ -349,6 +349,47 @@ try {
             gap: 12pt;
             box-shadow: 0 14pt 36pt rgba(15, 23, 42, 0.08);
           }
+          .panel--summary {
+            padding: 0;
+            overflow: hidden;
+          }
+          .panel-summary-header {
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            padding: 18pt 22pt 16pt;
+            display: flex;
+            flex-direction: column;
+            gap: 8pt;
+            border-bottom: 0.75pt solid rgba(210, 216, 236, 0.9);
+          }
+          .panel-summary-header span {
+            font-size: 7.5pt;
+            letter-spacing: .22em;
+            text-transform: uppercase;
+            color: #1D4ED8;
+          }
+          .panel-summary-header strong,
+          .panel-summary-value {
+            font-size: 14pt;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: #1E3A8A;
+          }
+          .panel-summary-body {
+            padding: 18pt 22pt;
+            display: flex;
+            flex-direction: column;
+            gap: 12pt;
+          }
+          .panel--summary .info-label {
+            letter-spacing: .16em;
+            color: #64748B;
+            font-size: 7.5pt;
+          }
+          .panel--summary .info-value {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #0F172A;
+          }
           .panel-title {
             display: flex;
             justify-content: space-between;
@@ -593,12 +634,13 @@ try {
 
           <main class="page-body">
             <div class="main-grid">
-              <section class="panel">
-                <div class="panel-title">
+              <section class="panel panel--summary">
+                <div class="panel-summary-header">
                   <span>Afspraak</span>
-                  <strong><?= htmlspecialchars($appointmentAt->format('d F Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <div class="panel-summary-value"><?= htmlspecialchars($appointmentAt->format('d F Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
                 </div>
-             <table class="info-table">
+             <div class="panel-summary-body">
+                  <table class="info-table">
                   <tr>
                     <td class="info-label">Tijdslot</td>
                     <td class="info-value"><?= htmlspecialchars($appointmentAt->format('H:i') . ' - ' . $appointmentEnd->format('H:i'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
@@ -616,14 +658,16 @@ try {
                     <td class="info-value text-wrap"><?= htmlspecialchars($displayAddress, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   </tr>
                 </table>
+                </div>
               </section>
 
-              <section class="panel">
-                <div class="panel-title">
+              <section class="panel panel--summary">
+                <div class="panel-summary-header">
                   <span>Apparaat</span>
-                  <strong><?= htmlspecialchars($deviceType !== '' ? $deviceType : 'Onbekend', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <div class="panel-summary-value"><?= htmlspecialchars($deviceType !== '' ? $deviceType : 'Onbekend', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
                 </div>
-              <table class="info-table">
+              <div class="panel-summary-body">
+                  <table class="info-table">
                   <tr>
                     <td class="info-label">Details</td>
                     <td class="info-value text-wrap"><?= htmlspecialchars($displayDeviceInfo, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
@@ -650,6 +694,7 @@ try {
                     </td>
                   </tr>
                 </table>
+                </div>
               </section>
             </div>
           <section class="panel">
