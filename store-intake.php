@@ -8,6 +8,7 @@ use App\Security\Auth;
 use App\Security\Csrf;
 use App\Support\Barcode\BarcodeService;
 use App\Support\Documents\DocumentRepository;
+use App\Support\Env;
 use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\AppointmentRepository;
 use App\Support\Repositories\CaseRepository;
@@ -856,23 +857,28 @@ function detectChromeBinary(): ?string
 {
     $candidates = [];
 
-    // Priorytet: zmienna środowiskowa
-    foreach ([
+     $envKeys = [
+        'PDF_CHROME_BINARY',
+        'PDF_CHROMIUM_BINARY',
+        'PDF_CHROME_PATH',
+        'PDF_CHROMIUM_PATH',
         'CHROME_BINARY',
         'CHROMIUM_BINARY',
         'CHROME_PATH',
         'CHROMIUM_PATH',
-    ] as $envKey) {
-        $env = getenv($envKey);
-        if ($env) {
-            $candidates[] = $env;
+    ];
+
+    foreach ($envKeys as $envKey) {
+        $env = Env::get($envKey);
+        if (is_string($env) && $env !== '') {
+            $candidates = array_merge($candidates, normaliseChromiumCandidate($env));
         }
     }
 
     if (DIRECTORY_SEPARATOR === '\\') {
-        $programFiles = getenv('ProgramFiles') ?: null;
-        $programFilesX86 = getenv('ProgramFiles(x86)') ?: null;
-        $localAppData = getenv('LOCALAPPDATA') ?: null;
+        $programFiles = Env::get('ProgramFiles');
+        $programFilesX86 = Env::get('ProgramFiles(x86)');
+        $localAppData = Env::get('LOCALAPPDATA');
 
         $windowsCandidates = [];
 
@@ -883,38 +889,59 @@ function detectChromeBinary(): ?string
             $windowsCandidates[] = $basePath . '\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
         }
 
-        if ($localAppData) {
+        if (is_string($localAppData) && $localAppData !== '') {
             $windowsCandidates[] = $localAppData . '\\Google\\Chrome\\Application\\chrome.exe';
             $windowsCandidates[] = $localAppData . '\\Chromium\\Application\\chrome.exe';
             $windowsCandidates[] = $localAppData . '\\Microsoft\\Edge\\Application\\msedge.exe';
             $windowsCandidates[] = $localAppData . '\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
         }
 
-        $candidates = array_merge($candidates, $windowsCandidates);
+        foreach ($windowsCandidates as $candidate) {
+            $candidates = array_merge($candidates, normaliseChromiumCandidate($candidate));
+        }
+    } else {
+        foreach ([
+            '/usr/bin/chromium',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            '/snap/bin/chromium',
+        ] as $candidate) {
+            $candidates[] = $candidate;
+        }
     }
 
-    // Typowe nazwy w Linux
-    $candidates = array_merge($candidates, [
-        '/usr/bin/chromium',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable',
-        '/snap/bin/chromium',
-    ]);
+    foreach ([
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        ] as $candidate) {
+            $candidates[] = $candidate;
+        }
 
-    // macOS (gdyby ktoś uruchamiał na macu)
-    $candidates = array_merge($candidates, [
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    ]);
+    $checked = [];
 
     foreach ($candidates as $bin) {
-        if ($bin === null || $bin === '') {
+        if (!is_string($bin) || $bin === '') {
             continue;
         }
 
-        if (is_executable($bin) || (DIRECTORY_SEPARATOR === '\\' && is_file($bin))) {
-            return $bin;
+        $trimmed = trim($bin, " \"'\t");
+        if ($trimmed === '') {
+            continue;
+        }
+
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $trimmed = rtrim($trimmed, '\\/');
+        }
+
+        if (isset($checked[$trimmed])) {
+            continue;
+        }
+
+        $checked[$trimmed] = true;
+
+        if (chromiumBinaryExists($trimmed)) {
+            return $trimmed;
         }
     }
 
@@ -932,13 +959,16 @@ function detectChromeBinary(): ?string
                 continue;
             }
 
-            foreach (preg_split('/\r?\n/', trim($output)) as $line) {
+            foreach (preg_split('/\r?\n/', trim((string) $output)) as $line) {
                 if ($line === '') {
                     continue;
                 }
 
-                if (is_file($line)) {
-                    return $line;
+                $expanded = normaliseChromiumCandidate($line);
+                foreach ($expanded as $candidate) {
+                    if (chromiumBinaryExists($candidate)) {
+                        return $candidate;
+                    }
                 }
             }
         }
@@ -946,20 +976,65 @@ function detectChromeBinary(): ?string
         return null;
     }
 
-    // Ostatecznie: spróbuj z PATH (Unix)
-    $which = trim(shell_exec('which chromium 2>/dev/null') ?? '');
-    if ($which !== '') return $which;
+    foreach ([
+        'which chromium',
+        'which chromium-browser',
+        'which google-chrome',
+        'which google-chrome-stable',
+    ] as $command) {
+        $which = trim(shell_exec($command . ' 2>/dev/null') ?? '');
+        if ($which === '') {
+            continue;
+        }
 
-    $which = trim(shell_exec('which chromium-browser 2>/dev/null') ?? '');
-    if ($which !== '') return $which;
-
-    $which = trim(shell_exec('which google-chrome 2>/dev/null') ?? '');
-    if ($which !== '') return $which;
-
-    $which = trim(shell_exec('which google-chrome-stable 2>/dev/null') ?? '');
-    if ($which !== '') return $which;
+    if (chromiumBinaryExists($which)) {
+            return $which;
+        }
+    }
 
     return null;
+    }
+
+    /**
+ * @return string[]
+ */
+function normaliseChromiumCandidate(string $candidate): array
+{
+    $trimmed = trim($candidate, " \"'\t");
+    if ($trimmed === '') {
+        return [];
+    }
+
+    if (DIRECTORY_SEPARATOR === '\\') {
+        $trimmed = rtrim($trimmed, '\\/');
+
+        if (is_dir($trimmed)) {
+            $binaries = [];
+            foreach (['chrome.exe', 'msedge.exe', 'brave.exe', 'chromium.exe'] as $binary) {
+                $path = $trimmed . '\\' . $binary;
+                if (!in_array($path, $binaries, true)) {
+                    $binaries[] = $path;
+                }
+            }
+
+            return $binaries;
+        }
+    }
+
+    return [$trimmed];
+}
+
+function chromiumBinaryExists(string $path): bool
+{
+    if ($path === '') {
+        return false;
+    }
+
+    if (DIRECTORY_SEPARATOR === '\\') {
+        return is_file($path);
+    }
+
+    return is_file($path) && is_executable($path);
 }
 
 /**
