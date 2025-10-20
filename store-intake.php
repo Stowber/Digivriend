@@ -291,9 +291,72 @@ try {
           .highlight-content { font-size: 10pt; color: #1F2937; }
 
           .section { margin-bottom: 18pt; }
-          .grid { width: 100%; border-collapse: separate; border-spacing: 0 14pt; }
-          .grid-col { width: 50%; padding-right: 14pt; vertical-align: top; }
-          .grid-col:last-child { padding-right: 0; }
+          .info-cluster {
+            display: flex;
+            gap: 12pt;
+            flex-wrap: wrap;
+          }
+          .info-card {
+            flex: 1 1 0;
+            min-width: 0;
+            background: #F8FAFF;
+            border: 0.6pt solid #D5DBFF;
+            border-radius: 12pt;
+            padding: 14pt 16pt;
+            box-shadow: 0 5pt 12pt rgba(15, 23, 42, 0.05);
+          }
+          .info-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8pt;
+          }
+          .info-card-tag {
+            font-size: 6.5pt;
+            font-weight: 700;
+            letter-spacing: .22em;
+            text-transform: uppercase;
+            color: #1D4ED8;
+          }
+          .info-card-title {
+            margin: 3pt 0 0;
+            font-size: 11pt;
+            font-weight: 700;
+            color: #0F172A;
+            letter-spacing: -0.01em;
+            text-transform: none;
+          }
+          .info-card-icon {
+            width: 18pt;
+            height: 18pt;
+            border-radius: 6pt;
+            background: linear-gradient(135deg, #4F46E5, #60A5FA);
+            color: #FFFFFF;
+            font-size: 8pt;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .info-details {
+            margin: 0;
+            display: grid;
+            grid-template-columns: 90pt 1fr;
+            column-gap: 10pt;
+            row-gap: 4pt;
+          }
+          .info-details dt {
+            font-size: 7pt;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: #6B7280;
+          }
+          .info-details dd {
+            margin: 0;
+            font-size: 9pt;
+            font-weight: 600;
+            color: #0F172A;
+          }
 
           .card {
             background: #FFFFFF;
@@ -429,48 +492,42 @@ try {
           </section>
 
           <section class="section">
-            <table class="grid">
-              <tr>
-                <td class="grid-col">
-                  <div class="card card--compact">
-                    <h3>Afspraakgegevens</h3>
-                    <dl>
-                      <div class="row">
-                        <div class="dt">Datum &amp; tijd</div>
-                        <div class="dd"><?= htmlspecialchars($formattedAppointment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                      </div>
-                      <div class="row">
-                        <div class="dt">Locatie</div>
-                        <div class="dd">Digivriend Servicepunt</div>
-                      </div>
-                      <div class="row">
-                        <div class="dt">Contactpersoon</div>
-                        <div class="dd"><?= htmlspecialchars(Auth::username(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                      </div>
-                    </dl>
+            <div class="info-cluster">
+              <div class="info-card">
+                <div class="info-card-header">
+                  <div>
+                    <div class="info-card-tag">Afspraak</div>
+                    <h3 class="info-card-title">Afspraakgegevens</h3>
                   </div>
-                </td>
-                <td class="grid-col">
-                  <div class="card card--compact">
-                    <h3>Klantgegevens</h3>
-                    <dl>
-                      <div class="row">
-                        <div class="dt">Naam</div>
-                        <div class="dd"><?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                      </div>
-                      <div class="row">
-                        <div class="dt">Contact</div>
-                        <div class="dd"><?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><br><?= htmlspecialchars($phone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                      </div>
-                      <div class="row">
-                        <div class="dt">Adres</div>
-                        <div class="dd"><?= $formattedAddress ?></div>
-                      </div>
-                    </dl>
+                <div class="info-card-icon">AF</div>
+                </div>
+                <dl class="info-details">
+                  <dt>Datum &amp; tijd</dt>
+                  <dd><?= htmlspecialchars($formattedAppointment, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  <dt>Locatie</dt>
+                  <dd>Digivriend Servicepunt</dd>
+                  <dt>Contactpersoon</dt>
+                  <dd><?= htmlspecialchars(Auth::username(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                </dl>
+              </div>
+              <div class="info-card">
+                <div class="info-card-header">
+                  <div>
+                    <div class="info-card-tag">Klant</div>
+                    <h3 class="info-card-title">Klantgegevens</h3>
                   </div>
-                </td>
-              </tr>
-            </table>
+                <div class="info-card-icon">KL</div>
+                </div>
+                <dl class="info-details">
+                  <dt>Naam</dt>
+                  <dd><?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  <dt>Contact</dt>
+                  <dd><?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><br><?= htmlspecialchars($phone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  <dt>Adres</dt>
+                  <dd><?= $formattedAddress ?></dd>
+                </dl>
+              </div>
+            </div>
           </section>
 
           <section class="section">
