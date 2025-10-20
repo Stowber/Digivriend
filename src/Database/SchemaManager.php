@@ -2256,6 +2256,8 @@ final class SchemaManager
             SQL;
 
             $pdo->exec($sql);
+            self::addSqliteColumnIfMissing($pdo, 'notifications', 'case_id', 'INTEGER NULL');
+            self::addSqliteColumnIfMissing($pdo, 'notifications', 'customer_id', 'INTEGER NULL');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status)');
 
             return;
