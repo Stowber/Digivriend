@@ -767,7 +767,10 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
     $tmpHtmlPath = $newTmpHtmlPath;
 
     // Wstawiamy kompletny dokument (już mamy pełny <!DOCTYPE html> w $html)
-    file_put_contents($tmpHtmlPath, $html);
+    if (file_put_contents($tmpHtmlPath, $html) === false) {
+        @unlink($tmpHtmlPath);
+        return null;
+    }
 
     // 2) Wykryj binarkę Chrome/Chromium
     $chromeBinary = detectChromeBinary();
@@ -776,26 +779,54 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
         return null;
     }
 
-    // 3) Zbuduj URL file://
+    // 3) Przygotuj tymczasowy katalog profilu
+    $userDataDir = $tmpDir . '/chromium-profile-' . bin2hex(random_bytes(6));
+    if (!mkdir($userDataDir, 0700) && !is_dir($userDataDir)) {
+        @unlink($tmpHtmlPath);
+        return null;
+    }
+
+    // 4) Zbuduj URL file://
     $htmlUrl = 'file://' . str_replace('\\', '/', $tmpHtmlPath);
 
-    // 4) Parametry do bardziej stabilnego wydruku
-    // --print-to-pdf-no-header usuwa domyślny nagłówek/stopkę,
-    // --allow-file-access-from-files pozwala na wczytywanie file:// zasobów (logo)
-    $cmd = sprintf(
-        '%s --headless=new --disable-gpu --no-sandbox --print-to-pdf=%s --print-to-pdf-no-header --virtual-time-budget=10000 --run-all-compositor-stages-before-draw --disable-web-security --allow-file-access-from-files %s',
-        escapeshellarg($chromeBinary),
-        escapeshellarg($outputPdfPath),
-        escapeshellarg($htmlUrl)
-    );
+    $commandVariants = [
+        '--headless=new',
+        '--headless',
+    ];
 
-    // 5) Uruchom proces
-    exec($cmd . ' 2>&1', $output, $exitCode);
+    $output = [];
+    $exitCode = 0;
+    $success = false;
 
-    // 6) Sprzątanie i odczyt
+    foreach ($commandVariants as $headlessFlag) {
+        if (is_file($outputPdfPath)) {
+            @unlink($outputPdfPath);
+        }
+
+    $command = sprintf(
+            '%s %s --disable-gpu --disable-dev-shm-usage --no-sandbox --disable-setuid-sandbox --user-data-dir=%s --print-to-pdf=%s --print-to-pdf-no-header --virtual-time-budget=20000 --run-all-compositor-stages-before-draw --disable-web-security --allow-file-access-from-files %s',
+            escapeshellarg($chromeBinary),
+            escapeshellarg($headlessFlag),
+            escapeshellarg($userDataDir),
+            escapeshellarg($outputPdfPath),
+            escapeshellarg($htmlUrl)
+        );
+
+        $output = [];
+        $exitCode = 0;
+        exec($command . ' 2>&1', $output, $exitCode);
+
+        if ($exitCode === 0 && is_file($outputPdfPath)) {
+            $success = true;
+            break;
+        }
+    }
+
+    // 5) Sprzątanie i odczyt
     @unlink($tmpHtmlPath);
+    removeDirectory($userDataDir);
 
-    if ($exitCode !== 0 || !is_file($outputPdfPath)) {
+    if (!$success) {
         error_log('[Chromium PDF] Exit code: ' . $exitCode . ' Output: ' . implode("\n", $output));
         return null;
     }
@@ -852,4 +883,31 @@ function detectChromeBinary(): ?string
     if ($which !== '') return $which;
 
     return null;
+}
+function removeDirectory(string $directory): void
+{
+    if (!is_dir($directory)) {
+        return;
+    }
+
+    $items = scandir($directory);
+    if ($items === false) {
+        @rmdir($directory);
+        return;
+    }
+
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+
+        $path = $directory . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($path)) {
+            removeDirectory($path);
+        } else {
+            @unlink($path);
+        }
+    }
+
+    @rmdir($directory);
 }
