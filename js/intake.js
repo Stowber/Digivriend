@@ -47,6 +47,7 @@
       return;
     }
     form.reset();
+    form.hidden = false;
     activeStep = 'customer';
     Object.keys(panels).forEach(function (key) {
       if (panels[key]) {
