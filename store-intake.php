@@ -187,7 +187,7 @@ try {
     $problemSummary = '';
     $problemSummaryTruncated = false;
     if ($problemDescription !== '') {
-        $maxCharacters = 480;
+        $maxCharacters = 180;
         $problemSummary = mb_substr($problemDescription, 0, $maxCharacters);
         if (mb_strlen($problemDescription) > $maxCharacters) {
             $problemSummary = rtrim($problemSummary) . '…';
@@ -220,7 +220,7 @@ try {
         <meta charset="UTF-8">
         <title>Intake bevestiging <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
         <style>
-          @page { size: A4; margin: 32pt 34pt 36pt; }
+          @page { size: A4; margin: 24pt 28pt 28pt; }
           * { box-sizing: border-box; }
           html, body { margin: 0; padding: 0; }
           body {
@@ -265,8 +265,8 @@ try {
             background: linear-gradient(180deg, #FFFFFF 0%, #FBFCFF 52%, #F3F5FB 100%);
             border-radius: 20pt;
             border: 0.75pt solid #D8DEF1;
-            min-height: calc(842pt - 68pt);
-            padding: 30pt 34pt;
+            min-height: calc(842pt - 52pt);
+            padding: 24pt 28pt;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -287,7 +287,7 @@ try {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 18pt;
+            gap: 14pt;
           }
 
           .brand {
@@ -310,27 +310,7 @@ try {
             height: auto;
           }
 
-          .reference-card {
-            margin-top: 12pt;
-            display: inline-flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4pt;
-            border-radius: 14pt;
-            border: 0.75pt solid #FCD5C3;
-            background: linear-gradient(135deg, #FFF3EA 0%, #FFE3D0 100%);
-            padding: 12pt 18pt;
-            color: #9A3412;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-          }
-          .reference-value {
-            font-size: 14pt;
-            font-weight: 700;
-            letter-spacing: .16em;
-            color: #C2410C;
-          }
-          .tagline { color: #4B5563; max-width: 360pt; margin-top: 10pt; }
+          .tagline { color: #4B5563; max-width: 360pt; margin-top: 8pt; }
 
           .main-grid {
             flex: 1;
@@ -444,6 +424,7 @@ try {
             align-items: stretch;
             break-inside: avoid;
             page-break-inside: avoid;
+            grid-column: 1 / -1;
           }
           .highlight-box small {
             font-size: 8pt;
@@ -526,7 +507,8 @@ try {
             height: 12pt;
             border-radius: 4pt;
             background: #34D399;
-            margin-top: 2pt;
+            margin-top: 4pt;
+            flex-shrink: 0;
           }
 
           .clamp-box {
@@ -618,7 +600,7 @@ try {
             text-align: left;
           }
           .cost-table th { text-transform: uppercase; letter-spacing: .12em; font-size: 7.5pt; color: #6B7280; }
-          .cost-table td:last-child { text-align: right; font-weight: 600; }
+          .cost-table .cost-value { text-align: right; font-weight: 600; width: 92pt; }
 
           .signature-box {
             margin-top: auto;
@@ -641,11 +623,6 @@ try {
               <h2>Intake afspraak</h2>
               <h1 class="text-wrap">Intake voor <?= htmlspecialchars($displayFullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
               <p class="tagline">Bevestiging van uw geplande intakebezoek bij het servicepunt van Digivriend. Neem dit document mee als leidraad voor een vlotte afhandeling.</p>
-              <div class="reference-card">
-                <span>Referentie</span>
-                <div class="reference-value"><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                <small>Gegenereerd op <?= date('d-m-Y H:i') ?></small>
-              </div>
             </div>
           <div class="brand-meta">
               <div>Digivriend Amersfoort</div>
@@ -719,6 +696,16 @@ try {
                 </table>
                 </div>
               </section>
+              <div class="highlight-box">
+                <div>
+                  <small>Toegangscode</small>
+                  <strong><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <div class="text-muted">Gebruik deze code als u ons belt of wanneer u updates opvraagt.</div>
+                </div>
+                <div class="barcode-shell">
+                  <img class="barcode" src="<?= htmlspecialchars($barcodeDataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" alt="Barcode intake">
+                </div>
+              </div>
             </div>
           <section class="panel">
               <div class="panel-title">
@@ -753,17 +740,6 @@ try {
                 </li>
               </ul>
             </section>
-
-            <div class="highlight-box">
-              <div>
-                <small>Toegangscode</small>
-                <strong><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                <div class="text-muted">Gebruik deze code als u ons belt of wanneer u updates opvraagt.</div>
-              </div>
-              <div class="barcode-shell">
-                <img class="barcode" src="<?= htmlspecialchars($barcodeDataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" alt="Barcode intake">
-              </div>
-            </div>
           </main>
 
           <footer class="page-footer">
@@ -843,12 +819,12 @@ try {
                 <tr>
                   <th>Post</th>
                   <th>Toelichting</th>
-                  <th>Indicatie</th>
+                  <th class="cost-value">Indicatie</th>
                 </tr>
                 <tr>
                   <td>Onderzoek</td>
                   <td>Eerste diagnose inclusief rapportage.</td>
-                  <td>€ 45,00</td>
+                  <td class="cost-value">€ 49,95</td>
                 </tr>
                 <tr>
                   <td>Reparatie</td>
@@ -858,12 +834,12 @@ try {
                 <tr>
                   <td>Data back-up</td>
                   <td>Optionele dienst, enkel bij akkoord klant.</td>
-                  <td>Vanaf € 35,00</td>
+                  <td class="cost-value">Vanaf € 35,00</td>
                 </tr>
                 <tr>
                   <td>Opslagkosten</td>
                   <td>Bij niet-afhalen na 30 dagen na gereedmelding.</td>
-                  <td>€ 2,50 p/dag</td>
+                  <td class="cost-value">€ 2,50 p/dag</td>
                 </tr>
               </table>
             <div class="note-box">De uiteindelijke factuur volgt na afronding. Alle bedragen zijn inclusief btw tenzij anders vermeld.</div>
