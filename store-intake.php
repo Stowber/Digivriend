@@ -400,7 +400,7 @@ try {
             <table class="masthead-table">
               <tr>
                 <td class="masthead-left">
-                  <img src="logo.png" alt="Digivriend logo" class="logo">
+                  <img src="logo.svg" alt="Digivriend logo" class="logo">
                   <div class="label">Intake bevestiging</div>
                   <h1>
                     Afspraak bevestigd voor
