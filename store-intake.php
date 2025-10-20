@@ -214,31 +214,40 @@ try {
         .document {
           max-width: 720px;
           margin: 0 auto;
-          padding: 40px 48px;
+          padding: 20px 24px;
           background: #ffffff;
           min-height: 100vh;
         }
         .document__header {
           display: flex;
           justify-content: space-between;
-          gap: 24px;
-          border-bottom: 2px solid #f05a28;
-          padding-bottom: 24px;
+          gap: 12px;
+          border-bottom: 1px solid #f05a28;
+          padding-bottom: 12px;
+        }
+        .document__brand {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .brand__logo {
+          max-width: 80px;
+          height: auto;
         }
         .document__header h1 {
-          margin: 4px 0 12px;
-          font-size: 28px;
+          margin: 2px 0 6px;
+          font-size: 14px;
           color: #111827;
         }
         .label {
           text-transform: uppercase;
-          letter-spacing: 0.18em;
-          font-size: 11px;
+          letter-spacing: 0.09em;
+          font-size: 5.5px;
           color: #f05a28;
         }
         .intro {
           margin: 0;
-          font-size: 14px;
+          font-size: 7px;
           color: #4b5563;
           line-height: 1.5;
         }
@@ -247,92 +256,92 @@ try {
         }
         .reference__label {
           display: block;
-          font-size: 11px;
-          letter-spacing: 0.18em;
+          font-size: 5.5px;
+          letter-spacing: 0.09em;
           text-transform: uppercase;
           color: #6b7280;
         }
         .reference__value {
           display: block;
-          margin-top: 4px;
-          font-size: 18px;
+          margin-top: 2px;
+          font-size: 9px;
           font-weight: 700;
           color: #f05a28;
         }
         .section {
-          margin-top: 28px;
+          margin-top: 14px;
         }
         .section__title {
-          font-size: 12px;
-          letter-spacing: 0.14em;
+          font-size: 6px;
+          letter-spacing: 0.07em;
           text-transform: uppercase;
           color: #6b7280;
-          margin: 0 0 10px;
+          margin: 0 0 5px;
         }
         .panel {
-          border: 1px solid rgba(15, 23, 42, 0.1);
-          border-radius: 12px;
-          padding: 18px 22px;
+          border: 0.5px solid rgba(15, 23, 42, 0.1);
+          border-radius: 6px;
+          padding: 9px 11px;
           background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
-          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+          box-shadow: 0 3px 9px rgba(15, 23, 42, 0.08);
         }
         .grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px 28px;
+          gap: 8px 14px;
         }
         dt {
-          font-size: 11px;
-          letter-spacing: 0.12em;
+          font-size: 5.5px;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
           color: #9ca3af;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         dd {
           margin: 0;
           font-weight: 600;
-          font-size: 15px;
+          font-size: 7.5px;
           color: #1f2937;
         }
         .problem {
-          font-size: 14px;
+          font-size: 7px;
           line-height: 1.6;
           color: #374151;
           white-space: pre-wrap;
         }
         .muted {
-          font-size: 11px;
+          font-size: 5.5px;
           color: #9ca3af;
-          margin-top: 6px;
+          margin-top: 3px;
         }
         .barcode {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 24px;
-          margin-top: 36px;
-          padding: 18px 22px;
-          border-radius: 12px;
-          border: 1px dashed rgba(240, 90, 40, 0.5);
+          gap: 12px;
+          margin-top: 18px;
+          padding: 9px 11px;
+          border-radius: 6px;
+          border: 0.5px dashed rgba(240, 90, 40, 0.5);
           background: rgba(240, 90, 40, 0.05);
         }
         .barcode__text {
-          font-size: 14px;
+          font-size: 7px;
           color: #374151;
         }
         .barcode__value {
-          font-size: 18px;
+          font-size: 9px;
           font-weight: 700;
           color: #f05a28;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.06em;
         }
         .barcode img {
-          max-width: 220px;
+          max-width: 110px;
           height: auto;
         }
         footer {
-          margin-top: 40px;
-          font-size: 11px;
+          margin-top: 20px;
+          font-size: 5.5px;
           color: #9ca3af;
           line-height: 1.5;
         }
@@ -341,17 +350,20 @@ try {
     <body>
       <div class="document">
         <header class="document__header">
-          <div>
-            <span class="label">Bevestiging intake</span>
-            <h1>Bevestiging intake afspraak</h1>
-            <p class="intro">Beste <?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>,<br>
-              Bedankt voor het plannen van uw bezoek. Neem deze bevestiging samen met het apparaat mee naar ons servicepunt.</p>
+          <div class="document__brand">
+            <img src="logo.png" alt="Digivriend logo" class="brand__logo">
+            <div>
+              <span class="label">Bevestiging intake</span>
+              <h1>Bevestiging intake afspraak</h1>
+              <p class="intro">Beste <?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>,<br>
+                Bedankt voor het plannen van uw bezoek. Neem deze bevestiging samen met het apparaat mee naar ons servicepunt.</p>
+            </div>
           </div>
           <div class="reference">
             <span class="reference__label">Referentie</span>
             <span class="reference__value"><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           </div>
-          </header>
+        </header>
 
         <section class="section">
           <h2 class="section__title">Afspraakgegevens</h2>
