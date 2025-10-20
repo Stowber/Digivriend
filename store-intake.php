@@ -223,6 +223,9 @@ try {
             letter-spacing: -0.01em;
             margin-bottom: 4pt;
           }
+          .masthead-name {
+            display: block;
+          }
           h2 {
             font-size: 10pt;
             text-transform: uppercase;
@@ -299,6 +302,10 @@ try {
             padding: 14pt 16pt;
             box-shadow: 0 6pt 14pt rgba(17, 24, 39, 0.06);
           }
+          .card--compact { padding: 3.5pt 4pt; }
+          .card--compact dl { margin-top: 2.5pt; }
+          .card--compact .row { margin-top: 2pt; }
+          .card--compact .row:first-child { margin-top: 0; }
           dl { margin: 10pt 0 0; }
           .row { display: table; width: 100%; margin-top: 8pt; }
           .row:first-child { margin-top: 0; }
@@ -395,7 +402,10 @@ try {
                 <td class="masthead-left">
                   <img src="logo.png" alt="Digivriend logo" class="logo">
                   <div class="label">Intake bevestiging</div>
-                  <h1>Afspraak bevestigd voor <?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+                  <h1>
+                    Afspraak bevestigd voor
+                    <span class="masthead-name"><?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  </h1>
                   <p class="intro">
                     Neem dit document mee naar uw bezoek en houd de referentiecode gereed bij het servicepunt.
                   </p>
@@ -422,7 +432,7 @@ try {
             <table class="grid">
               <tr>
                 <td class="grid-col">
-                  <div class="card">
+                  <div class="card card--compact">
                     <h3>Afspraakgegevens</h3>
                     <dl>
                       <div class="row">
@@ -441,7 +451,7 @@ try {
                   </div>
                 </td>
                 <td class="grid-col">
-                  <div class="card">
+                  <div class="card card--compact">
                     <h3>Klantgegevens</h3>
                     <dl>
                       <div class="row">
@@ -538,7 +548,7 @@ try {
       </body>
     </html>
     <?php
-    
+
     $documentHtml = (string) ob_get_clean();
 
     $options = new Options();
