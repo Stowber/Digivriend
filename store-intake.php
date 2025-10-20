@@ -205,7 +205,7 @@ try {
       <title>Intake bevestiging <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
       <style>
         /* STRONA */
-        @page { size: A4; margin: 28pt 32pt 30pt; }
+        @page { size: A4; margin: 36pt 40pt 40pt; }
         * { box-sizing: border-box; }
         html, body { margin:0; padding:0; }
         body {
