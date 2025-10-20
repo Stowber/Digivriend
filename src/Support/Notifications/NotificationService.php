@@ -229,7 +229,7 @@ final class NotificationService
             $headers[] = 'Content-Type: text/plain; charset=UTF-8';
             $headers[] = 'Content-Transfer-Encoding: 8bit';
 
-            $message = $body;
+            $message = $this->normaliseLineEndings($body);
         } else {
             $boundary = '=_Part_' . bin2hex(random_bytes(16));
             $headers[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
@@ -239,7 +239,7 @@ final class NotificationService
             $parts[] = 'Content-Type: text/plain; charset=UTF-8';
             $parts[] = 'Content-Transfer-Encoding: 8bit';
             $parts[] = '';
-            $parts[] = $body;
+            $parts[] = $this->normaliseLineEndings($body);
 
             foreach ($attachments as $attachment) {
                 $path = $attachment['path'] ?? null;
@@ -271,19 +271,335 @@ final class NotificationService
                 $parts[] = 'Content-Transfer-Encoding: base64';
                 $parts[] = 'Content-Disposition: attachment; filename="' . $this->encodeHeader($name) . '"';
                 $parts[] = '';
-                $parts[] = $encodedContent;
+                $parts[] = $this->normaliseLineEndings($encodedContent);
             }
 
             $parts[] = '--' . $boundary . '--';
             $message = implode("\r\n", $parts);
         }
 
-        $sent = mail($recipient, $this->encodeHeader($subject), $message, implode("\r\n", $headers));
+        $mailer = strtolower((string) Env::get('MAIL_MAILER', 'mail'));
+
+        if ($mailer === 'smtp') {
+            return $this->sendViaSmtp($recipient, $subject, $message, $headers, $fromAddress);
+        }
+
+        $sent = mail(
+            $recipient,
+            $this->encodeHeader($subject),
+            str_replace("\r\n", "\n", $message),
+            implode("\r\n", $headers)
+        );
 
         return [
             'success' => $sent,
             'error' => $sent ? null : 'Wywołanie funkcji mail() nie powiodło się.',
         ];
+    }
+
+    private function sendViaSmtp(string $recipient, string $subject, string $message, array $headers, string $fromAddress): array
+    {
+        $host = trim((string) Env::get('MAIL_HOST', ''));
+        $port = (int) Env::get('MAIL_PORT', 587);
+        $username = (string) Env::get('MAIL_USERNAME', '');
+        $password = (string) Env::get('MAIL_PASSWORD', '');
+        $encryption = strtolower((string) Env::get('MAIL_ENCRYPTION', 'tls'));
+        $timeout = (int) Env::get('MAIL_TIMEOUT', 30);
+        $ehloDomain = (string) Env::get('MAIL_EHLO_DOMAIN', 'localhost');
+
+        if ($host === '') {
+            return ['success' => false, 'error' => 'Brak konfiguracji serwera SMTP (MAIL_HOST).'];
+        }
+
+        if (!in_array($encryption, ['tls', 'starttls', 'ssl', 'none', ''], true)) {
+            return ['success' => false, 'error' => sprintf('Nieobsługiwany typ szyfrowania SMTP: %s', $encryption)];
+        }
+
+        $remoteSocket = sprintf('%s:%d', $host, $port);
+        if ($encryption === 'ssl') {
+            $remoteSocket = sprintf('ssl://%s:%d', $host, $port);
+        }
+
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => Env::get('MAIL_VERIFY_PEER', true),
+                'verify_peer_name' => Env::get('MAIL_VERIFY_PEER_NAME', true),
+                'allow_self_signed' => Env::get('MAIL_ALLOW_SELF_SIGNED', false),
+            ],
+        ]);
+
+        $timeout = max($timeout, 5);
+        $stream = @stream_socket_client($remoteSocket, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
+
+        if (!is_resource($stream)) {
+            return [
+                'success' => false,
+                'error' => sprintf('Połączenie SMTP nie powiodło się (%s:%d): %s', $host, $port, $errstr ?: 'nieznany błąd'),
+            ];
+        }
+
+        stream_set_timeout($stream, $timeout);
+
+        $response = $this->readSmtpResponse($stream);
+        if (!$this->responseCodeIs($response, 220)) {
+            fclose($stream);
+            return ['success' => false, 'error' => sprintf('Nieprawidłowa odpowiedź serwera SMTP: %s', trim($response))];
+        }
+
+        $response = $this->sendSmtpCommand($stream, sprintf('EHLO %s', $ehloDomain));
+        if (!$this->responseCodeIs($response, 250)) {
+            fclose($stream);
+            return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił komendę EHLO: %s', trim($response))];
+        }
+
+        if (in_array($encryption, ['tls', 'starttls'], true)) {
+            $response = $this->sendSmtpCommand($stream, 'STARTTLS');
+            if (!$this->responseCodeIs($response, 220)) {
+                fclose($stream);
+                return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił STARTTLS: %s', trim($response))];
+            }
+
+            $cryptoMethod = STREAM_CRYPTO_METHOD_TLS_CLIENT;
+            if (!stream_socket_enable_crypto($stream, true, $cryptoMethod)) {
+                fclose($stream);
+                return ['success' => false, 'error' => 'Nie udało się zainicjować szyfrowania TLS.'];
+            }
+
+            $response = $this->sendSmtpCommand($stream, sprintf('EHLO %s', $ehloDomain));
+            if (!$this->responseCodeIs($response, 250)) {
+                fclose($stream);
+                return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił ponowne EHLO: %s', trim($response))];
+            }
+        }
+
+        if ($username !== '' && $password !== '') {
+            $response = $this->sendSmtpCommand($stream, 'AUTH LOGIN');
+            if (!$this->responseCodeIs($response, 334)) {
+                fclose($stream);
+                return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił AUTH LOGIN: %s', trim($response))];
+            }
+
+            $response = $this->sendSmtpCommand($stream, base64_encode($username));
+            if (!$this->responseCodeIs($response, 334)) {
+                fclose($stream);
+                return ['success' => false, 'error' => sprintf('Błędna odpowiedź po przesłaniu użytkownika: %s', trim($response))];
+            }
+
+            $response = $this->sendSmtpCommand($stream, base64_encode($password));
+            if (!$this->responseCodeIs($response, 235)) {
+                fclose($stream);
+                return ['success' => false, 'error' => sprintf('Logowanie SMTP nie powiodło się: %s', trim($response))];
+            }
+        }
+
+        $envelopeFrom = $this->extractEmailAddress($fromAddress);
+        if ($envelopeFrom === '') {
+            fclose($stream);
+            return ['success' => false, 'error' => 'Nieprawidłowy adres nadawcy dla SMTP.'];
+        }
+
+        $response = $this->sendSmtpCommand($stream, sprintf('MAIL FROM:<%s>', $envelopeFrom));
+        if (!$this->responseCodeIs($response, 250)) {
+            fclose($stream);
+            return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił adres nadawcy: %s', trim($response))];
+        }
+
+        $recipients = array_filter(array_map(static fn (string $value): string => trim($value), preg_split('/[,;]/', $recipient) ?: []));
+        if ($recipients === []) {
+            $recipients = [trim($recipient)];
+        }
+
+        $headerRecipients = $recipients;
+
+        $acceptedRecipients = 0;
+
+        foreach ($recipients as $index => $rcpt) {
+            if ($rcpt === '') {
+                continue;
+            }
+
+            $rcptAddress = $this->extractEmailAddress($rcpt);
+            if ($rcptAddress === '') {
+                unset($headerRecipients[$index]);
+                continue;
+            }
+
+            $response = $this->sendSmtpCommand($stream, sprintf('RCPT TO:<%s>', $rcptAddress));
+            if (!$this->responseCodeIs($response, 250, 251)) {
+                fclose($stream);
+                return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił odbiorcę %s: %s', $rcpt, trim($response))];
+            }
+
+            $acceptedRecipients++;
+        }
+
+        if ($acceptedRecipients === 0) {
+            fclose($stream);
+            return ['success' => false, 'error' => 'Brak poprawnych odbiorców wiadomości SMTP.'];
+        }
+
+        $response = $this->sendSmtpCommand($stream, 'DATA');
+        if (!$this->responseCodeIs($response, 354)) {
+            fclose($stream);
+            return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił komendę DATA: %s', trim($response))];
+        }
+
+        $smtpMessage = $this->buildSmtpMessage(array_values($headerRecipients), $subject, $message, $headers);
+        $this->writeSmtpData($stream, $smtpMessage);
+
+        $response = $this->readSmtpResponse($stream);
+        if (!$this->responseCodeIs($response, 250)) {
+            fclose($stream);
+            return ['success' => false, 'error' => sprintf('Serwer SMTP odrzucił wiadomość: %s', trim($response))];
+        }
+
+        $this->sendSmtpCommand($stream, 'QUIT');
+        fclose($stream);
+
+        return ['success' => true, 'error' => null];
+    }
+
+    /**
+     * @param string[] $recipients
+     */
+    private function buildSmtpMessage(array $recipients, string $subject, string $message, array $headers): string
+    {
+        $headerMap = [];
+        $extraHeaders = [];
+
+        foreach ($headers as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $parts = explode(':', $trimmed, 2);
+            if (count($parts) === 2) {
+                $key = strtolower(trim($parts[0]));
+                $headerMap[$key] = trim($parts[0]) . ':' . $parts[1];
+            } else {
+                $extraHeaders[] = $trimmed;
+            }
+        }
+
+        if (!isset($headerMap['date'])) {
+            $headerMap = ['date' => 'Date: ' . date(DATE_RFC2822)] + $headerMap;
+        }
+
+        $formattedRecipients = implode(', ', array_filter($recipients, static fn (string $value): bool => $value !== ''));
+        if ($formattedRecipients === '') {
+            $formattedRecipients = 'undisclosed-recipients:;';
+        }
+
+        $headerMap['to'] = 'To: ' . $formattedRecipients;
+        $headerMap['subject'] = 'Subject: ' . $this->encodeHeader($subject);
+
+        $preferredOrder = ['date', 'from', 'reply-to', 'to', 'subject'];
+        $ordered = [];
+
+        foreach ($preferredOrder as $key) {
+            if (isset($headerMap[$key])) {
+                $ordered[] = $headerMap[$key];
+                unset($headerMap[$key]);
+            }
+        }
+
+        foreach ($headerMap as $value) {
+            $ordered[] = $value;
+        }
+
+        foreach ($extraHeaders as $value) {
+            $ordered[] = $value;
+        }
+
+        $headerBlock = implode("\r\n", array_map([$this, 'normaliseHeaderLine'], $ordered));
+
+        $normalisedMessage = $this->normaliseLineEndings($message);
+
+        $payload = $headerBlock . "\r\n\r\n" . $normalisedMessage;
+        $payloadLines = explode("\r\n", $payload);
+        $escapedLines = array_map(static function (string $line): string {
+            if ($line !== '' && $line[0] === '.') {
+                return '.' . $line;
+            }
+
+            return $line;
+        }, $payloadLines);
+
+        return implode("\r\n", $escapedLines) . "\r\n.";
+    }
+
+    private function normaliseLineEndings(string $value): string
+    {
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+
+        return str_replace("\n", "\r\n", $value);
+    }
+
+    private function normaliseHeaderLine(string $line): string
+    {
+        return $this->normaliseLineEndings($line);
+    }
+
+    private function readSmtpResponse($stream): string
+    {
+        $response = '';
+
+        while (is_resource($stream) && !feof($stream)) {
+            $line = fgets($stream, 515);
+            if ($line === false) {
+                break;
+            }
+
+            $response .= $line;
+
+            if (strlen($line) < 4) {
+                continue;
+            }
+
+            if ($line[3] === ' ') {
+                break;
+            }
+        }
+
+        return $response;
+    }
+
+    private function responseCodeIs(string $response, int ...$expected): bool
+    {
+        if ($response === '') {
+            return false;
+        }
+
+        $code = (int) substr(trim($response), 0, 3);
+
+        return in_array($code, $expected, true);
+    }
+
+    private function sendSmtpCommand($stream, string $command): string
+    {
+        fwrite($stream, $command . "\r\n");
+
+        return $this->readSmtpResponse($stream);
+    }
+
+    private function writeSmtpData($stream, string $data): void
+    {
+        fwrite($stream, $data . "\r\n");
+    }
+
+    private function extractEmailAddress(string $address): string
+    {
+        $trimmed = trim($address);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (preg_match('/<([^>]+)>/', $trimmed, $matches) === 1) {
+            return trim($matches[1]);
+        }
+
+        return trim($trimmed, "'\"");
     }
 
     private function encodeHeader(string $value): string
