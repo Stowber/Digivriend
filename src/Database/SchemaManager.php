@@ -27,6 +27,7 @@ final class SchemaManager
             self::ensureSqliteIndexes($pdo);
         }
 
+        self::ensureCoreCustomerColumns($pdo);
         self::ensureOphaalbevestigingenTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
         self::ensureDataRecoveryTable($pdo);
@@ -46,6 +47,73 @@ final class SchemaManager
         self::ensureOphaalbevestigingEnhancements($pdo);
         self::ensureDefaultUserExists($pdo);
     }
+
+    private static function ensureCoreCustomerColumns(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'devices', 'customer_id', 'INTEGER NULL');
+            self::addSqliteColumnIfMissing($pdo, 'cases', 'customer_id', 'INTEGER NULL');
+            self::addSqliteColumnIfMissing($pdo, 'notes', 'customer_id', 'INTEGER NULL');
+
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'devices',
+                ['customer_id'],
+                'CREATE INDEX IF NOT EXISTS idx_devices_customer ON devices(customer_id)'
+            );
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'cases',
+                ['customer_id'],
+                'CREATE INDEX IF NOT EXISTS idx_cases_customer ON cases(customer_id)'
+            );
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE devices ADD COLUMN customer_id INT NULL', ['duplicate', 'already exists']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE cases ADD COLUMN customer_id INT NULL', ['duplicate', 'already exists']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE notes ADD COLUMN customer_id INT NULL', ['duplicate', 'already exists']);
+
+            self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_devices_customer ON devices(customer_id)', ['duplicate', 'already exists']);
+            self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_cases_customer ON cases(customer_id)', ['duplicate', 'already exists']);
+
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE cases ADD CONSTRAINT fk_cases_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
+                ['duplicate', 'already exists']
+            );
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE notes ADD CONSTRAINT fk_notes_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
+                ['duplicate', 'already exists']
+            );
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE devices ADD COLUMN customer_id INT UNSIGNED NULL AFTER id', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE cases ADD COLUMN customer_id INT UNSIGNED NULL AFTER id', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'ALTER TABLE notes ADD COLUMN customer_id INT UNSIGNED NULL AFTER case_id', ['duplicate', 'already exists']);
+
+        self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_devices_customer ON devices(customer_id)', ['duplicate', 'already exists']);
+        self::executeIgnoringDuplicates($pdo, 'CREATE INDEX idx_cases_customer ON cases(customer_id)', ['duplicate', 'already exists']);
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE cases ADD CONSTRAINT fk_cases_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
+            ['duplicate', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE notes ADD CONSTRAINT fk_notes_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
+            ['duplicate', 'already exists']
+        );
+    }
+
 
     private static function ensurePcBuildEnhancements(PDO $pdo): void
     {
