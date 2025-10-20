@@ -726,10 +726,10 @@ try {
                 <strong>Wat u meeneemt</strong>
               </div>
               <div class="checklist">
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Dit intakeformulier of de referentiecode <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>.</span></div>
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Het apparaat inclusief oplader en accessoires die nodig zijn voor testen.</span></div>
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Eventuele wachtwoorden of inlogcodes die nodig zijn om het probleem te reproduceren.</span></div>
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Bewijs van aankoop indien garantie of servicecontract van toepassing is.</span></div>
+                <div class="checklist-item"><div class="checklist-bullet"></div><span>Neem het apparaat zonder losse accessoires of randapparatuur mee; alleen essentiële onderdelen zoals de originele adapter wanneer wij deze expliciet nodig hebben.</span></div>
+                <div class="checklist-item"><div class="checklist-bullet"></div><span>Maak vooraf een volledige back-up van uw gegevens. Digivriend is niet aansprakelijk voor dataverlies tijdens onderzoek of reparatie.</span></div>
+                <div class="checklist-item"><div class="checklist-bullet"></div><span>Voorzie ons van de toegangscodes of testgegevens die nodig zijn om de gemelde storing te verifiëren.</span></div>
+                <div class="checklist-item"><div class="checklist-bullet"></div><span>Wilt u dat wij een back-up uitvoeren of andere aanvullende diensten leveren? Meld dit bij aankomst zodat we het kunnen registreren.</span></div>
               </div>
             </section>
 
@@ -741,15 +741,15 @@ try {
               <ul class="steps">
                 <li>
                   <div class="step-number">01</div>
-                  <div class="step-content">Meld u bij de ontvangstbalie en toon deze bevestiging zodat wij uw dossier direct kunnen openen.</div>
+                  <div class="step-content">Lever het apparaat zonder losse accessoires aan; samen registreren we de staat en eventuele aanwezige toebehoren.</div>
                 </li>
                 <li>
                   <div class="step-number">02</div>
-                  <div class="step-content">Overhandig het apparaat met toebehoren. Onze technicus controleert ter plaatse de staat van het toestel.</div>
+                  <div class="step-content">We lopen de intake en de algemene voorwaarden door, vragen uw expliciete toestemming voor onderzoek of reparatie en noteren eventuele back-upverzoeken.</div>
                 </li>
                 <li>
                   <div class="step-number">03</div>
-                  <div class="step-content">U ontvangt een ontvangstbewijs en wij plannen direct het onderzoek of de reparatie in.</div>
+                  <div class="step-content">U ontvangt een ontvangstbewijs met informatie over de vervolgstappen en de termijn waarbinnen het apparaat moet worden opgehaald om opslagkosten te voorkomen.</div>
                 </li>
               </ul>
             </section>
