@@ -795,7 +795,7 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
         '--headless',
     ];
 
-    $output = [];
+    $combinedOutput = [];
     $exitCode = 0;
     $success = false;
 
@@ -804,18 +804,24 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
             @unlink($outputPdfPath);
         }
 
-    $command = sprintf(
-            '%s %s --disable-gpu --disable-dev-shm-usage --no-sandbox --disable-setuid-sandbox --user-data-dir=%s --print-to-pdf=%s --print-to-pdf-no-header --virtual-time-budget=20000 --run-all-compositor-stages-before-draw --disable-web-security --allow-file-access-from-files %s',
-            escapeshellarg($chromeBinary),
-            escapeshellarg($headlessFlag),
-            escapeshellarg($userDataDir),
-            escapeshellarg($outputPdfPath),
-            escapeshellarg($htmlUrl)
-        );
+    $commandArguments = [
+            $chromeBinary,
+            $headlessFlag,
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--user-data-dir=' . $userDataDir,
+            '--print-to-pdf=' . $outputPdfPath,
+            '--print-to-pdf-no-header',
+            '--virtual-time-budget=20000',
+            '--run-all-compositor-stages-before-draw',
+            '--disable-web-security',
+            '--allow-file-access-from-files',
+            $htmlUrl,
+        ];
 
-        $output = [];
-        $exitCode = 0;
-        exec($command . ' 2>&1', $output, $exitCode);
+        [$exitCode, $combinedOutput] = runChromiumCommand($commandArguments);
 
         if ($exitCode === 0 && is_file($outputPdfPath)) {
             $success = true;
@@ -828,7 +834,10 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
     removeDirectory($userDataDir);
 
     if (!$success) {
-        error_log('[Chromium PDF] Exit code: ' . $exitCode . ' Output: ' . implode("\n", $output));
+        error_log('[Chromium PDF] Exit code: ' . $exitCode . ' Output: ' . implode("\n", $combinedOutput));
+        if (is_file($outputPdfPath)) {
+            @unlink($outputPdfPath);
+        }
         if (is_file($outputPdfPath)) {
             @unlink($outputPdfPath);
         }
@@ -951,6 +960,85 @@ function detectChromeBinary(): ?string
     if ($which !== '') return $which;
 
     return null;
+}
+
+/**
+ * Executes the Chromium command using proc_open when possible to avoid quoting issues on Windows.
+ * Returns an array with the exit code and collected output lines.
+ *
+ * @param string[] $arguments
+ * @return array{0:int,1:array<int,string>}
+ */
+function runChromiumCommand(array $arguments): array
+{
+    $exitCode = 1;
+    $outputLines = [];
+
+    if (function_exists('proc_open')) {
+        $descriptorSpec = [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = @proc_open($arguments, $descriptorSpec, $pipes);
+
+        if (is_resource($process)) {
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
+
+            $stdoutString = $stdout !== false ? $stdout : '';
+            $stderrString = $stderr !== false ? $stderr : '';
+            $combined = trim(
+                $stdoutString
+                . ($stdoutString !== '' && $stderrString !== '' ? "\n" : '')
+                . $stderrString
+            );
+            if ($combined !== '') {
+                $outputLines = preg_split("/\r?\n/", $combined) ?: [];
+            }
+
+            return [$exitCode, $outputLines];
+        }
+    }
+
+    // Fallback to exec when proc_open is not available
+    $commandString = buildChromiumCommandString($arguments);
+    $execOutput = [];
+    exec($commandString . ' 2>&1', $execOutput, $exitCode);
+
+    return [$exitCode, $execOutput];
+}
+
+/**
+ * Builds a shell-safe command string when proc_open is unavailable.
+ *
+ * @param string[] $arguments
+ */
+function buildChromiumCommandString(array $arguments): string
+{
+    $escaped = array_map(static function (string $argument): string {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $replacements = [
+                '"' => '""',
+                '^' => '^^',
+                '%' => '^%',
+                '!' => '^!',
+                '&' => '^&',
+                '|' => '^|',
+                '<' => '^<',
+                '>' => '^>',
+            ];
+            $argument = strtr($argument, $replacements);
+            return '"' . $argument . '"';
+        }
+
+        return escapeshellarg($argument);
+    }, $arguments);
+
+    return implode(' ', $escaped);
 }
 function removeDirectory(string $directory): void
 {
