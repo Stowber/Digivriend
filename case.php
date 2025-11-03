@@ -89,6 +89,164 @@ if (!empty($caseRecord['details'])) {
     }
 }
 
+$detailItems = [];
+$deviceModalItems = [];
+$handledDetailKeys = [];
+
+$formatDateTime = static function ($value): string {
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    $timestamp = strtotime((string) $value);
+    if ($timestamp === false) {
+        return (string) $value;
+    }
+
+    return date('d-m-Y H:i', $timestamp);
+};
+
+$normalizeValue = static function ($value): string {
+    if (is_string($value)) {
+        return trim($value) !== '' ? $value : '—';
+    }
+
+    if ($value === null) {
+        return '—';
+    }
+
+    $stringValue = (string) $value;
+
+    return trim($stringValue) !== '' ? $stringValue : '—';
+};
+
+if (array_key_exists('appointment_at', $caseDetails)) {
+    $handledDetailKeys[] = 'appointment_at';
+    $formatted = $formatDateTime($caseDetails['appointment_at']);
+    $detailItems[] = [
+        'key' => 'appointment_at',
+        'label' => 'Appointment at',
+        'value' => $formatted !== '' ? $formatted : '—',
+    ];
+}
+
+if (array_key_exists('appointment_end', $caseDetails)) {
+    $handledDetailKeys[] = 'appointment_end';
+    $formatted = $formatDateTime($caseDetails['appointment_end']);
+    $detailItems[] = [
+        'key' => 'appointment_end',
+        'label' => 'Appointment end',
+        'value' => $formatted !== '' ? $formatted : '—',
+    ];
+}
+
+if (array_key_exists('problem_description', $caseDetails)) {
+    $handledDetailKeys[] = 'problem_description';
+    $detailItems[] = [
+        'key' => 'problem_description',
+        'label' => 'Problem description',
+        'value' => $normalizeValue($caseDetails['problem_description']),
+        'multiline' => true,
+    ];
+}
+
+$deviceDetailMap = [
+    'device_brand' => 'Brand',
+    'device_model' => 'Model',
+    'device_serial' => 'Serial',
+    'device_type' => 'Type',
+];
+
+$deviceSummaryParts = [];
+foreach ($deviceDetailMap as $key => $label) {
+    if (array_key_exists($key, $caseDetails)) {
+        $handledDetailKeys[] = $key;
+        $value = $normalizeValue($caseDetails[$key]);
+        if ($value !== '—' && in_array($key, ['device_brand', 'device_model'], true)) {
+            $deviceSummaryParts[] = $value;
+        }
+
+        $deviceModalItems[] = [
+            'label' => $label,
+            'value' => $value,
+        ];
+    }
+}
+
+if ($deviceModalItems !== []) {
+    $deviceLabel = $deviceSummaryParts !== [] ? implode(' ', $deviceSummaryParts) : 'Onbekend apparaat';
+    $detailItems[] = [
+        'key' => 'device',
+        'label' => 'Device',
+        'value' => $deviceLabel,
+        'interactive' => true,
+        'modal_id' => 'device-details',
+    ];
+}
+
+if (array_key_exists('barcode', $caseDetails)) {
+    $handledDetailKeys[] = 'barcode';
+    $detailItems[] = [
+        'key' => 'barcode',
+        'label' => 'Barcode',
+        'value' => $normalizeValue($caseDetails['barcode']),
+    ];
+}
+
+if (array_key_exists('registered_by', $caseDetails)) {
+    $handledDetailKeys[] = 'registered_by';
+    $detailItems[] = [
+        'key' => 'registered_by',
+        'label' => 'Registered by',
+        'value' => $normalizeValue($caseDetails['registered_by']),
+    ];
+}
+
+if (array_key_exists('company_branch', $caseDetails)) {
+    $handledDetailKeys[] = 'company_branch';
+    $detailItems[] = [
+        'key' => 'company_branch',
+        'label' => 'Company branch',
+        'value' => $normalizeValue($caseDetails['company_branch']),
+    ];
+}
+
+if (array_key_exists('company_address_line', $caseDetails)) {
+    $handledDetailKeys[] = 'company_address_line';
+    $detailItems[] = [
+        'key' => 'company_address_line',
+        'label' => 'Company address line',
+        'value' => $normalizeValue($caseDetails['company_address_line']),
+        'multiline' => true,
+    ];
+}
+
+foreach ($caseDetails as $key => $value) {
+    if (in_array($key, $handledDetailKeys, true)) {
+        continue;
+    }
+
+    $label = str_replace('_', ' ', (string) $key);
+    $label = ucfirst($label);
+
+    if (is_array($value)) {
+        $detailItems[] = [
+            'key' => (string) $key,
+            'label' => $label,
+            'value' => json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'preformatted' => true,
+        ];
+        continue;
+    }
+
+    $detailItems[] = [
+        'key' => (string) $key,
+        'label' => $label,
+        'value' => $normalizeValue($value),
+        'multiline' => is_string($value) && strpos((string) $value, "\n") !== false,
+    ];
+}
+
 $priorityValue = (string) ($caseRecord['priority'] ?? '');
 $slaDueInputValue = '';
 if (!empty($caseRecord['sla_due_at'])) {
@@ -532,19 +690,50 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
 
       <article class="info-card info-card--wide">
         <h2>Details</h2>
-        <?php if (empty($caseDetails)): ?>
+        <?php if (empty($detailItems)): ?>
           <p class="muted">Geen aanvullende details opgeslagen.</p>
         <?php else: ?>
-          <dl class="details-list">
-            <?php foreach ($caseDetails as $key => $value): ?>
-              <div>
-                <dt><?= htmlspecialchars(str_replace('_', ' ', ucfirst((string) $key)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
-                <dd><?= is_array($value) ? htmlspecialchars(json_encode($value), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : nl2br(htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></dd>
+           <div class="details-grid">
+            <?php foreach ($detailItems as $detail): ?>
+              <div class="detail-card<?= !empty($detail['interactive']) ? ' detail-card--interactive' : '' ?>">
+                <span class="detail-card__label"><?= htmlspecialchars((string) $detail['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php if (!empty($detail['interactive'])): ?>
+                  <button type="button" class="detail-card__trigger" data-open-modal="<?= htmlspecialchars((string) ($detail['modal_id'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    <?= htmlspecialchars((string) $detail['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                  </button>
+                <?php elseif (!empty($detail['preformatted'])): ?>
+                  <pre class="detail-card__value detail-card__value--pre"><?= htmlspecialchars((string) $detail['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></pre>
+                <?php elseif (!empty($detail['multiline'])): ?>
+                  <p class="detail-card__value detail-card__value--multiline"><?= nl2br(htmlspecialchars((string) $detail['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                <?php else: ?>
+                  <span class="detail-card__value"><?= htmlspecialchars((string) $detail['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php endif; ?>
               </div>
             <?php endforeach; ?>
-          </dl>
+          </div>
         <?php endif; ?>
       </article>
+      <?php if ($deviceModalItems !== []): ?>
+        <div class="detail-modal" data-detail-modal="device-details" aria-hidden="true">
+          <div class="detail-modal__backdrop" data-modal-close></div>
+          <div class="detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="device-details-title">
+            <header class="detail-modal__header">
+              <h3 id="device-details-title">Device details</h3>
+              <button type="button" class="detail-modal__close" data-modal-close aria-label="Sluiten">&times;</button>
+            </header>
+            <div class="detail-modal__body">
+              <dl class="detail-modal__list">
+                <?php foreach ($deviceModalItems as $item): ?>
+                  <div>
+                    <dt><?= htmlspecialchars((string) ($item['label'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                    <dd><?= htmlspecialchars((string) ($item['value'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  </div>
+                <?php endforeach; ?>
+              </dl>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
     </section>
 
     <section class="case-warehouse">
@@ -779,6 +968,76 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
       <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
     </div>
   </footer>
+  <script>
+    (function () {
+      const modals = new Map();
+      document.querySelectorAll('[data-detail-modal]').forEach((modal) => {
+        const modalId = modal.getAttribute('data-detail-modal');
+        if (modalId) {
+          modals.set(modalId, modal);
+        }
+      });
+
+      const openModal = (id) => {
+        const modal = modals.get(id);
+        if (!modal) {
+          return;
+        }
+
+        modal.classList.add('is-visible');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('detail-modal-open');
+
+        const focusTarget = modal.querySelector('[data-modal-close]') || modal.querySelector('button, [href], input, select, textarea');
+        if (focusTarget) {
+          focusTarget.focus();
+        }
+      };
+
+      const closeModal = (modal) => {
+        modal.classList.remove('is-visible');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('detail-modal-open');
+      };
+
+      document.querySelectorAll('[data-open-modal]').forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+          const targetId = trigger.getAttribute('data-open-modal');
+          if (targetId) {
+            openModal(targetId);
+          }
+        });
+      });
+
+      const handleKeyDown = (event) => {
+        if (event.key !== 'Escape') {
+          return;
+        }
+
+        const activeModal = document.querySelector('.detail-modal.is-visible');
+        if (activeModal) {
+          event.preventDefault();
+          closeModal(activeModal);
+        }
+      };
+
+      document.addEventListener('keydown', handleKeyDown);
+
+      modals.forEach((modal) => {
+        modal.querySelectorAll('[data-modal-close]').forEach((element) => {
+          element.addEventListener('click', () => {
+            closeModal(modal);
+          });
+        });
+
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) {
+            closeModal(modal);
+          }
+        });
+      });
+    })();
+  </script>
   <script src="js/field-help.js"></script>
 </body>
 </html>
