@@ -66,6 +66,24 @@ if (!$appointmentAt instanceof DateTimeImmutable) {
     Response::error(['appointment_at' => 'Ongeldige datum opgegeven.'], 422);
 }
 
+/**
+ * Centralny, spójny blok informacji o firmie/serwisie na potrzeby PDF i e-maila.
+ * W razie potrzeby można przenieść do .env / bazy i wczytywać dynamicznie.
+ */
+$company = [
+    'name'       => 'Digivriend',
+    'branch'     => 'Digivriend Amersfoort',
+    'street'     => 'De Ganskuijl 103B',
+    'postcode'   => '3817 EZ',
+    'city'       => 'Amersfoort',
+    'kvk'        => '82070741',
+    'btw'        => 'NL003637003B84',
+    'email'      => 'servicedesk@digivriend.nl',
+    'phone'      => '033 - 785 4284',
+];
+$companyAddressLine = sprintf('%s · %s %s', $company['street'], $company['postcode'], $company['city']);
+$serviceLocationLine = $company['branch'] . ', ' . $companyAddressLine;
+
 $customerRepository = new CustomerRepository($pdo);
 $deviceRepository = new DeviceRepository($pdo);
 $caseRepository = new CaseRepository($pdo);
@@ -94,7 +112,7 @@ try {
             $deviceBrand !== '' ? $deviceBrand : null,
             $deviceModel !== '' ? $deviceModel : null,
             $deviceSerial !== '' ? $deviceSerial : null,
-            $deviceType !== '' ? $deviceType : null,
+            $deviceType  !== '' ? $deviceType  : null,
             null
         );
         if ($device !== null) {
@@ -103,21 +121,23 @@ try {
     }
 
     $referenceCode = generateIntakeReferenceCode($caseRepository);
-    $barcodeValue = $referenceCode;
+    $barcodeValue  = $referenceCode;
 
     $appointmentEnd = $appointmentAt->add(new DateInterval('PT30M'));
     $summary = $problemDescription !== '' ? $problemDescription : 'Intake bezoek voor ' . $fullName;
 
     $caseDetails = [
-        'appointment_at' => $appointmentAt->format('Y-m-d H:i:s'),
-        'appointment_end' => $appointmentEnd->format('Y-m-d H:i:s'),
-        'problem_description' => $problemDescription,
-        'device_brand' => $deviceBrand,
-        'device_model' => $deviceModel,
-        'device_serial' => $deviceSerial,
-        'device_type' => $deviceType,
-        'barcode' => $barcodeValue,
-        'registered_by' => Auth::username(),
+        'appointment_at'       => $appointmentAt->format('Y-m-d H:i:s'),
+        'appointment_end'      => $appointmentEnd->format('Y-m-d H:i:s'),
+        'problem_description'  => $problemDescription,
+        'device_brand'         => $deviceBrand,
+        'device_model'         => $deviceModel,
+        'device_serial'        => $deviceSerial,
+        'device_type'          => $deviceType,
+        'barcode'              => $barcodeValue,
+        'registered_by'        => Auth::username(),
+        'company_branch'       => $company['branch'],
+        'company_address_line' => $companyAddressLine,
     ];
 
     $case = $caseRepository->createOrUpdate(
@@ -146,12 +166,12 @@ try {
         );
     }
 
-    $resourceLabelParts = array_filter([$deviceBrand, $deviceModel], static fn ($value) => $value !== '');
+    $resourceLabelParts = array_filter([$deviceBrand, $deviceModel], static fn ($v) => $v !== '');
     $resources = [];
     if ($deviceType !== '' || $resourceLabelParts !== []) {
         $resources[] = [
-            'type' => 'device',
-            'label' => $deviceType !== '' ? $deviceType : 'Apparaat',
+            'type'    => 'device',
+            'label'   => $deviceType !== '' ? $deviceType : 'Apparaat',
             'details' => $resourceLabelParts !== [] ? implode(' ', $resourceLabelParts) : null,
         ];
     }
@@ -164,7 +184,7 @@ try {
         $appointmentEnd->format('Y-m-d H:i:s'),
         (int) $case['id'],
         (int) $customer['id'],
-        'Servicepunt',
+        $company['branch'],
         $problemDescription !== '' ? $problemDescription : null,
         '#F05A28',
         'email',
@@ -176,10 +196,10 @@ try {
         $resources
     );
 
-    $barcodeImage = BarcodeService::renderToPng($barcodeValue);
+    $barcodeImage  = BarcodeService::renderToPng($barcodeValue);
     $barcodeDataUri = 'data:image/png;base64,' . base64_encode($barcodeImage);
 
-    // NL lokalizacja daty do wyświetlenia (np. "20 oktober 2025")
+    // NL lokalizacja daty (np. "20 oktober 2025")
     $fmt = new \IntlDateFormatter(
         'nl_NL',
         \IntlDateFormatter::LONG,
@@ -192,8 +212,11 @@ try {
 
     $formattedAppointment = $appointmentAt->format('d-m-Y H:i');
     $formattedAddress = htmlspecialchars($address . ', ' . $postalCode . ' ' . $city, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    $deviceInfo = trim(implode(' ', array_filter([$deviceBrand, $deviceModel, $deviceType])));
 
+    // UWAGA (naprawa dublowania typu): w "Details" pokazujemy tylko marka + model.
+    $deviceDetails = trim(implode(' ', array_filter([$deviceBrand, $deviceModel])));
+
+    // Podsumowanie opisu z bezpiecznym obcięciem
     $problemSummary = '';
     $problemSummaryTruncated = false;
     if ($problemDescription !== '') {
@@ -212,11 +235,11 @@ try {
         return rtrim(mb_substr($value, 0, $limit - 1)) . '…';
     };
 
-    $displayFullName = $truncate($fullName, 90);
-    $displayAddress = $truncate(htmlspecialchars_decode($formattedAddress, ENT_QUOTES), 160);
-    $displayEmail = $truncate($email, 120);
-    $displayPhone = $truncate($phone, 40);
-    $displayDeviceInfo = $truncate($deviceInfo !== '' ? $deviceInfo : 'Onbekend apparaat', 140);
+    $displayFullName     = $truncate($fullName, 90);
+    $displayAddress      = $truncate(htmlspecialchars_decode($formattedAddress, ENT_QUOTES), 160);
+    $displayEmail        = $truncate($email, 120);
+    $displayPhone        = $truncate($phone, 40);
+    $displayDeviceInfo   = $truncate($deviceDetails !== '' ? $deviceDetails : 'Onbekend apparaat', 140);
     $displayDeviceSerial = $truncate($deviceSerial !== '' ? $deviceSerial : 'Niet beschikbaar', 60);
 
     // Ścieżka do logo — dla Chrome headless zostawiamy file://
@@ -235,21 +258,36 @@ try {
           @page { size: A4; margin: 24pt 28pt 28pt; }
           * { box-sizing: border-box; }
           html, body { margin: 0; padding: 0; }
+          :root {
+            --color-ink: #111827;
+            --color-muted: #6B7280;
+            --color-accent: #1E3A8A;
+            --color-accent-light: #DBEAFE;
+            --color-surface: rgba(255,255,255,0.96);
+            --color-border: rgba(210, 216, 236, 0.9);
+            --color-page: linear-gradient(180deg, #FFFFFF 0%, #F7F9FE 56%, #EEF2FB 100%);
+            --radius-large: 20pt;
+            --radius-medium: 16pt;
+            --shadow-elevated: 0 14pt 34pt rgba(15, 23, 42, 0.06);
+          }
           body {
-            font-family: Arial, Helvetica, sans-serif;
-            color: #111827;
-            background: #E9EDF6;
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            color: var(--color-ink);
+            background: #E6EBF6;
             font-size: 10pt;
             line-height: 1.48;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          img { display: block; }
+          img { display: block; max-width: 100%; }
 
           h1, h2, h3, h4 { margin: 0; }
           h1 { font-size: 18pt; letter-spacing: -0.01em; }
-          h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: .22em; color: #6B7280; }
-          h3 { font-size: 10pt; text-transform: uppercase; letter-spacing: .16em; color: #4B5563; }
+          /* Delikatniejsze rozstrzelenie dla lepszej czytelności w PDF */
+          h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: .12em; color: #6B7280; }
+          h3 { font-size: 10pt; text-transform: uppercase; letter-spacing: .12em; color: #4B5563; }
           h4 { font-size: 9.5pt; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; }
           p { margin: 0; }
 
@@ -257,11 +295,11 @@ try {
           .page:last-of-type { page-break-after: auto; }
 
           .page-surface {
-            background: linear-gradient(180deg, #FFFFFF 0%, #FBFCFF 52%, #F3F5FB 100%);
-            border-radius: 20pt;
+            background: var(--color-page);
+            border-radius: var(--radius-large);
             border: 0.75pt solid #D8DEF1;
             min-height: calc(842pt - 52pt);
-            padding: 24pt 28pt;
+            padding: 26pt 30pt 28pt;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -291,17 +329,19 @@ try {
             align-items: flex-start;
             gap: 18pt;
             border-bottom: 0.75pt solid #D9DFEE;
-            padding-bottom: 14pt;
+            padding-bottom: 16pt;
           }
           .brand-meta {
             text-align: right;
-            color: #6B7280;
+            color: var(--color-muted);
             font-size: 8.5pt;
             letter-spacing: .08em;
             text-transform: uppercase;
+            line-height: 1.6;
+            max-width: 196pt;
           }
-          .logo { width: 124pt; height: auto; }
-          .tagline { color: #4B5563; max-width: 360pt; margin-top: 8pt; }
+          .logo { width: 124pt; height: auto; filter: drop-shadow(0 8pt 18pt rgba(15,23,42,0.08)); }
+          .tagline { color: #4B5563; max-width: 360pt; margin-top: 9pt; }
 
           .main-grid {
             flex: 1;
@@ -311,34 +351,34 @@ try {
             align-content: stretch;
           }
           .panel {
-            background: rgba(255,255,255,0.94);
-            border-radius: 16pt;
-            border: 0.75pt solid rgba(210, 216, 236, 0.9);
-            padding: 16pt 20pt;
+            background: var(--color-surface);
+            border-radius: var(--radius-medium);
+            border: 0.75pt solid var(--color-border);
+            padding: 18pt 22pt;
             display: flex;
             flex-direction: column;
             gap: 12pt;
-            box-shadow: 0 14pt 36pt rgba(15, 23, 42, 0.08);
+            box-shadow: var(--shadow-elevated);
           }
           .panel--summary { padding: 0; overflow: hidden; }
           .panel-summary-header {
-            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-            padding: 18pt 22pt 16pt;
+            background: linear-gradient(135deg, #EEF2FF 0%, #DBEAFE 90%);
+            padding: 20pt 24pt 16pt;
             display: flex;
             flex-direction: column;
             gap: 8pt;
             border-bottom: 0.75pt solid rgba(210, 216, 236, 0.9);
           }
           .panel-summary-header span {
-            font-size: 7.5pt; letter-spacing: .22em; text-transform: uppercase; color: #1D4ED8;
+            font-size: 7.5pt; letter-spacing: .18em; text-transform: uppercase; color: #1D4ED8;
           }
           .panel-summary-header strong,
           .panel-summary-value { font-size: 14pt; font-weight: 700; letter-spacing: -0.01em; color: #1E3A8A; }
-          .panel-summary-body { padding: 18pt 22pt; display: flex; flex-direction: column; gap: 12pt; }
-          .panel--summary .info-label { letter-spacing: .16em; color: #64748B; font-size: 7.5pt; }
+          .panel-summary-body { padding: 20pt 24pt; display: flex; flex-direction: column; gap: 12pt; }
+          .panel--summary .info-label { letter-spacing: .12em; color: #60708E; font-size: 7.5pt; }
           .panel--summary .info-value { font-size: 10pt; font-weight: 600; color: #0F172A; }
           .panel-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10pt; }
-          .panel-title span { font-size: 8pt; letter-spacing: .18em; text-transform: uppercase; color: #A855F7; }
+          .panel-title span { font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #A855F7; }
           .panel-title strong { font-size: 12pt; letter-spacing: -0.01em; color: #0F172A; }
 
           .info-table { width: 100%; border-collapse: collapse; }
@@ -351,15 +391,23 @@ try {
           }
 
           .highlight-box {
-            background: #10131F; color: #F9FAFB; border-radius: 16pt; padding: 18pt 20pt;
-            display: flex; flex-direction: column; gap: 14pt; align-items: stretch; grid-column: 1 / -1;
+            background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%);
+            color: #F9FAFB;
+            border-radius: var(--radius-medium);
+            padding: 18pt 22pt;
+            display: flex;
+            flex-direction: column;
+            gap: 14pt;
+            align-items: stretch;
+            grid-column: 1 / -1;
+            box-shadow: 0 18pt 34pt rgba(15, 23, 42, 0.22);
           }
-          .highlight-box small { font-size: 8pt; letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,0.72); }
-          .highlight-box strong { font-size: 14pt; letter-spacing: .18em; }
-          .barcode-shell { background: #fff; padding: 12pt; border-radius: 12pt; border: 0.5pt solid #CBD5F5; }
-          .barcode { width: 100%; height: auto; display: block; }
+          .highlight-box small { font-size: 8pt; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,0.82); }
+          .highlight-box strong { font-size: 14pt; letter-spacing: .14em; }
+          .barcode-shell { background: rgba(255,255,255,0.1); padding: 14pt; border-radius: 12pt; border: 0.5pt solid rgba(255,255,255,0.35); }
+          .barcode { width: 100%; height: auto; max-height: 120pt; object-fit: contain; }
 
-          .steps { display: flex; flex-direction: column; gap: 8pt; margin: 0; padding: 0; list-style: none; }
+          .steps { display: flex; flex-direction: column; gap: 10pt; margin: 0; padding: 0; list-style: none; }
           .steps li {
             display: flex; gap: 10pt; align-items: flex-start; background: rgba(255,255,255,0.94);
             border: 0.75pt solid rgba(210,216,236,0.9); border-radius: 12pt; padding: 12pt 14pt; box-shadow: 0 8pt 22pt rgba(15,23,42,0.05);
@@ -373,12 +421,13 @@ try {
           .checklist { display: flex; flex-direction: column; gap: 10pt; }
           .checklist-item {
             display: flex; gap: 10pt; align-items: flex-start; font-size: 9pt; color: #1F2937; background: rgba(255,255,255,0.94);
-            border: 0.75pt solid rgba(210,216,236,0.9); border-radius: 12pt; padding: 10pt 12pt; box-shadow: 0 6pt 18pt rgba(15,23,42,0.04);
+            border: 0.75pt solid rgba(210,216,236,0.9); border-radius: 12pt; padding: 11pt 14pt; box-shadow: 0 10pt 22pt rgba(15,23,42,0.05);
+            line-height: 1.55;
           }
-          .checklist-bullet { width: 12pt; height: 12pt; border-radius: 4pt; background: #34D399; margin-top: 4pt; flex-shrink: 0; }
+          .checklist-bullet { width: 12pt; height: 12pt; border-radius: 4pt; background: #34D399; margin-top: 4pt; flex-shrink: 0; box-shadow: 0 4pt 10pt rgba(16,185,129,0.25); }
 
           .clamp-box { max-height: 110pt; overflow: hidden; }
-          .note-box { margin-top: 8pt; border-radius: 10pt; background: #FEF3C7; border: 0.75pt solid #FBBF24; padding: 10pt 12pt; font-size: 8pt; color: #92400E; }
+          .note-box { margin-top: 8pt; border-radius: 10pt; background: #FEF3C7; border: 0.75pt solid #FBBF24; padding: 10pt 12pt; font-size: 8pt; color: #92400E; line-height: 1.4; }
 
           .page-footer {
             display: flex; justify-content: space-between; align-items: center; font-size: 8pt; letter-spacing: .12em;
@@ -386,17 +435,27 @@ try {
           }
 
           .terms-grid {
-            flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16pt; align-content: stretch;
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18pt;
+            align-content: stretch;
           }
           .terms-card {
-            background: rgba(255,255,255,0.94); border-radius: 16pt; border: 0.75pt solid rgba(210,216,236,0.9);
-            padding: 18pt 20pt; display: flex; flex-direction: column; gap: 10pt; box-shadow: 0 12pt 30pt rgba(15,23,42,0.06);
+            background: var(--color-surface);
+            border-radius: var(--radius-medium);
+            border: 0.75pt solid var(--color-border);
+            padding: 20pt 22pt;
+            display: flex;
+            flex-direction: column;
+            gap: 10pt;
+            box-shadow: var(--shadow-elevated);
           }
           .terms-card ul { margin: 0; padding-left: 16pt; display: flex; flex-direction: column; gap: 6pt; }
           .terms-card li { font-size: 9pt; color: #1F2937; }
 
           .timeline { display: flex; flex-direction: column; gap: 8pt; }
-          .timeline-step { display: flex; gap: 10pt; align-items: flex-start; }
+          .timeline-step { display: flex; gap: 10pt; align-items: flex-start; line-height: 1.52; }
           .timeline-step strong {
             min-width: 64pt; display: inline-block; font-size: 8.5pt; letter-spacing: .12em; text-transform: uppercase; color: #2563EB;
           }
@@ -404,13 +463,22 @@ try {
 
           .cost-table { width: 100%; border-collapse: collapse; }
           .cost-table th, .cost-table td { font-size: 9pt; padding: 6pt 0; border-bottom: 0.5pt solid #E5E7EB; text-align: left; }
-          .cost-table th { text-transform: uppercase; letter-spacing: .12em; font-size: 7.5pt; color: #6B7280; }
+          .cost-table th { text-transform: uppercase; letter-spacing: .12em; font-size: 7.5pt; color: var(--color-muted); }
           .cost-table .cost-value { text-align: right; font-weight: 600; width: 92pt; }
 
           .signature-box { margin-top: auto; border-top: 0.75pt dashed #94A3B8; padding-top: 10pt; font-size: 8pt; color: #475569; }
 
-          .text-muted { color: #6B7280; }
+          .text-muted { color: var(--color-muted); }
           .text-wrap { word-break: break-word; hyphens: auto; }
+
+          .secondary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16pt;
+          }
+          .secondary-grid .panel { height: 100%; }
+          .secondary-grid .steps { margin-top: 4pt; }
+          .secondary-grid .checklist { margin-top: 4pt; }
         </style>
       </head>
     <body>
@@ -424,10 +492,10 @@ try {
               <p class="tagline">Bevestiging van uw geplande intakebezoek bij het servicepunt van Digivriend. Neem dit document mee als leidraad voor een vlotte afhandeling.</p>
             </div>
             <div class="brand-meta">
-              <div>Digivriend Amersfoort</div>
-              <div>De Ganskuijl 103B · 3817 EZ Amersfoort</div>
-              <div>KVK 82070741 · BTW NL003637003B84</div>
-              <div>servicedesk@digivriend.nl · 033 - 785 4284</div>
+              <div><?= htmlspecialchars($company['branch'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              <div><?= htmlspecialchars($companyAddressLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              <div>KVK <?= htmlspecialchars($company['kvk'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · BTW <?= htmlspecialchars($company['btw'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              <div><?= htmlspecialchars($company['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · <?= htmlspecialchars($company['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
             </div>
           </header>
 
@@ -446,7 +514,7 @@ try {
                     </tr>
                     <tr>
                       <td class="info-label">Locatie</td>
-                      <td class="info-value text-wrap">Servicebalie Digivriend, Stationsstraat 12, Utrecht</td>
+                      <td class="info-value text-wrap"><?= htmlspecialchars($serviceLocationLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                     </tr>
                     <tr>
                       <td class="info-label">Contact</td>
@@ -508,35 +576,37 @@ try {
               </div>
             </div>
 
-            <section class="panel">
-              <div class="panel-title">
-                <span>Voorbereiding</span>
-                <strong>Wat u meeneemt</strong>
-              </div>
-              <div class="checklist">
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Neem het apparaat zonder losse accessoires of randapparatuur mee; alleen essentiële onderdelen zoals de originele adapter wanneer wij deze expliciet nodig hebben.</span></div>
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Maak vooraf een volledige back-up van uw gegevens. Digivriend is niet aansprakelijk voor dataverlies tijdens onderzoek of reparatie.</span></div>
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Voorzie ons van de toegangscodes of testgegevens die nodig zijn om de gemelde storing te verifiëren.</span></div>
-                <div class="checklist-item"><div class="checklist-bullet"></div><span>Wilt u dat wij een back-up uitvoeren of andere aanvullende diensten leveren? Meld dit bij aankomst zodat we het kunnen registreren.</span></div>
-              </div>
-            </section>
+            <div class="secondary-grid">
+              <section class="panel">
+                <div class="panel-title">
+                  <span>Voorbereiding</span>
+                  <strong>Wat u meeneemt</strong>
+                </div>
+                <div class="checklist">
+                  <div class="checklist-item"><div class="checklist-bullet"></div><span>Neem het apparaat zonder losse accessoires of randapparatuur mee; alleen essentiële onderdelen zoals de originele adapter wanneer wij deze expliciet nodig hebben.</span></div>
+                  <div class="checklist-item"><div class="checklist-bullet"></div><span>Maak vooraf een volledige back-up van uw gegevens. Digivriend is niet aansprakelijk voor dataverlies tijdens onderzoek of reparatie.</span></div>
+                  <div class="checklist-item"><div class="checklist-bullet"></div><span>Voorzie ons van de toegangscodes of testgegevens die nodig zijn om de gemelde storing te verifiëren.</span></div>
+                  <div class="checklist-item"><div class="checklist-bullet"></div><span>Wilt u dat wij een back-up uitvoeren of andere aanvullende diensten leveren? Meld dit bij aankomst zodat we het kunnen registreren.</span></div>
+                </div>
+              </section>
 
-            <section class="panel">
-              <div class="panel-title">
-                <span>Aankomst</span>
-                <strong>Stappen op locatie</strong>
-              </div>
-              <ul class="steps">
-                <li><div class="step-number">01</div><div class="step-content">Lever het apparaat zonder losse accessoires aan; samen registreren we de staat en eventuele aanwezige toebehoren.</div></li>
-                <li><div class="step-number">02</div><div class="step-content">We lopen de intake en de algemene voorwaarden door, vragen uw expliciete toestemming voor onderzoek of reparatie en noteren eventuele back-upverzoeken.</div></li>
-                <li><div class="step-number">03</div><div class="step-content">U ontvangt een ontvangstbewijs met informatie over de vervolgstappen en de termijn waarbinnen het apparaat moet worden opgehaald om opslagkosten te voorkomen.</div></li>
-              </ul>
-            </section>
+              <section class="panel">
+                <div class="panel-title">
+                  <span>Aankomst</span>
+                  <strong>Stappen op locatie</strong>
+                </div>
+                <ul class="steps">
+                  <li><div class="step-number">01</div><div class="step-content">Lever het apparaat zonder losse accessoires aan; samen registreren we de staat en eventuele aanwezige toebehoren.</div></li>
+                  <li><div class="step-number">02</div><div class="step-content">We lopen de intake en de algemene voorwaarden door, vragen uw expliciete toestemming voor onderzoek of reparatie en noteren eventuele back-upverzoeken.</div></li>
+                  <li><div class="step-number">03</div><div class="step-content">U ontvangt een ontvangstbewijs met informatie over de vervolgstappen en de termijn waarbinnen het apparaat moet worden opgehaald om opslagkosten te voorkomen.</div></li>
+                </ul>
+              </section>
+            </div>
           </main>
 
           <footer class="page-footer">
             <span>Digivriend · Intake <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-            <span><!-- licznik stron w Chromium jest ograniczony; zostawiamy pusty blok --></span>
+            <span><!-- Chromium page counter left intentionally blank --></span>
           </footer>
         </div>
       </div>
@@ -635,7 +705,7 @@ try {
                   <td class="cost-value">€ 2,50 p/dag</td>
                 </tr>
               </table>
-              <div class="note-box">De uiteindelijke factuur volgt na afronding. Alle bedragen są inclusief btw tenzij anders vermeld.</div>
+              <div class="note-box">De uiteindelijke factuur volgt na afronding. Alle bedragen zijn inclusief btw tenzij anders vermeld.</div>
             </section>
 
             <section class="terms-card">
@@ -647,7 +717,7 @@ try {
 
           <footer class="page-footer">
             <span>Digivriend · Voorwaarden onderzoek &amp; reparatie</span>
-            <span><!-- licznik stron w Chromium jest ograniczony; zostawiamy pusty blok --></span>
+            <span><!-- Chromium page counter left intentionally blank --></span>
           </footer>
         </div>
       </div>
@@ -703,18 +773,18 @@ try {
         (int) $customer['id'],
         $email,
         [
-            'customer_name' => $fullName,
+            'customer_name'  => $fullName,
             'appointment_at' => $appointmentAt,
-            'location' => 'Digivriend Servicepunt',
+            'location'       => $company['branch'],
             'reference_code' => $referenceCode,
-            'notes' => $problemDescription,
-            'subject' => 'Bevestiging intake afspraak ' . $referenceCode,
+            'notes'          => $problemDescription,
+            'subject'        => 'Bevestiging intake afspraak ' . $referenceCode,
         ],
         [
             [
                 'content' => $pdfContents,
-                'name' => sprintf('intake-%s.pdf', $referenceCode),
-                'mime' => 'application/pdf',
+                'name'    => sprintf('intake-%s.pdf', $referenceCode),
+                'mime'    => 'application/pdf',
             ],
         ]
     );
@@ -727,16 +797,16 @@ try {
 
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode([
-    'success' => true,
-    'case_id' => (int) $case['id'],
-    'reference_code' => $referenceCode,
-    'appointment_at' => $appointmentAt->format('Y-m-d H:i:s'),
-    'appointment_at_formatted' => $appointmentAt->format('d-m-Y H:i'),
-    'case_url' => 'case.php?id=' . (int) $case['id'],
-    'pdf_url' => 'storage/documents/intake/' . $pdfFilename,
-    'devices_url' => 'devices.php?highlight=' . urlencode($referenceCode),
-    'notification_status' => $emailStatus,
-    'notification_error' => $emailError,
+    'success'                    => true,
+    'case_id'                    => (int) $case['id'],
+    'reference_code'             => $referenceCode,
+    'appointment_at'             => $appointmentAt->format('Y-m-d H:i:s'),
+    'appointment_at_formatted'   => $appointmentAt->format('d-m-Y H:i'),
+    'case_url'                   => 'case.php?id=' . (int) $case['id'],
+    'pdf_url'                    => 'storage/documents/intake/' . $pdfFilename,
+    'devices_url'                => 'devices.php?highlight=' . urlencode($referenceCode),
+    'notification_status'        => $emailStatus,
+    'notification_error'         => $emailError,
 ], JSON_THROW_ON_ERROR);
 
 /** Generuje unikalny kod referencyjny */
@@ -767,7 +837,6 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
     rename($tmpHtmlPath, $newTmpHtmlPath);
     $tmpHtmlPath = $newTmpHtmlPath;
 
-    // Wstawiamy kompletny dokument (już mamy pełny <!DOCTYPE html> w $html)
     if (file_put_contents($tmpHtmlPath, $html) === false) {
         @unlink($tmpHtmlPath);
         return null;
@@ -781,7 +850,7 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
         return null;
     }
 
-    // 3) Przygotuj tymczasowy katalog profilu
+    // 3) Tymczasowy katalog profilu
     $userDataDir = $tmpDir . '/chromium-profile-' . bin2hex(random_bytes(6));
     if (!mkdir($userDataDir, 0700) && !is_dir($userDataDir)) {
         @unlink($tmpHtmlPath);
@@ -805,7 +874,7 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
             @unlink($outputPdfPath);
         }
 
-    $commandArguments = [
+        $commandArguments = [
             $chromeBinary,
             $headlessFlag,
             '--disable-gpu',
@@ -839,9 +908,6 @@ function renderPdfWithChromium(string $html, string $outputPdfPath): ?string
         if (is_file($outputPdfPath)) {
             @unlink($outputPdfPath);
         }
-        if (is_file($outputPdfPath)) {
-            @unlink($outputPdfPath);
-        }
         return null;
     }
 
@@ -857,7 +923,7 @@ function detectChromeBinary(): ?string
 {
     $candidates = [];
 
-     $envKeys = [
+    $envKeys = [
         'PDF_CHROME_BINARY',
         'PDF_CHROMIUM_BINARY',
         'PDF_CHROME_PATH',
@@ -876,9 +942,9 @@ function detectChromeBinary(): ?string
     }
 
     if (DIRECTORY_SEPARATOR === '\\') {
-        $programFiles = Env::get('ProgramFiles');
+        $programFiles   = Env::get('ProgramFiles');
         $programFilesX86 = Env::get('ProgramFiles(x86)');
-        $localAppData = Env::get('LOCALAPPDATA');
+        $localAppData   = Env::get('LOCALAPPDATA');
 
         $windowsCandidates = [];
 
@@ -912,11 +978,11 @@ function detectChromeBinary(): ?string
     }
 
     foreach ([
-            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-            '/Applications/Chromium.app/Contents/MacOS/Chromium',
-        ] as $candidate) {
-            $candidates[] = $candidate;
-        }
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    ] as $candidate) {
+        $candidates[] = $candidate;
+    }
 
     $checked = [];
 
@@ -987,15 +1053,15 @@ function detectChromeBinary(): ?string
             continue;
         }
 
-    if (chromiumBinaryExists($which)) {
+        if (chromiumBinaryExists($which)) {
             return $which;
         }
     }
 
     return null;
-    }
+}
 
-    /**
+/**
  * @return string[]
  */
 function normaliseChromiumCandidate(string $candidate): array
@@ -1016,7 +1082,6 @@ function normaliseChromiumCandidate(string $candidate): array
                     $binaries[] = $path;
                 }
             }
-
             return $binaries;
         }
     }
@@ -1038,8 +1103,7 @@ function chromiumBinaryExists(string $path): bool
 }
 
 /**
- * Executes the Chromium command using proc_open when possible to avoid quoting issues on Windows.
- * Returns an array with the exit code and collected output lines.
+ * Executes the Chromium command using proc_open when possible.
  *
  * @param string[] $arguments
  * @return array{0:int,1:array<int,string>}
@@ -1066,11 +1130,7 @@ function runChromiumCommand(array $arguments): array
 
             $stdoutString = $stdout !== false ? $stdout : '';
             $stderrString = $stderr !== false ? $stderr : '';
-            $combined = trim(
-                $stdoutString
-                . ($stdoutString !== '' && $stderrString !== '' ? "\n" : '')
-                . $stderrString
-            );
+            $combined = trim($stdoutString . ($stdoutString !== '' && $stderrString !== '' ? "\n" : '') . $stderrString);
             if ($combined !== '') {
                 $outputLines = preg_split("/\r?\n/", $combined) ?: [];
             }
@@ -1115,6 +1175,7 @@ function buildChromiumCommandString(array $arguments): string
 
     return implode(' ', $escaped);
 }
+
 function removeDirectory(string $directory): void
 {
     if (!is_dir($directory)) {
