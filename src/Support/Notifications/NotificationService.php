@@ -79,6 +79,98 @@ final class NotificationService
         ];
     }
 
+    public function sendIntakeArrivalAcknowledgement(
+        ?int $caseId,
+        ?int $customerId,
+        string $recipient,
+        array $payload
+    ): array {
+        $subject = $payload['subject'] ?? 'Ontvangstbevestiging service intake';
+        $body = $this->renderTemplate('intake_arrival', $payload);
+
+        $result = $this->sendEmail($recipient, $subject, $body);
+        $status = $result['success'] ? 'sent' : 'failed';
+        $error = $result['error'] ?? null;
+        $sentAt = $result['success'] ? Clock::nowFormatted() : null;
+
+        $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body, $status, $error, $sentAt);
+
+        return [
+            'success' => $result['success'],
+            'status' => $status,
+            'error' => $error,
+        ];
+    }
+
+    public function sendIntakeRescheduled(
+        ?int $caseId,
+        ?int $customerId,
+        string $recipient,
+        array $payload
+    ): array {
+        $subject = $payload['subject'] ?? 'Nieuwe intake afspraak bevestigd';
+        $body = $this->renderTemplate('intake_rescheduled', $payload);
+
+        $result = $this->sendEmail($recipient, $subject, $body);
+        $status = $result['success'] ? 'sent' : 'failed';
+        $error = $result['error'] ?? null;
+        $sentAt = $result['success'] ? Clock::nowFormatted() : null;
+
+        $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body, $status, $error, $sentAt);
+
+        return [
+            'success' => $result['success'],
+            'status' => $status,
+            'error' => $error,
+        ];
+    }
+
+    public function sendIntakeCancellation(
+        ?int $caseId,
+        ?int $customerId,
+        string $recipient,
+        array $payload
+    ): array {
+        $subject = $payload['subject'] ?? 'Bevestiging annulering intake afspraak';
+        $body = $this->renderTemplate('intake_cancelled', $payload);
+
+        $result = $this->sendEmail($recipient, $subject, $body);
+        $status = $result['success'] ? 'sent' : 'failed';
+        $error = $result['error'] ?? null;
+        $sentAt = $result['success'] ? Clock::nowFormatted() : null;
+
+        $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body, $status, $error, $sentAt);
+
+        return [
+            'success' => $result['success'],
+            'status' => $status,
+            'error' => $error,
+        ];
+    }
+
+    public function sendIntakeNoShow(
+        ?int $caseId,
+        ?int $customerId,
+        string $recipient,
+        array $payload
+    ): array {
+        $subject = $payload['subject'] ?? 'We hebben u gemist bij uw intake';
+        $body = $this->renderTemplate('intake_no_show', $payload);
+
+        $result = $this->sendEmail($recipient, $subject, $body);
+        $status = $result['success'] ? 'sent' : 'failed';
+        $error = $result['error'] ?? null;
+        $sentAt = $result['success'] ? Clock::nowFormatted() : null;
+
+        $this->recordNotification($caseId, $customerId, 'email', $recipient, $subject, $body, $status, $error, $sentAt);
+
+        return [
+            'success' => $result['success'],
+            'status' => $status,
+            'error' => $error,
+        ];
+    }
+
     public function sendSms(?int $caseId, ?int $customerId, string $recipient, array $payload): void
     {
         $body = $this->renderTemplate('sms_generic', $payload);
@@ -148,12 +240,35 @@ final class NotificationService
                 $safePayload['pickup_code'] ?? '—',
                 $safePayload['pickup_date'] ?? '—'
             ),
-             'intake_confirmation' => sprintf(
+            'intake_confirmation' => sprintf(
                 "Beste %s,\n\nBedankt voor het plannen van uw intake. Wij verwachten u op %s in onze vestiging. Neem deze bevestiging en uw apparaat mee. Uw referentiecode is %s.\n\nBeschrijving: %s\n\nTot snel,\nDigivriend",
                 $safePayload['customer_name'] ?? 'klant',
                 $safePayload['appointment_at'] ?? 'het afgesproken tijdstip',
                 $safePayload['reference_code'] ?? '—',
                 $safePayload['notes'] ?? '—'
+            ),
+            'intake_arrival' => sprintf(
+                "Beste %s,\n\nWij bevestigen de ontvangst van uw apparaat voor case %s. Het toestel is op %s bij ons binnengebracht en het onderzoek start direct. U ontvangt een update zodra er nieuws is.\n\nMet vriendelijke groet,\nDigivriend",
+                $safePayload['customer_name'] ?? 'klant',
+                $safePayload['reference_code'] ?? 'uw case',
+                $safePayload['appointment_at'] ?? 'het afgesproken moment'
+            ),
+            'intake_rescheduled' => sprintf(
+                "Beste %s,\n\nZoals besproken hebben wij uw intake verplaatst naar %s. Uw referentiecode %s blijft ongewijzigd. Laat het ons weten als de planning opnieuw aangepast moet worden.\n\nMet vriendelijke groet,\nDigivriend",
+                $safePayload['customer_name'] ?? 'klant',
+                $safePayload['appointment_at'] ?? 'het nieuwe tijdstip',
+                $safePayload['reference_code'] ?? '—'
+            ),
+            'intake_cancelled' => sprintf(
+                "Beste %s,\n\nUw intake afspraak van %s is geannuleerd. Reden: %s. Wanneer u later alsnog langskomt helpen we u graag verder. Neem gerust contact met ons op voor een nieuwe afspraak.\n\nMet vriendelijke groet,\nDigivriend",
+                $safePayload['customer_name'] ?? 'klant',
+                $safePayload['appointment_at'] ?? 'het geplande moment',
+                $safePayload['cancellation_reason'] ?? 'geen reden opgegeven'
+            ),
+            'intake_no_show' => sprintf(
+                "Beste %s,\n\nWe hadden u graag ontvangen op %s, maar we hebben u helaas gemist. Jammer dat het niet is gelukt. Zodra onze nieuwe planner gereed is ontvangt u een link om eenvoudig een nieuwe intake te boeken. Heeft u nu al hulp nodig? Neem dan contact met ons op.\n\nMet vriendelijke groet,\nDigivriend",
+                $safePayload['customer_name'] ?? 'klant',
+                $safePayload['appointment_at'] ?? 'het geplande moment'
             ),
             'pc_build_release' => sprintf(
                 "Dzień dobry %s,\n\nZestaw PC %s jest gotowy do przekazania. Sposób wydania: %s dnia %s. W załączniku znajdziesz potwierdzenie wydania. W razie pytań skontaktuj się z nami.\n\nPozdrawiamy,\nZespół Digivriend",

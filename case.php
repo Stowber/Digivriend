@@ -8,6 +8,8 @@ use App\Security\Auth;
 use App\Security\Csrf;
 use App\Support\Audit\AuditLogger;
 use App\Support\Checklist\ChecklistRepository;
+use App\Support\Clock;
+use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\AppointmentRepository;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\EmployeeRepository;
@@ -32,6 +34,7 @@ $auditLogger = new AuditLogger($pdo);
 $warehouseRepository = new WarehouseRepository($pdo);
 $employeeRepository = new EmployeeRepository($pdo);
 $appointmentRepository = new AppointmentRepository($pdo);
+$notificationService = new NotificationService($pdo);
 
 $case = $caseRepository->findById((int) $caseId);
 if ($case === null) {
@@ -247,6 +250,34 @@ foreach ($caseDetails as $key => $value) {
     ];
 }
 
+$appointmentAtRaw = null;
+if (isset($caseDetails['appointment_at']) && is_string($caseDetails['appointment_at']) && $caseDetails['appointment_at'] !== '') {
+    $appointmentAtRaw = (string) $caseDetails['appointment_at'];
+}
+
+$appointmentTimestamp = $appointmentAtRaw !== null ? strtotime($appointmentAtRaw) : false;
+$appointmentHasPassed = $appointmentTimestamp !== false && $appointmentTimestamp < time();
+
+if (($caseRecord['status'] ?? '') === 'gepland' && $appointmentHasPassed) {
+    $caseRepository->updateStatus((int) $caseId, 'vertraagd');
+    $caseRecord['status'] = 'vertraagd';
+    $case['status'] = 'vertraagd';
+}
+
+$attendanceStatus = isset($caseDetails['attendance_status']) ? (string) $caseDetails['attendance_status'] : null;
+$attendanceHandledAt = isset($caseDetails['attendance_handled_at']) ? (string) $caseDetails['attendance_handled_at'] : '';
+
+$shouldShowAttendanceModal = in_array($caseRecord['status'], ['gepland', 'vertraagd'], true)
+    && (
+        $attendanceHandledAt === ''
+        || ($attendanceStatus === 'rescheduled' && $appointmentHasPassed)
+    );
+
+$rescheduleDefaultValue = '';
+if ($appointmentTimestamp !== false) {
+    $rescheduleDefaultValue = date('Y-m-d\TH:i', $appointmentTimestamp);
+}
+
 $priorityValue = (string) ($caseRecord['priority'] ?? '');
 $slaDueInputValue = '';
 if (!empty($caseRecord['sla_due_at'])) {
@@ -276,6 +307,12 @@ $checklistErrors = [];
 $noteEditErrors = [];
 $noteEditValues = [];
 $currentAction = null;
+$attendanceErrors = [];
+$attendanceFormValues = [
+    'attendance_action' => '',
+    'reschedule_at' => $rescheduleDefaultValue,
+    'cancellation_reason' => '',
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -286,7 +323,215 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'] ?? 'add-note';
         $currentAction = $action;
 
+        if ($action === 'intake-attendance') {
+            $attendanceFormValues['attendance_action'] = isset($_POST['attendance_action']) ? (string) $_POST['attendance_action'] : '';
+            if (isset($_POST['reschedule_at']) && $_POST['reschedule_at'] !== '') {
+                $attendanceFormValues['reschedule_at'] = (string) $_POST['reschedule_at'];
+            }
+            $attendanceFormValues['cancellation_reason'] = isset($_POST['cancellation_reason']) ? (string) $_POST['cancellation_reason'] : '';
+        }
+
         switch ($action) {
+          case 'intake-attendance':
+                $attendanceActionRaw = InputValidator::requireString($_POST, 'attendance_action', 40);
+                $attendanceAction = strtolower($attendanceActionRaw);
+                $allowedAttendanceActions = ['arrived', 'no_show', 'rescheduled', 'cancelled'];
+                if (!in_array($attendanceAction, $allowedAttendanceActions, true)) {
+                    throw new ValidationException(['attendance_action' => 'Onbekende keuze.']);
+                }
+
+                $updatedDetails = $caseDetails;
+                $now = Clock::now();
+                $handledAt = $now->format('Y-m-d H:i:s');
+                $updatedDetails['attendance_handled_at'] = $handledAt;
+                $updatedDetails['attendance_handled_by'] = Auth::username();
+
+                $appointmentLabel = null;
+                if ($appointmentTimestamp !== false) {
+                    $appointmentLabel = date('d-m-Y H:i', $appointmentTimestamp);
+                }
+
+                $intakeAppointment = null;
+                foreach ($caseAppointments as $appointment) {
+                    if (($appointment['appointment_type'] ?? '') === 'intake_visit') {
+                        $intakeAppointment = $appointment;
+                        break;
+                    }
+                }
+
+                $customerId = (int) ($caseRecord['customer_id'] ?? 0);
+                $customerEmail = isset($caseRecord['email']) ? trim((string) $caseRecord['email']) : '';
+                $customerName = (string) ($caseRecord['full_name'] ?? 'klant');
+                $referenceCode = (string) ($caseRecord['reference_code'] ?? '');
+                $emailResult = null;
+                $noteMessage = '';
+
+                if ($attendanceAction === 'arrived') {
+                    $updatedDetails['attendance_status'] = 'arrived';
+                    $updatedDetails['arrival_confirmed_at'] = $handledAt;
+
+                    $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                    $caseRepository->updateStatus((int) $caseId, 'intake');
+                    $caseRecord['status'] = 'intake';
+                    $case['status'] = 'intake';
+
+                    if ($intakeAppointment && isset($intakeAppointment['id'])) {
+                        $appointmentRepository->updateStatus((int) $intakeAppointment['id'], 'completed', Auth::username());
+                    }
+
+                    if ($customerEmail !== '') {
+                        $emailResult = $notificationService->sendIntakeArrivalAcknowledgement(
+                            (int) $caseId,
+                            $customerId ?: null,
+                            $customerEmail,
+                            [
+                                'customer_name' => $customerName,
+                                'reference_code' => $referenceCode,
+                                'appointment_at' => $appointmentLabel ?? $now->format('d-m-Y H:i'),
+                            ]
+                        );
+                    }
+
+                    $noteMessage = 'Klant verschenen voor intake. Apparatuur ontvangen en werkzaamheden gestart.';
+                    if ($emailResult !== null && !$emailResult['success']) {
+                        $noteMessage .= ' (E-mail verzenden mislukt: ' . (string) ($emailResult['error'] ?? 'onbekende fout') . ')';
+                    }
+
+                    $noteRepository->add((int) $caseId, $customerId, Auth::username(), $noteMessage);
+                    $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'intake_attendance_arrived', [
+                        'appointment_at' => $appointmentAtRaw,
+                        'email_sent' => $emailResult === null ? 'not_requested' : ($emailResult['success'] ? 'sent' : 'failed'),
+                    ]);
+                } elseif ($attendanceAction === 'no_show') {
+                    $updatedDetails['attendance_status'] = 'no_show';
+
+                    $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                    $caseRepository->updateStatus((int) $caseId, 'vertraagd');
+                    $caseRecord['status'] = 'vertraagd';
+                    $case['status'] = 'vertraagd';
+
+                    if ($intakeAppointment && isset($intakeAppointment['id'])) {
+                        $appointmentRepository->updateStatus((int) $intakeAppointment['id'], 'no_show', Auth::username());
+                    }
+
+                    if ($customerEmail !== '') {
+                        $emailResult = $notificationService->sendIntakeNoShow(
+                            (int) $caseId,
+                            $customerId ?: null,
+                            $customerEmail,
+                            [
+                                'customer_name' => $customerName,
+                                'appointment_at' => $appointmentLabel ?? ($appointmentAtRaw ?? ''),
+                            ]
+                        );
+                    }
+
+                    $noteMessage = 'Klant is niet verschenen op de intakeafspraak.';
+                    if ($emailResult !== null && !$emailResult['success']) {
+                        $noteMessage .= ' (E-mail verzenden mislukt: ' . (string) ($emailResult['error'] ?? 'onbekende fout') . ')';
+                    }
+
+                    $noteRepository->add((int) $caseId, $customerId, Auth::username(), $noteMessage);
+                    $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'intake_attendance_no_show', [
+                        'appointment_at' => $appointmentAtRaw,
+                        'email_sent' => $emailResult === null ? 'not_requested' : ($emailResult['success'] ? 'sent' : 'failed'),
+                    ]);
+                } elseif ($attendanceAction === 'rescheduled') {
+                    $rescheduleRaw = InputValidator::requireString($_POST, 'reschedule_at', 25);
+                    $rescheduleAt = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $rescheduleRaw);
+                    if (!$rescheduleAt instanceof DateTimeImmutable) {
+                        throw new ValidationException(['reschedule_at' => 'Ongeldige datum/tijd opgegeven.']);
+                    }
+
+                    $rescheduleEnd = $rescheduleAt->add(new DateInterval('PT30M'));
+                    $updatedDetails['attendance_status'] = 'rescheduled';
+                    $updatedDetails['rescheduled_from'] = $appointmentAtRaw;
+                    $updatedDetails['rescheduled_at'] = $handledAt;
+                    $updatedDetails['appointment_at'] = $rescheduleAt->format('Y-m-d H:i:s');
+                    $updatedDetails['appointment_end'] = $rescheduleEnd->format('Y-m-d H:i:s');
+
+                    $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                    $caseRepository->updateStatus((int) $caseId, 'gepland');
+                    $caseRecord['status'] = 'gepland';
+                    $case['status'] = 'gepland';
+
+                    if ($intakeAppointment && isset($intakeAppointment['id'])) {
+                        $appointmentRepository->updateSchedule(
+                            (int) $intakeAppointment['id'],
+                            $rescheduleAt->format('Y-m-d H:i:s'),
+                            $rescheduleEnd->format('Y-m-d H:i:s'),
+                            Auth::username()
+                        );
+                        $appointmentRepository->updateStatus((int) $intakeAppointment['id'], 'scheduled', Auth::username());
+                    }
+
+                    if ($customerEmail !== '') {
+                        $emailResult = $notificationService->sendIntakeRescheduled(
+                            (int) $caseId,
+                            $customerId ?: null,
+                            $customerEmail,
+                            [
+                                'customer_name' => $customerName,
+                                'appointment_at' => $rescheduleAt->format('d-m-Y H:i'),
+                                'reference_code' => $referenceCode,
+                            ]
+                        );
+                    }
+
+                    $noteMessage = sprintf('Intakeafspraak verplaatst naar %s.', $rescheduleAt->format('d-m-Y H:i'));
+                    if ($emailResult !== null && !$emailResult['success']) {
+                        $noteMessage .= ' (E-mail verzenden mislukt: ' . (string) ($emailResult['error'] ?? 'onbekende fout') . ')';
+                    }
+
+                    $noteRepository->add((int) $caseId, $customerId, Auth::username(), $noteMessage);
+                    $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'intake_rescheduled', [
+                        'previous_appointment' => $appointmentAtRaw,
+                        'new_appointment' => $updatedDetails['appointment_at'],
+                        'email_sent' => $emailResult === null ? 'not_requested' : ($emailResult['success'] ? 'sent' : 'failed'),
+                    ]);
+                } else { // cancelled
+                    $cancellationReason = InputValidator::requireString($_POST, 'cancellation_reason', 500);
+                    $updatedDetails['attendance_status'] = 'cancelled';
+                    $updatedDetails['cancellation_reason'] = $cancellationReason;
+                    $updatedDetails['appointment_cancelled_at'] = $handledAt;
+
+                    $caseRepository->updateStatusAndDetails((int) $caseId, 'geannuleerd', $updatedDetails);
+                    $caseRecord['status'] = 'geannuleerd';
+                    $case['status'] = 'geannuleerd';
+
+                    if ($intakeAppointment && isset($intakeAppointment['id'])) {
+                        $appointmentRepository->updateStatus((int) $intakeAppointment['id'], 'cancelled', Auth::username());
+                    }
+
+                    if ($customerEmail !== '') {
+                        $emailResult = $notificationService->sendIntakeCancellation(
+                            (int) $caseId,
+                            $customerId ?: null,
+                            $customerEmail,
+                            [
+                                'customer_name' => $customerName,
+                                'appointment_at' => $appointmentLabel ?? ($appointmentAtRaw ?? ''),
+                                'reference_code' => $referenceCode,
+                                'cancellation_reason' => $cancellationReason,
+                            ]
+                        );
+                    }
+
+                    $noteMessage = 'Intake geannuleerd: ' . $cancellationReason;
+                    if ($emailResult !== null && !$emailResult['success']) {
+                        $noteMessage .= ' (E-mail verzenden mislukt: ' . (string) ($emailResult['error'] ?? 'onbekende fout') . ')';
+                    }
+
+                    $noteRepository->add((int) $caseId, $customerId, Auth::username(), $noteMessage);
+                    $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'intake_cancelled', [
+                        'appointment_at' => $appointmentAtRaw,
+                        'reason' => $cancellationReason,
+                        'email_sent' => $emailResult === null ? 'not_requested' : ($emailResult['success'] ? 'sent' : 'failed'),
+                    ]);
+                }
+
+                $caseDetails = $updatedDetails;
+                break;
             case 'add-note':
                 $body = InputValidator::requireString($_POST, 'body', 2000);
                 $noteRepository->add((int) $caseId, (int) $caseRecord['customer_id'], Auth::username(), $body);
@@ -468,10 +713,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = array_merge($errors, $validationErrors);
         } elseif ($currentAction === 'add-note') {
             $errors = $validationErrors;
+        } elseif ($currentAction === 'intake-attendance') {
+            $attendanceErrors = $validationErrors;
         } else {
             $errors = array_merge($errors, $validationErrors);
         }
     }
+}
+
+if ($currentAction === 'intake-attendance' && $attendanceErrors !== []) {
+    $shouldShowAttendanceModal = true;
 }
 
 $notes = $noteRepository->forCase((int) $caseId);
@@ -512,10 +763,92 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
       <?php $generalMessage = is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general']; ?>
       <div class="alert alert--danger"><?= htmlspecialchars($generalMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
     <?php endif; ?>
+    <?php if ($shouldShowAttendanceModal): ?>
+      <div class="detail-modal" data-detail-modal="intake-attendance" data-open-on-load="true" aria-hidden="true">
+        <div class="detail-modal__backdrop" data-modal-close></div>
+        <div class="detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="attendanceModalTitle">
+          <header class="detail-modal__header">
+            <div>
+              <p class="detail-modal__eyebrow">Intake aanwezigheid</p>
+              <h3 id="attendanceModalTitle">Is de klant verschenen?</h3>
+            </div>
+            <button type="button" class="detail-modal__close" data-modal-close aria-label="Sluiten">&times;</button>
+          </header>
+          <div class="detail-modal__body">
+            <?php if (!empty($attendanceErrors['general'])): ?>
+              <?php $attendanceGeneral = is_array($attendanceErrors['general']) ? implode(' ', array_map('strval', $attendanceErrors['general'])) : (string) $attendanceErrors['general']; ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($attendanceGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <form method="post" class="attendance-form" data-attendance-form>
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="intake-attendance">
+              <fieldset class="attendance-options">
+                <legend class="attendance-options__legend">Kies een resultaat voor de afspraak</legend>
+                <label class="attendance-option">
+                  <input type="radio" name="attendance_action" value="arrived" <?= $attendanceFormValues['attendance_action'] === 'arrived' ? 'checked' : '' ?>>
+                  <span>Ja, de klant is verschenen en heeft het apparaat afgegeven.</span>
+                </label>
+                <label class="attendance-option">
+                  <input type="radio" name="attendance_action" value="no_show" <?= $attendanceFormValues['attendance_action'] === 'no_show' ? 'checked' : '' ?>>
+                  <span>Nee, de klant is niet verschenen.</span>
+                </label>
+                <label class="attendance-option">
+                  <input type="radio" name="attendance_action" value="rescheduled" <?= $attendanceFormValues['attendance_action'] === 'rescheduled' ? 'checked' : '' ?>>
+                  <span>De klant wil de afspraak verplaatsen.</span>
+                </label>
+                <label class="attendance-option">
+                  <input type="radio" name="attendance_action" value="cancelled" <?= $attendanceFormValues['attendance_action'] === 'cancelled' ? 'checked' : '' ?>>
+                  <span>De klant heeft de afspraak geannuleerd.</span>
+                </label>
+              </fieldset>
+              <?php if (!empty($attendanceErrors['attendance_action'])): ?>
+                <small class="form-error"><?= htmlspecialchars(is_array($attendanceErrors['attendance_action']) ? implode(' ', array_map('strval', $attendanceErrors['attendance_action'])) : (string) $attendanceErrors['attendance_action'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+              <?php endif; ?>
+              <div class="attendance-extra" data-reschedule-fields <?= $attendanceFormValues['attendance_action'] === 'rescheduled' ? '' : 'hidden' ?>>
+                <label class="form-field">
+                  <span class="form-field__label">Nieuwe datum &amp; tijd</span>
+                  <input type="datetime-local" name="reschedule_at" value="<?= htmlspecialchars($attendanceFormValues['reschedule_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                </label>
+                <?php if (!empty($attendanceErrors['reschedule_at'])): ?>
+                  <small class="form-error"><?= htmlspecialchars(is_array($attendanceErrors['reschedule_at']) ? implode(' ', array_map('strval', $attendanceErrors['reschedule_at'])) : (string) $attendanceErrors['reschedule_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                <?php endif; ?>
+              </div>
+              <div class="attendance-extra" data-cancellation-fields <?= $attendanceFormValues['attendance_action'] === 'cancelled' ? '' : 'hidden' ?>>
+                <label class="form-field">
+                  <span class="form-field__label">Reden van annulering</span>
+                  <textarea name="cancellation_reason" rows="3" placeholder="Bijvoorbeeld: klant kon niet op tijd komen."><?= htmlspecialchars($attendanceFormValues['cancellation_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                </label>
+                <?php if (!empty($attendanceErrors['cancellation_reason'])): ?>
+                  <small class="form-error"><?= htmlspecialchars(is_array($attendanceErrors['cancellation_reason']) ? implode(' ', array_map('strval', $attendanceErrors['cancellation_reason'])) : (string) $attendanceErrors['cancellation_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                <?php endif; ?>
+              </div>
+              <div class="attendance-form__actions">
+                <button type="button" class="btn btn--ghost" data-modal-close>Later herinneren</button>
+                <button type="submit" class="btn btn--primary">Opslaan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    <?php endif; ?>
     <section class="case-overview">
       <div>
         <h1>Case #<?= (int) $caseId ?> · <?= htmlspecialchars((string) $caseRecord['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
-        <p class="muted">Status: <span class="status-pill <?= ($caseRecord['status'] === 'opgehaald' || $caseRecord['status'] === 'gesloten') ? 'status-pill--picked' : 'status-pill--ready' ?>"><?= htmlspecialchars(ucfirst((string) $caseRecord['status']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></p>
+        <?php
+          $statusKey = strtolower((string) $caseRecord['status']);
+          $statusClassMap = [
+              'opgehaald' => 'status-pill--picked',
+              'gesloten' => 'status-pill--picked',
+              'geannuleerd' => 'status-pill--geannuleerd',
+              'vertraagd' => 'status-pill--vertraagd',
+              'gepland' => 'status-pill--gepland',
+              'intake' => 'status-pill--intake',
+              'open' => 'status-pill--open',
+              'in_behandeling' => 'status-pill--in_behandeling',
+          ];
+          $statusClass = $statusClassMap[$statusKey] ?? 'status-pill--ready';
+        ?>
+        <p class="muted">Status: <span class="status-pill <?= htmlspecialchars($statusClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(ucfirst((string) $caseRecord['status']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></p>
       </div>
       <div class="case-meta">
         <p>Laatst bijgewerkt: <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $caseRecord['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
@@ -970,6 +1303,52 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
   </footer>
   <script>
     (function () {
+      const modal = document.querySelector('[data-detail-modal="intake-attendance"]');
+      if (!modal) {
+        return;
+      }
+
+      const form = modal.querySelector('[data-attendance-form]');
+      if (!form) {
+        return;
+      }
+
+      const actionInputs = form.querySelectorAll('input[name="attendance_action"]');
+      const rescheduleFields = form.querySelector('[data-reschedule-fields]');
+      const cancellationFields = form.querySelector('[data-cancellation-fields]');
+      const rescheduleInput = form.querySelector('input[name="reschedule_at"]');
+      const cancellationInput = form.querySelector('textarea[name="cancellation_reason"]');
+
+      const toggleFields = () => {
+        const selected = form.querySelector('input[name="attendance_action"]:checked');
+        const value = selected ? selected.value : '';
+
+        if (rescheduleFields) {
+          const showReschedule = value === 'rescheduled';
+          rescheduleFields.hidden = !showReschedule;
+          if (rescheduleInput) {
+            rescheduleInput.toggleAttribute('required', showReschedule);
+          }
+        }
+
+        if (cancellationFields) {
+          const showCancellation = value === 'cancelled';
+          cancellationFields.hidden = !showCancellation;
+          if (cancellationInput) {
+            cancellationInput.toggleAttribute('required', showCancellation);
+          }
+        }
+      };
+
+      actionInputs.forEach((input) => {
+        input.addEventListener('change', toggleFields);
+      });
+
+      toggleFields();
+    })();
+  </script>
+  <script>
+    (function () {
       const modals = new Map();
       document.querySelectorAll('[data-detail-modal]').forEach((modal) => {
         const modalId = modal.getAttribute('data-detail-modal');
@@ -1036,6 +1415,16 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           }
         });
       });
+
+      const autoOpenModal = document.querySelector('[data-detail-modal][data-open-on-load]');
+      if (autoOpenModal) {
+        const autoId = autoOpenModal.getAttribute('data-detail-modal');
+        if (autoId) {
+          setTimeout(() => {
+            openModal(autoId);
+          }, 100);
+        }
+      }
     })();
   </script>
   <script src="js/field-help.js"></script>

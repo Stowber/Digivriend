@@ -123,6 +123,14 @@ $csrfToken = Csrf::token();
                   $highlightClass = ($highlightReference !== '' && strtoupper((string) ($case['reference_code'] ?? '')) === strtoupper($highlightReference)) ? 'table-row--highlight' : '';
                   $customerName = (string) ($case['full_name'] ?? 'Onbekende klant');
                   $caseStatus = (string) ($case['status'] ?? 'open');
+                  if ($caseStatus === 'gepland' && is_string($appointmentAt) && $appointmentAt !== '') {
+                      $appointmentTimestamp = strtotime($appointmentAt);
+                      if ($appointmentTimestamp !== false && $appointmentTimestamp < time()) {
+                          $caseRepository->updateStatus((int) $case['id'], 'vertraagd');
+                          $caseStatus = 'vertraagd';
+                          $case['status'] = 'vertraagd';
+                      }
+                  }
                 ?>
                 <tr class="<?= htmlspecialchars($highlightClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                   <td class="table__reference">

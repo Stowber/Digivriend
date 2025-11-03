@@ -781,6 +781,21 @@ tbody tr:last-child td {
   color: #0f172a;
 }
 
+.status-pill--vertraagd {
+  background: rgba(251, 191, 36, 0.16);
+  color: #b45309;
+}
+
+.status-pill--geannuleerd {
+  background: rgba(148, 163, 184, 0.22);
+  color: #475569;
+}
+
+.status-pill--in_behandeling {
+  background: rgba(16, 185, 129, 0.16);
+  color: #0f766e;
+}
+
 .search-bar {
   display: flex;
   flex-wrap: wrap;

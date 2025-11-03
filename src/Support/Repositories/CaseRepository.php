@@ -52,10 +52,14 @@ final class CaseRepository
     }
 
     public function updateStatus(int $caseId, string $status): void
-    {   
-        $shouldClose = in_array($status, ['opgehaald', 'gesloten'], true);
+    {
+        $shouldClose = in_array($status, ['opgehaald', 'gesloten', 'geannuleerd'], true);
         $statement = $this->pdo->prepare(
-            'UPDATE cases SET status = :status, closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END WHERE id = :id'
+            'UPDATE cases
+             SET status = :status,
+                 updated_at = CURRENT_TIMESTAMP,
+                 closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END
+             WHERE id = :id'
         );
         $statement->execute([
             'status' => $status,
@@ -268,7 +272,12 @@ final class CaseRepository
     private function updateCase(int $caseId, string $status, ?string $summary, array $details): void
     {
         $statement = $this->pdo->prepare(
-            'UPDATE cases SET status = :status, summary = COALESCE(:summary, summary), details = :details WHERE id = :id'
+            'UPDATE cases
+             SET status = :status,
+                 summary = COALESCE(:summary, summary),
+                 details = :details,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id'
         );
         $statement->execute([
             'id' => $caseId,
@@ -276,5 +285,67 @@ final class CaseRepository
             'summary' => $summary,
             'details' => json_encode($details, JSON_THROW_ON_ERROR),
         ]);
+    }
+    public function updateDetails(int $caseId, array $details): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE cases
+             SET details = :details,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $caseId,
+            'details' => json_encode($details, JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    public function updateStatusAndDetails(int $caseId, string $status, array $details): void
+    {
+        $shouldClose = in_array($status, ['opgehaald', 'gesloten', 'geannuleerd'], true);
+        $statement = $this->pdo->prepare(
+            'UPDATE cases
+             SET status = :status,
+                 details = :details,
+                 updated_at = CURRENT_TIMESTAMP,
+                 closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END
+             WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $caseId,
+            'status' => $status,
+            'details' => json_encode($details, JSON_THROW_ON_ERROR),
+            'should_close' => $shouldClose ? 1 : 0,
+            'closed_at' => $shouldClose ? Clock::nowFormatted() : null,
+        ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function archivedCases(int $limit = 50, ?string $type = null): array
+    {
+        $sql = 'SELECT c.*, cust.full_name, cust.email, cust.phone, cust.address, cust.postal_code, cust.city,'
+            . ' dev.brand AS device_brand, dev.model AS device_model, dev.serial_number AS device_serial, dev.device_type'
+            . ' FROM cases c'
+            . ' INNER JOIN customers cust ON cust.id = c.customer_id'
+            . ' LEFT JOIN devices dev ON dev.id = c.device_id'
+            . ' WHERE c.closed_at IS NOT NULL';
+
+        $params = [];
+        if ($type !== null && $type !== '' && $type !== 'all') {
+            $sql .= ' AND c.type = :type';
+            $params['type'] = $type;
+        }
+
+        $sql .= ' ORDER BY (c.closed_at IS NULL) ASC, c.closed_at DESC LIMIT :limit';
+        $statement = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $statement->bindValue($key, $value);
+        }
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll() ?: [];
     }
 }

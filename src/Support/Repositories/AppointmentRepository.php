@@ -178,6 +178,24 @@ final class AppointmentRepository
         ]);
     }
 
+    public function updateSchedule(int $appointmentId, string $startAt, string $endAt, ?string $updatedBy = null): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE appointments
+             SET start_at = :start_at,
+                 end_at = :end_at,
+                 updated_by = :updated_by,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id'
+        );
+        $statement->execute([
+            'id' => $appointmentId,
+            'start_at' => $startAt,
+            'end_at' => $endAt,
+            'updated_by' => $updatedBy,
+        ]);
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */

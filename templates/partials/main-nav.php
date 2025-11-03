@@ -11,6 +11,7 @@ if (!function_exists('render_main_nav')) {
             'dashboard' => ['label' => 'Dashboard', 'href' => 'index.php'],
             'intake' => ['label' => 'Klant registratie', 'href' => 'intake.php'],
             'devices' => ['label' => 'Klanten & apparaten', 'href' => 'devices.php'],
+            'archive' => ['label' => 'Archief', 'href' => 'archive.php'],
             'data_recovery' => ['label' => 'Data Recovery', 'href' => 'data-recovery.php'],
             'calendar' => ['label' => 'Kalendarz', 'href' => 'calendar.php'],
             'documents' => ['label' => 'Documenten', 'href' => 'documents.php'],
