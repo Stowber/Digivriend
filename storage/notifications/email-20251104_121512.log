@@ -1,0 +1,16 @@
+kanaal: email
+ontvanger: contact@digivriend.nl
+onderwerp: Bevestiging intake afspraak IN-251104-58BE
+status: failed
+aangemaakt: 2025-11-04 12:15:12
+fout: Połączenie SMTP nie powiodło się (mail.entersystem.com:465): php_network_getaddresses: getaddrinfo for mail.entersystem.com failed: Host is onbekend. 
+bericht:
+Beste Jakub Mieszala,
+
+Bedankt voor het plannen van uw intake. Wij verwachten u op 04-11-2025 12:15 in onze vestiging. Neem deze bevestiging en uw apparaat mee. Uw referentiecode is IN-251104-58BE.
+
+Beschrijving: BSOD pod czas logowania
+
+Tot snel,
+Digivriend
+----------------------------------------
