@@ -770,11 +770,12 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           <header class="detail-modal__header">
             <div>
               <p class="detail-modal__eyebrow">Intake aanwezigheid</p>
-              <h3 id="attendanceModalTitle">Is de klant verschenen?</h3>
+              <h3 id="attendanceModalTitle" class="detail-modal__title">Is de klant verschenen?</h3>
             </div>
             <button type="button" class="detail-modal__close" data-modal-close aria-label="Sluiten">&times;</button>
           </header>
           <div class="detail-modal__body">
+            <p class="detail-modal__intro">Beoordeel de status van de afspraak zodat het team meteen weet wat de volgende stap is.</p>
             <?php if (!empty($attendanceErrors['general'])): ?>
               <?php $attendanceGeneral = is_array($attendanceErrors['general']) ? implode(' ', array_map('strval', $attendanceErrors['general'])) : (string) $attendanceErrors['general']; ?>
               <div class="alert alert--danger"><?= htmlspecialchars($attendanceGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
@@ -784,21 +785,34 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
               <input type="hidden" name="action" value="intake-attendance">
               <fieldset class="attendance-options">
                 <legend class="attendance-options__legend">Kies een resultaat voor de afspraak</legend>
+                <p class="attendance-options__description">Selecteer de status die het beste past bij de afspraak.</p>
                 <label class="attendance-option">
                   <input type="radio" name="attendance_action" value="arrived" <?= $attendanceFormValues['attendance_action'] === 'arrived' ? 'checked' : '' ?>>
-                  <span>Ja, de klant is verschenen en heeft het apparaat afgegeven.</span>
+                  <span class="attendance-option__content">
+                    <span class="attendance-option__title">Ja, de klant is verschenen en heeft het apparaat afgegeven.</span>
+                    <span class="attendance-option__subtitle">Het apparaat kan direct worden ingenomen en verwerkt.</span>
+                  </span>
                 </label>
                 <label class="attendance-option">
                   <input type="radio" name="attendance_action" value="no_show" <?= $attendanceFormValues['attendance_action'] === 'no_show' ? 'checked' : '' ?>>
-                  <span>Nee, de klant is niet verschenen.</span>
+                  <span class="attendance-option__content">
+                    <span class="attendance-option__title">Nee, de klant is niet verschenen.</span>
+                    <span class="attendance-option__subtitle">Noteer eventuele opvolging zodat het team weet wat te doen.</span>
+                  </span>
                 </label>
                 <label class="attendance-option">
                   <input type="radio" name="attendance_action" value="rescheduled" <?= $attendanceFormValues['attendance_action'] === 'rescheduled' ? 'checked' : '' ?>>
-                  <span>De klant wil de afspraak verplaatsen.</span>
+                  <span class="attendance-option__content">
+                    <span class="attendance-option__title">De klant wil de afspraak verplaatsen.</span>
+                    <span class="attendance-option__subtitle">Plan een nieuwe datum en tijd die voor beide partijen werkt.</span>
+                  </span>
                 </label>
                 <label class="attendance-option">
                   <input type="radio" name="attendance_action" value="cancelled" <?= $attendanceFormValues['attendance_action'] === 'cancelled' ? 'checked' : '' ?>>
-                  <span>De klant heeft de afspraak geannuleerd.</span>
+                  <span class="attendance-option__content">
+                    <span class="attendance-option__title">De klant heeft de afspraak geannuleerd.</span>
+                    <span class="attendance-option__subtitle">Leg kort vast waarom de afspraak niet doorgaat.</span>
+                  </span>
                 </label>
               </fieldset>
               <?php if (!empty($attendanceErrors['attendance_action'])): ?>
