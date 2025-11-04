@@ -45,6 +45,8 @@ final class SchemaManager
         self::ensureReparatieOnderzoekColumns($pdo);
         self::ensureDataRecoveryColumns($pdo);
         self::ensureOphaalbevestigingEnhancements($pdo);
+        self::ensureUserLanguageColumn($pdo);
+        self::ensureEmployeeLanguageColumn($pdo);
         self::ensureDefaultUserExists($pdo);
     }
 
@@ -876,6 +878,7 @@ final class SchemaManager
                     status VARCHAR(32) NOT NULL DEFAULT 'active',
                     color VARCHAR(16) NULL,
                     timezone VARCHAR(64) NULL,
+                    language VARCHAR(8) NOT NULL DEFAULT 'nl',
                     permissions JSONB NULL,
                     notes TEXT NULL,
                     hired_at DATE NULL,
@@ -903,6 +906,7 @@ final class SchemaManager
                     status TEXT NOT NULL DEFAULT 'active',
                     color TEXT NULL,
                     timezone TEXT NULL,
+                    language TEXT NOT NULL DEFAULT 'nl',
                     permissions TEXT NULL,
                     notes TEXT NULL,
                     hired_at TEXT NULL,
@@ -929,6 +933,7 @@ final class SchemaManager
                 status VARCHAR(32) NOT NULL DEFAULT 'active',
                 color VARCHAR(16) NULL,
                 timezone VARCHAR(64) NULL,
+                language VARCHAR(8) NOT NULL DEFAULT 'nl',
                 permissions TEXT NULL,
                 notes TEXT NULL,
                 hired_at DATE NULL,
@@ -1052,6 +1057,31 @@ final class SchemaManager
                 CONSTRAINT fk_employee_audit_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
+    }
+
+     private static function ensureEmployeeLanguageColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'employees', 'language', "TEXT NOT NULL DEFAULT 'nl'");
+
+            return;
+        }
+
+        $alterSql = "ALTER TABLE employees ADD COLUMN language VARCHAR(8) NOT NULL DEFAULT 'nl'";
+
+        if ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates($pdo, $alterSql, ['duplicate', 'already exists']);
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            $alterSql . ' AFTER timezone',
+            ['duplicate', 'already exists']
+        );
     }
 
     private static function ensureCaseAssignmentsTable(PDO $pdo): void
@@ -1644,6 +1674,7 @@ final class SchemaManager
                 username VARCHAR(120) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
                 role VARCHAR(64) NOT NULL DEFAULT 'staff',
+                language VARCHAR(8) NOT NULL DEFAULT 'nl',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -1718,6 +1749,7 @@ final class SchemaManager
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'staff',
+                language VARCHAR(8) NOT NULL DEFAULT 'nl',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -1850,6 +1882,7 @@ final class SchemaManager
                 username VARCHAR(120) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
                 role VARCHAR(64) NOT NULL DEFAULT 'staff',
+                language VARCHAR(8) NOT NULL DEFAULT 'nl',
                 created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
             )
@@ -3152,6 +3185,31 @@ final class SchemaManager
             'password_hash' => password_hash($defaultPassword, PASSWORD_DEFAULT),
             'role' => $defaultRole,
         ]);
+    }
+
+    private static function ensureUserLanguageColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'users', 'language', "TEXT NOT NULL DEFAULT 'nl'");
+
+            return;
+        }
+
+        $alterSql = "ALTER TABLE users ADD COLUMN language VARCHAR(8) NOT NULL DEFAULT 'nl'";
+
+        if ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates($pdo, $alterSql, ['duplicate', 'already exists']);
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            $alterSql . ' AFTER role',
+            ['duplicate', 'already exists']
+        );
     }
     
     private static function addSqliteColumnIfMissing(PDO $pdo, string $table, string $column, string $definition): void

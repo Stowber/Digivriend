@@ -67,12 +67,13 @@ final class EmployeeRepository
         ?string $position,
         ?string $color,
         ?string $timezone,
+        ?string $language,
         array $permissions,
         ?string $hiredAt
     ): array {
         $statement = $this->pdo->prepare(
-            'INSERT INTO employees (full_name, email, phone, role, department, position, color, timezone, permissions, status, hired_at)
-             VALUES (:full_name, :email, :phone, :role, :department, :position, :color, :timezone, :permissions, :status, :hired_at)'
+            'INSERT INTO employees (full_name, email, phone, role, department, position, color, timezone, language, permissions, status, hired_at)
+             VALUES (:full_name, :email, :phone, :role, :department, :position, :color, :timezone, :language, :permissions, :status, :hired_at)'
         );
 
         $statement->execute([
@@ -84,6 +85,7 @@ final class EmployeeRepository
             'position' => $position,
             'color' => $color,
             'timezone' => $timezone,
+            'language' => $language,
             'permissions' => json_encode($permissions, JSON_THROW_ON_ERROR),
             'status' => 'active',
             'hired_at' => $hiredAt,
@@ -102,6 +104,7 @@ final class EmployeeRepository
         ?string $position,
         ?string $color,
         ?string $timezone,
+        ?string $language,
         array $permissions,
         ?string $hiredAt,
         ?string $terminatedAt
@@ -116,6 +119,7 @@ final class EmployeeRepository
                  position = :position,
                  color = :color,
                  timezone = :timezone,
+                 language = :language,
                  permissions = :permissions,
                  hired_at = :hired_at,
                  terminated_at = :terminated_at,
@@ -133,9 +137,27 @@ final class EmployeeRepository
             'position' => $position,
             'color' => $color,
             'timezone' => $timezone,
+            'language' => $language,
             'permissions' => json_encode($permissions, JSON_THROW_ON_ERROR),
             'hired_at' => $hiredAt,
             'terminated_at' => $terminatedAt,
+        ]);
+    }
+
+    public function updateLanguageByUsername(string $username, string $language): void
+    {
+        $normalized = strtolower(trim($username));
+        if ($normalized === '') {
+            return;
+        }
+
+        $statement = $this->pdo->prepare(
+            'UPDATE employees SET language = :language, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = :username OR LOWER(full_name) = :username'
+        );
+
+        $statement->execute([
+            'language' => $language,
+            'username' => $normalized,
         ]);
     }
 

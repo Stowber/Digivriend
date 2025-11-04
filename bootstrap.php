@@ -6,14 +6,19 @@ use App\Config\AppConfig;
 use App\Database\ConnectionFactory;
 use App\Database\SchemaManager;
 use App\Support\Env;
+use App\Support\Lang\Translator;
 
 require __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/src/Support/helpers.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
 Env::load(__DIR__ . '/.env');
+
+$preferredLocale = isset($_SESSION['language']) ? (string) $_SESSION['language'] : null;
+Translator::setLocale($preferredLocale);
 
 $appConfig = AppConfig::load();
 $pdo = null;

@@ -2,13 +2,28 @@
 
 declare(strict_types=1);
 
+use App\Support\Lang\Translator;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\WarehouseRepository;
-
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/templates/partials/main-nav.php';
+
+if (!function_exists('translate_dashboard_enum')) {
+    function translate_dashboard_enum(string $prefix, string $key): string
+    {
+        $normalizedKey = strtolower(str_replace(' ', '_', $key));
+        $translationKey = $prefix . $normalizedKey;
+        $translated = __($translationKey);
+
+        if ($translated === $translationKey) {
+            return ucfirst(str_replace('_', ' ', $normalizedKey));
+        }
+
+        return $translated;
+    }
+}
 
 $caseRepository = new CaseRepository($pdo);
 $warehouseRepository = new WarehouseRepository($pdo);
@@ -130,7 +145,7 @@ $averageLeadTime = $leadDurations !== [] ? round(array_sum($leadDurations) / cou
 
 $trendStatementSql = 'SELECT updated_at FROM cases WHERE updated_at >= :since';
 if ($typeFilter !== 'all') {
-    $trendStatementSql .= ' AND type = :type';
+    $trendStatementSql += ' AND type = :type';
 }
 $trendStatement = $pdo->prepare($trendStatementSql);
 $trendStatement->bindValue('since', $periodStartString);
@@ -187,8 +202,8 @@ $notificationCompletionRate = ($notificationTotal + $pendingNotifications) > 0
     ? max(0, min(100, (int) round(($notificationTotal / ($notificationTotal + $pendingNotifications)) * 100)))
     : null;
 $typeFilterLabel = $typeFilter === 'all'
-    ? 'Alle cases'
-    : ucfirst(str_replace('_', ' ', (string) $typeFilter));
+    ? __('dashboard.hero.meta.filter_all')
+    : translate_dashboard_enum('dashboard.case_types.', (string) $typeFilter);
 $now = new DateTimeImmutable('now');
 $lastActivityDate = null;
 if ($trendData !== []) {
@@ -199,12 +214,182 @@ if ($trendData !== []) {
     }
 }
 
+if ($lastActivityDate instanceof DateTimeInterface) {
+    $lastActivityDisplay = $lastActivityDate->format('d-m-Y');
+} else {
+    $lastActivityDisplay = __('dashboard.hero.meta.last_activity_none');
+}
+
+$heroSummary = __('dashboard.hero.summary', [
+    'open_cases' => number_format($openCases, 0, ',', '.'),
+    'pending_notifications' => number_format($pendingNotifications, 0, ',', '.'),
+]);
+
+$heroActiveHint = $longestWaiting > 0
+    ? __('dashboard.hero.metrics.active_cases.hint_waiting', ['days' => $longestWaiting])
+    : __('dashboard.hero.metrics.active_cases.hint_clear');
+
+$heroPickupHint = $todayPickups > 0
+    ? __('dashboard.hero.metrics.today_pickups.hint_any')
+    : __('dashboard.hero.metrics.today_pickups.hint_none');
+
+$heroNotificationHint = $pendingNotifications > 0
+    ? __('dashboard.hero.metrics.notifications.hint_any')
+    : __('dashboard.hero.metrics.notifications.hint_none');
+
+$casesCompletionMeta = $casesCompletionRate !== null
+    ? __('dashboard.highlights.cases.progress', ['rate' => $casesCompletionRate])
+    : null;
+
+$warehouseReadyMeta = $warehouseReadyRate !== null
+    ? __('dashboard.highlights.warehouse.progress_ready', ['rate' => $warehouseReadyRate])
+    : null;
+
+$notificationCompletionMeta = $notificationCompletionRate !== null
+    ? __('dashboard.highlights.notifications.progress', ['rate' => $notificationCompletionRate])
+    : null;
+
+$averageLeadTimeLabel = $averageLeadTime !== null
+    ? __('dashboard.highlights.lead_time.value', ['days' => $averageLeadTime])
+    : null;
+
+$longestWaitingLabel = $longestWaiting > 0
+    ? __('dashboard.highlights.wait_time.value', ['days' => $longestWaiting])
+    : __('dashboard.highlights.wait_time.empty');
+
+$customerHint = __('dashboard.highlights.customers.hint', [
+    'cases' => number_format($openCases, 0, ',', '.'),
+]);
+
+$caseHint = __('dashboard.highlights.cases.hint', [
+    'completed' => number_format($casesCompleted, 0, ',', '.'),
+]);
+
+$warehouseHint = __('dashboard.highlights.warehouse.hint', [
+    'available' => number_format($warehouseAvailableTotal, 0, ',', '.'),
+    'ready' => number_format($warehouseReadyTotal, 0, ',', '.'),
+]);
+
+$notificationsHint = __('dashboard.highlights.notifications.hint', [
+    'pending' => number_format($pendingNotifications, 0, ',', '.'),
+]);
+
+$leadTimeHint = __('dashboard.highlights.lead_time.hint');
+$waitTimeHint = __('dashboard.highlights.wait_time.hint');
+
+$caseTrendEmptyMessage = __('dashboard.panels.trend.empty');
+$caseSummaryEmptyMessage = __('dashboard.panels.case_summary.empty');
+$notificationEmptyMessage = __('dashboard.panels.notifications.empty');
+
+$modalCaseEmptyMessage = __('dashboard.modals.cases.empty');
+
+$heroPeriodValue = __('dashboard.hero.meta.period_value', ['days' => $periodDays]);
+$unknownLabel = __('dashboard.common.unknown');
+
+$activityCasesTitle = __('dashboard.activity.cases.title', ['days' => $periodDays]);
+$activityCasesSubtitle = __('dashboard.activity.cases.subtitle');
+$activityCasesRange = __('dashboard.activity.cases.range', [
+    'start' => $periodStart->format('d-m-Y'),
+    'end' => $now->format('d-m-Y'),
+]);
+$activityCasesUpdatesLabel = __('dashboard.activity.cases.stats.updates');
+$activityCasesCompletedLabel = __('dashboard.activity.cases.stats.completed');
+$activityCasesSuccessLabel = __('dashboard.activity.cases.stats.success');
+$activityCasesFooterLabel = __('dashboard.activity.cases.footer.label');
+
+$activityNotificationsTitle = __('dashboard.activity.notifications.title');
+$activityNotificationsSubtitle = __('dashboard.activity.notifications.subtitle');
+$activityNotificationsTotal = __('dashboard.activity.notifications.total', [
+    'total' => number_format($notificationTotal, 0, ',', '.'),
+]);
+$activityNotificationsEmpty = __('dashboard.activity.notifications.empty');
+$activityNotificationsFooterLabel = __('dashboard.activity.notifications.footer.open');
+
+$activityRecentCasesTitle = __('dashboard.activity.recent_cases.title');
+$activityRecentCasesSubtitle = __('dashboard.activity.recent_cases.subtitle');
+$activityRecentCasesEmpty = __('dashboard.activity.recent_cases.empty');
+$activityRecentCasesLink = __('dashboard.activity.recent_cases.link');
+$activityRecentCasesMeta = __('dashboard.activity.recent_cases.meta_template');
+
+$activityNotesTitle = __('dashboard.activity.notes.title');
+$activityNotesSubtitle = __('dashboard.activity.notes.subtitle');
+$activityNotesEmpty = __('dashboard.activity.notes.empty');
+$activityNotesCaseLabel = __('dashboard.activity.notes.case_label');
+$activityNotesCustomerLabel = __('dashboard.activity.notes.customer_label');
+
+$panelGridAria = __('dashboard.panels.grid_aria');
+$panelPickupsTitle = __('dashboard.panels.pickups.title');
+$panelPickupsSubtitle = __('dashboard.panels.pickups.subtitle');
+$panelPickupsViewAll = __('dashboard.panels.pickups.view_all');
+$panelPickupsHeaders = [
+    __('dashboard.panels.pickups.headers.customer'),
+    __('dashboard.panels.pickups.headers.code'),
+    __('dashboard.panels.pickups.headers.ready_date'),
+    __('dashboard.panels.pickups.headers.contact'),
+];
+$panelPickupsEmpty = __('dashboard.panels.pickups.empty');
+$panelPickupsPhoneLabel = __('dashboard.panels.pickups.phone');
+$panelPickupsEmailLabel = __('dashboard.panels.pickups.email');
+$panelPickupsStatusLabel = __('dashboard.panels.pickups.status');
+
+$panelCaseSummaryTitle = __('dashboard.panels.case_summary.title');
+$panelCaseSummarySubtitle = __('dashboard.panels.case_summary.subtitle');
+
+$panelTrendTitle = __('dashboard.panels.trend.title', ['days' => $periodDays]);
+$panelTrendSubtitle = __('dashboard.panels.trend.subtitle');
+
+$panelNotificationsTitle = __('dashboard.panels.notifications.title');
+$panelNotificationsSubtitle = __('dashboard.panels.notifications.subtitle');
+$panelNotificationsFooter = __('dashboard.panels.notifications.footer', [
+    'count' => number_format($casesCompleted, 0, ',', '.'),
+]);
+
+$modalCloseLabel = __('common.close');
+$modalCasesTitle = __('dashboard.modals.cases.title');
+$modalCasesSummary = __('dashboard.modals.cases.summary', [
+    'days' => $periodDays,
+    'created' => number_format($casesInPeriod, 0, ',', '.'),
+    'completed' => number_format($casesCompleted, 0, ',', '.'),
+]);
+$modalCasesCompletionLabel = $casesCompletionRate !== null
+    ? __('dashboard.modals.cases.completion', ['rate' => $casesCompletionRate])
+    : null;
+$modalCasesTip = __('dashboard.modals.cases.tip');
+
+$modalWarehouseTitle = __('dashboard.modals.warehouse.title');
+$modalWarehouseSummary = __('dashboard.modals.warehouse.summary', [
+    'total' => number_format($totalWarehouseItems, 0, ',', '.'),
+    'ready' => number_format($warehouseReadyTotal, 0, ',', '.'),
+    'reserved' => number_format($warehouseReservedTotal, 0, ',', '.'),
+]);
+$modalWarehouseLabels = [
+    'available' => __('dashboard.modals.warehouse.available'),
+    'ready' => __('dashboard.modals.warehouse.ready'),
+    'reserved' => __('dashboard.modals.warehouse.reserved'),
+];
+$modalWarehouseTip = __('dashboard.modals.warehouse.tip');
+
+$modalNotificationsTitle = __('dashboard.modals.notifications.title');
+$modalNotificationsSummary = __('dashboard.modals.notifications.summary', [
+    'total' => number_format($notificationTotal, 0, ',', '.'),
+]);
+$modalNotificationEmptyMessage = __('dashboard.modals.notifications.empty');
+$modalNotificationsOpen = __('dashboard.modals.notifications.open', [
+    'pending' => number_format($pendingNotifications, 0, ',', '.'),
+]);
+$modalNotificationsTip = __('dashboard.modals.notifications.tip');
+
+$footerCopyright = __('dashboard.footer.copyright', [
+    'year' => date('Y'),
+    'app' => __('app.name'),
+]);
+
 ?>
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
   <meta charset="UTF-8">
-  <title>Digivriend - Dashboard</title>
+  <title><?= htmlspecialchars(__('dashboard.meta.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/dashboard.css">
@@ -212,14 +397,14 @@ if ($trendData !== []) {
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+      <a href="index.php" class="logo" aria-label="<?= htmlspecialchars(__('dashboard.header.logo_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <span class="logo__mark" aria-hidden="true">DV</span>
         <span class="logo__text">
-          <span class="logo__title">Digivriend</span>
-          <span class="logo__subtitle">Serviceplatform</span>
+          <span class="logo__title"><?= htmlspecialchars(__('app.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="logo__subtitle"><?= htmlspecialchars(__('dashboard.header.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </span>
       </a>
-      <nav class="main-nav" aria-label="Hoofd navigatie">
+      <nav class="main-nav" aria-label="<?= htmlspecialchars(__('nav.aria.main'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <?php render_main_nav('dashboard'); ?>
       </nav>
     </div>
@@ -229,217 +414,223 @@ if ($trendData !== []) {
     <section class="dashboard__hero" aria-labelledby="dashboardTitle">
       <div class="dashboard__hero-layout">
         <div class="dashboard__hero-intro">
-          <span class="hero__badge">Realtime overzicht</span>
-          <h1 id="dashboardTitle">Digivriend Operations Dashboard</h1>
-          <p><?= number_format($openCases, 0, ',', '.') ?> actieve cases en <?= number_format($pendingNotifications, 0, ',', '.') ?> meldingen wachten op opvolging. Houd magazijn en communicatie real-time in het oog.</p>
+          <span class="hero__badge"><?= htmlspecialchars(__('dashboard.hero.badge'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <h1 id="dashboardTitle"><?= htmlspecialchars(__('dashboard.hero.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+          <p><?= htmlspecialchars($heroSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         </div>
         <div class="dashboard__hero-metrics">
           <article class="hero-metric">
-            <span class="hero-metric__label">Actieve cases</span>
+            <span class="hero-metric__label"><?= htmlspecialchars(__('dashboard.hero.metrics.active_cases.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             <span class="hero-metric__value"><?= number_format($openCases, 0, ',', '.') ?></span>
-            <span class="hero-metric__hint"><?= htmlspecialchars($longestWaiting > 0 ? $longestWaiting . ' dagen wachttijd' : 'Directe opvolging', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            <span class="hero-metric__hint"><?= htmlspecialchars($heroActiveHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           </article>
           <article class="hero-metric">
-            <span class="hero-metric__label">Ophaalmomenten vandaag</span>
+            <span class="hero-metric__label"><?= htmlspecialchars(__('dashboard.hero.metrics.today_pickups.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             <span class="hero-metric__value"><?= number_format($todayPickups, 0, ',', '.') ?></span>
-            <span class="hero-metric__hint"><?= htmlspecialchars($todayPickups > 0 ? 'Plan overdracht en communicatie' : 'Geen ophaalacties gepland', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            <span class="hero-metric__hint"><?= htmlspecialchars($heroPickupHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           </article>
           <article class="hero-metric">
-            <span class="hero-metric__label">Open meldingen</span>
+            <span class="hero-metric__label"><?= htmlspecialchars(__('dashboard.hero.metrics.notifications.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             <span class="hero-metric__value"><?= number_format($pendingNotifications, 0, ',', '.') ?></span>
-            <span class="hero-metric__hint"><?= htmlspecialchars($pendingNotifications > 0 ? 'Nog te informeren klanten' : 'Alle klanten op de hoogte', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            <span class="hero-metric__hint"><?= htmlspecialchars($heroNotificationHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           </article>
         </div>
       </div>
       <div class="dashboard__hero-meta">
         <div class="hero-meta__item">
-          <span class="hero-meta__label">Laatste update</span>
+          <span class="hero-meta__label"><?= htmlspecialchars(__('dashboard.hero.meta.last_update.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <span class="hero-meta__value"><?= htmlspecialchars($now->format('d-m-Y H:i'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
         <div class="hero-meta__item">
-          <span class="hero-meta__label">Periode</span>
-          <span class="hero-meta__value">Laatste <?= (int) $periodDays ?> dagen</span>
+          <span class="hero-meta__label"><?= htmlspecialchars(__('dashboard.hero.meta.period.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="hero-meta__value"><?= htmlspecialchars($heroPeriodValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
         <div class="hero-meta__item">
-          <span class="hero-meta__label">Actief filter</span>
+          <span class="hero-meta__label"><?= htmlspecialchars(__('dashboard.hero.meta.filter.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <span class="hero-meta__value"><?= htmlspecialchars($typeFilterLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
         <div class="hero-meta__item">
-          <span class="hero-meta__label">Laatste activiteit</span>
-          <span class="hero-meta__value"><?= $lastActivityDate instanceof DateTimeInterface ? htmlspecialchars($lastActivityDate->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'Nog geen activiteit' ?></span>
+          <span class="hero-meta__label"><?= htmlspecialchars(__('dashboard.hero.meta.last_activity.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="hero-meta__value"><?= htmlspecialchars($lastActivityDisplay, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
       </div>
       <div class="dashboard__hero-actions">
         <div class="hero__actions">
-          <a class="btn" href="ophaalbevestiging.php">Nieuwe ophaalbevestiging</a>
-          <a class="btn btn--ghost" href="klant-melding.php">Nieuwe klantmelding</a>
-          <a class="btn btn--ghost" href="netwerkcheck-brief.php">LIST</a>
+          <a class="btn" href="ophaalbevestiging.php"><?= htmlspecialchars(__('dashboard.hero.actions.pickup'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+          <a class="btn btn--ghost" href="klant-melding.php"><?= htmlspecialchars(__('dashboard.hero.actions.customer_notification'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+          <a class="btn btn--ghost" href="netwerkcheck-brief.php"><?= htmlspecialchars(__('dashboard.hero.actions.network_check'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
         </div>
-        <form method="GET" class="dashboard__filters" aria-label="Dashboardfilters">
+        <form method="GET" class="dashboard__filters" aria-label="<?= htmlspecialchars(__('dashboard.filters.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <div class="dashboard__filter">
-            <label for="type">Case type</label>
+            <label for="type"><?= htmlspecialchars(__('dashboard.filters.case_type.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
             <select id="type" name="type">
-              <option value="all"<?= $typeFilter === 'all' ? ' selected' : '' ?>>Alle typen</option>
+              <option value="all"<?= $typeFilter === 'all' ? ' selected' : '' ?>><?= htmlspecialchars(__('dashboard.filters.case_type.all'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
               <?php foreach ($distinctTypes as $typeOption): ?>
-                <option value="<?= htmlspecialchars((string) $typeOption, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $typeFilter === $typeOption ? ' selected' : '' ?>><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $typeOption)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <option value="<?= htmlspecialchars((string) $typeOption, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $typeFilter === $typeOption ? ' selected' : '' ?>><?= htmlspecialchars(translate_dashboard_enum('dashboard.case_types.', (string) $typeOption), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
               <?php endforeach; ?>
             </select>
           </div>
           <div class="dashboard__filter">
-            <label for="period">Periode</label>
+            <label for="period"><?= htmlspecialchars(__('dashboard.filters.period.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
             <select id="period" name="period">
               <?php foreach ($periodOptions as $option): ?>
-                <option value="<?= $option ?>"<?= $periodDays === $option ? ' selected' : '' ?>>Laatste <?= $option ?> dagen</option>
+                <option value="<?= $option ?>"<?= $periodDays === $option ? ' selected' : '' ?>><?= htmlspecialchars(__('dashboard.filters.period.option', ['days' => $option]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
               <?php endforeach; ?>
             </select>
           </div>
-          <button type="submit" class="btn">Filter toepassen</button>
+          <button type="submit" class="btn"><?= htmlspecialchars(__('dashboard.filters.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
         </form>
       </div>
     </section>
-      <section class="dashboard__highlights" aria-label="Belangrijkste KPI&#39;s">
+    <section class="dashboard__highlights" aria-label="<?= htmlspecialchars(__('dashboard.highlights.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <article class="insight-card">
         <header class="insight-card__header">
           <span class="insight-card__icon" aria-hidden="true">👥</span>
           <div>
-            <h2>Klantbestand</h2>
-            <p>Unieke profielen in beheer</p>
+            <h2><?= htmlspecialchars(__('dashboard.highlights.customers.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(__('dashboard.highlights.customers.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <p class="insight-card__value"><?= number_format($totalCustomers, 0, ',', '.') ?></p>
-        <p class="insight-card__hint"><?= htmlspecialchars(number_format($openCases, 0, ',', '.') . ' actieve cases gekoppeld', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars($customerHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </article>
       <article class="insight-card insight-card--interactive">
         <header class="insight-card__header">
           <span class="insight-card__icon" aria-hidden="true">📂</span>
           <div>
-            <h2>Case traject</h2>
-            <p>Werkvoorraad in geselecteerde periode</p>
+            <h2><?= htmlspecialchars(__('dashboard.highlights.cases.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(__('dashboard.highlights.cases.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <p class="insight-card__value"><?= number_format($casesInPeriod, 0, ',', '.') ?></p>
-        <p class="insight-card__hint"><?= htmlspecialchars(number_format($casesCompleted, 0, ',', '.') . ' afgerond', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars($caseHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php if ($casesCompletionRate !== null): ?>
           <div class="insight-card__progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $casesCompletionRate ?>">
             <span style="width: <?= $casesCompletionRate ?>%;"></span>
           </div>
-          <p class="insight-card__meta"><?= htmlspecialchars($casesCompletionRate . '% van de cases afgerond', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <p class="insight-card__meta"><?= htmlspecialchars($casesCompletionMeta, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php endif; ?>
-        <button type="button" class="insight-card__action" data-modal-open="modal-cases">Diepte-inzicht</button>
+        <button type="button" class="insight-card__action" data-modal-open="modal-cases"><?= htmlspecialchars(__('dashboard.highlights.cases.action'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
       </article>
       <article class="insight-card insight-card--interactive">
         <header class="insight-card__header">
           <span class="insight-card__icon" aria-hidden="true">🏬</span>
           <div>
-            <h2>Magazijnstatus</h2>
-            <p>Beschikbaarheid &amp; reserveringen</p>
+            <h2><?= htmlspecialchars(__('dashboard.highlights.warehouse.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(__('dashboard.highlights.warehouse.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <p class="insight-card__value"><?= number_format($totalWarehouseItems, 0, ',', '.') ?></p>
-        <p class="insight-card__hint"><?= htmlspecialchars(number_format($warehouseAvailableTotal, 0, ',', '.') . ' beschikbaar · ' . number_format($warehouseReadyTotal, 0, ',', '.') . ' klaar', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars($warehouseHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php if ($warehouseReadyRate !== null): ?>
           <div class="insight-card__progress insight-card__progress--accent" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $warehouseReadyRate ?>">
             <span style="width: <?= $warehouseReadyRate ?>%;"></span>
           </div>
-          <p class="insight-card__meta"><?= htmlspecialchars($warehouseReadyRate . '% klaar voor uitgifte', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <p class="insight-card__meta"><?= htmlspecialchars($warehouseReadyMeta, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php endif; ?>
-        <button type="button" class="insight-card__action" data-modal-open="modal-warehouse">Bekijk magazijn</button>
+        <button type="button" class="insight-card__action" data-modal-open="modal-warehouse"><?= htmlspecialchars(__('dashboard.highlights.warehouse.action'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
       </article>
       <article class="insight-card insight-card--interactive">
         <header class="insight-card__header">
           <span class="insight-card__icon" aria-hidden="true">✉️</span>
           <div>
-            <h2>Communicatie</h2>
-            <p>Uitgestuurde notificaties</p>
+            <h2><?= htmlspecialchars(__('dashboard.highlights.notifications.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(__('dashboard.highlights.notifications.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <p class="insight-card__value"><?= number_format($notificationTotal, 0, ',', '.') ?></p>
-        <p class="insight-card__hint"><?= htmlspecialchars(number_format($pendingNotifications, 0, ',', '.') . ' meldingen wachten nog', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars($notificationsHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php if ($notificationCompletionRate !== null): ?>
           <div class="insight-card__progress insight-card__progress--soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $notificationCompletionRate ?>">
             <span style="width: <?= $notificationCompletionRate ?>%;"></span>
           </div>
-          <p class="insight-card__meta"><?= htmlspecialchars($notificationCompletionRate . '% afgehandeld', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <p class="insight-card__meta"><?= htmlspecialchars($notificationCompletionMeta, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php endif; ?>
-        <button type="button" class="insight-card__action" data-modal-open="modal-notifications">Bekijk kanalen</button>
+        <button type="button" class="insight-card__action" data-modal-open="modal-notifications"><?= htmlspecialchars(__('dashboard.highlights.notifications.action'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
       </article>
       <article class="insight-card">
         <header class="insight-card__header">
           <span class="insight-card__icon" aria-hidden="true">⏱️</span>
           <div>
-            <h2>Gem. doorlooptijd</h2>
-            <p>Van gereed tot opgehaald</p>
+            <h2><?= htmlspecialchars(__('dashboard.highlights.lead_time.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(__('dashboard.highlights.lead_time.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
-        <p class="insight-card__value"><?= $averageLeadTime !== null ? htmlspecialchars($averageLeadTime . ' dagen', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '&mdash;' ?></p>
-        <p class="insight-card__hint">Focus op snelle opvolging van gereedmeldingen.</p>
+        <p class="insight-card__value">
+          <?php if ($averageLeadTimeLabel !== null): ?>
+            <?= htmlspecialchars($averageLeadTimeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          <?php else: ?>
+            &mdash;
+          <?php endif; ?>
+        </p>
+        <p class="insight-card__hint"><?= htmlspecialchars($leadTimeHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </article>
       <article class="insight-card">
         <header class="insight-card__header">
           <span class="insight-card__icon" aria-hidden="true">📅</span>
           <div>
-            <h2>Langste wachttijd</h2>
-            <p>Hoelang staat de oudste case klaar?</p>
+            <h2><?= htmlspecialchars(__('dashboard.highlights.wait_time.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(__('dashboard.highlights.wait_time.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
-        <p class="insight-card__value"><?= htmlspecialchars($longestWaiting > 0 ? $longestWaiting . ' dagen' : 'Geen wachtrij', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-        <p class="insight-card__hint">Monitor op escalatie en extra opvolging.</p>
+        <p class="insight-card__value"><?= htmlspecialchars($longestWaitingLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="insight-card__hint"><?= htmlspecialchars($waitTimeHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </article>
     </section>
 
-    <section class="dashboard__activity-grid" aria-label="Teamactiviteiten en communicatie">
+    <section class="dashboard__activity-grid" aria-label="<?= htmlspecialchars(__('dashboard.activity.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <article class="activity-card">
         <header class="activity-card__header">
           <div>
-            <h2 class="activity-card__title">Activiteit laatste <?= (int) $periodDays ?> dagen</h2>
-            <p class="activity-card__subtitle">Inzichten in de case-updates binnen de geselecteerde periode.</p>
+            <h2 class="activity-card__title"><?= htmlspecialchars($activityCasesTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="activity-card__subtitle"><?= htmlspecialchars($activityCasesSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
-          <span class="activity-card__tag"><?= htmlspecialchars($periodStart->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> &ndash; <?= htmlspecialchars($now->format('d-m-Y'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="activity-card__tag"><?= htmlspecialchars($activityCasesRange, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </header>
         <dl class="activity-card__stats">
           <div class="activity-card__stat">
-            <dt>Case-updates</dt>
+            <dt><?= htmlspecialchars($activityCasesUpdatesLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
             <dd><?= number_format($casesInPeriod, 0, ',', '.') ?></dd>
           </div>
           <div class="activity-card__stat">
-            <dt>Afgerond</dt>
+            <dt><?= htmlspecialchars($activityCasesCompletedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
             <dd><?= number_format($casesCompleted, 0, ',', '.') ?></dd>
           </div>
           <?php if ($casesCompletionRate !== null): ?>
             <div class="activity-card__stat">
-              <dt>Succesratio</dt>
+              <dt><?= htmlspecialchars($activityCasesSuccessLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
               <dd><?= htmlspecialchars($casesCompletionRate . '%', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
           <?php endif; ?>
         </dl>
         <footer class="activity-card__footer">
-          <span>Laatste update</span>
-          <strong><?= htmlspecialchars($lastActivityDate instanceof DateTimeInterface ? $lastActivityDate->format('d-m-Y H:i') : 'Nog geen activiteit', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+          <span><?= htmlspecialchars($activityCasesFooterLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <strong><?= htmlspecialchars($lastActivityDisplay, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
         </footer>
       </article>
 
       <article class="activity-card">
         <header class="activity-card__header">
           <div>
-            <h2 class="activity-card__title">Verstuurde meldingen</h2>
-            <p class="activity-card__subtitle">Overzicht van kanalen die klanten recent bereikten.</p>
+            <h2 class="activity-card__title"><?= htmlspecialchars($activityNotificationsTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="activity-card__subtitle"><?= htmlspecialchars($activityNotificationsSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
-          <span class="activity-card__badge">Totaal <?= number_format($notificationTotal, 0, ',', '.') ?></span>
+          <span class="activity-card__badge"><?= htmlspecialchars($activityNotificationsTotal, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </header>
         <?php if (empty($notificationsByChannel)): ?>
-          <p class="activity-card__empty">Er zijn nog geen meldingen verzonden in deze periode.</p>
+          <p class="activity-card__empty"><?= htmlspecialchars($activityNotificationsEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php else: ?>
           <ul class="activity-card__list activity-card__list--notifications">
             <?php foreach ($notificationsByChannel as $channel => $count): ?>
               <li>
-                <span class="activity-card__list-label"><?= htmlspecialchars(strtoupper((string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span class="activity-card__list-label"><?= htmlspecialchars(translate_dashboard_enum('dashboard.notification_channels.', (string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <span class="activity-card__list-value"><?= number_format($count, 0, ',', '.') ?></span>
               </li>
             <?php endforeach; ?>
           </ul>
         <?php endif; ?>
         <div class="activity-card__footer activity-card__footer--split">
-          <span>Open meldingen</span>
+          <span><?= htmlspecialchars($activityNotificationsFooterLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <strong><?= number_format($pendingNotifications, 0, ',', '.') ?></strong>
         </div>
       </article>
@@ -447,19 +638,33 @@ if ($trendData !== []) {
       <article class="activity-card">
         <header class="activity-card__header">
           <div>
-            <h2 class="activity-card__title">Laatste cases</h2>
-            <p class="activity-card__subtitle">Recent bijgewerkte dossiers voor snelle opvolging.</p>
+            <h2 class="activity-card__title"><?= htmlspecialchars($activityRecentCasesTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="activity-card__subtitle"><?= htmlspecialchars($activityRecentCasesSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <?php if (empty($recentCases)): ?>
-          <p class="activity-card__empty">Nog geen cases geregistreerd.</p>
+          <p class="activity-card__empty"><?= htmlspecialchars($activityRecentCasesEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php else: ?>
           <ul class="activity-card__list activity-card__list--cases">
             <?php foreach ($recentCases as $case): ?>
+              <?php
+                $caseSummaryText = trim((string) ($case['summary'] ?? ''));
+                $caseTypeLabel = translate_dashboard_enum('dashboard.case_types.', (string) ($case['type'] ?? ''));
+                if ($caseSummaryText === '') {
+                    $caseSummaryText = $caseTypeLabel !== '' ? $caseTypeLabel : $unknownLabel;
+                }
+                $caseStatusLabel = translate_dashboard_enum('dashboard.case_status.', (string) ($case['status'] ?? ''));
+                $caseUpdatedAt = date('d-m-Y H:i', strtotime((string) $case['updated_at']));
+                $caseMeta = strtr($activityRecentCasesMeta, [
+                    ':type' => $caseTypeLabel,
+                    ':status' => $caseStatusLabel,
+                    ':updated_at' => $caseUpdatedAt,
+                ]);
+              ?>
               <li>
-                <div class="activity-card__case-title"><?= htmlspecialchars((string) ($case['summary'] ?? ucfirst((string) $case['type'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                <div class="activity-card__case-meta">Type: <?= htmlspecialchars((string) $case['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · Status: <?= htmlspecialchars((string) $case['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $case['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                <a class="activity-card__link" href="case.php?id=<?= (int) $case['id'] ?>">Bekijk case</a>
+                <div class="activity-card__case-title"><?= htmlspecialchars($caseSummaryText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <div class="activity-card__case-meta"><?= htmlspecialchars($caseMeta, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <a class="activity-card__link" href="case.php?id=<?= (int) $case['id'] ?>"><?= htmlspecialchars($activityRecentCasesLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -469,22 +674,32 @@ if ($trendData !== []) {
       <article class="activity-card activity-card--notes">
         <header class="activity-card__header">
           <div>
-            <h2 class="activity-card__title">Recente notities</h2>
-            <p class="activity-card__subtitle">Laatste klantinteracties en servicelogboek.</p>
+            <h2 class="activity-card__title"><?= htmlspecialchars($activityNotesTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="activity-card__subtitle"><?= htmlspecialchars($activityNotesSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <?php if (empty($recentNotes)): ?>
-          <p class="activity-card__empty">Er zijn nog geen notities toegevoegd.</p>
+          <p class="activity-card__empty"><?= htmlspecialchars($activityNotesEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php else: ?>
           <ul class="note-list">
             <?php foreach ($recentNotes as $note): ?>
+              <?php
+                $noteSummary = trim((string) ($note['summary'] ?? ''));
+                if ($noteSummary === '') {
+                    $noteSummary = $unknownLabel;
+                }
+              ?>
               <li class="note-card">
                 <div class="note-card__meta">
                   <span class="note-card__author"><?= htmlspecialchars((string) $note['author'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                   <span class="note-card__date"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $note['created_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 </div>
                 <div class="note-card__body"><?= nl2br(htmlspecialchars((string) $note['body'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
-                <div class="note-card__footer">Case: <a href="case.php?id=<?= (int) $note['case_id'] ?>"><?= htmlspecialchars((string) ($note['summary'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a> · Klant: <?= htmlspecialchars((string) $note['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <div class="note-card__footer">
+                  <span><?= htmlspecialchars($activityNotesCaseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>:</span>
+                  <a href="case.php?id=<?= (int) $note['case_id'] ?>"><?= htmlspecialchars($noteSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+                  <span> · <?= htmlspecialchars($activityNotesCustomerLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>: <?= htmlspecialchars((string) $note['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                </div>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -492,44 +707,46 @@ if ($trendData !== []) {
       </article>
     </section>
 
-    <section class="dashboard__panel-grid" aria-label="Operationele details">
+    <section class="dashboard__panel-grid" aria-label="<?= htmlspecialchars($panelGridAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <article class="dashboard__panel dashboard__panel--stretch">
         <header class="dashboard__panel-header">
           <div>
-            <h2>Openstaande ophaalbevestigingen</h2>
-            <p class="dashboard__panel-subtitle">Realtime overzicht van klanten die gereed staan</p>
+            <h2><?= htmlspecialchars($panelPickupsTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="dashboard__panel-subtitle"><?= htmlspecialchars($panelPickupsSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
-          <a href="ophaalbevestigingen-list.php" class="btn-link">Bekijk alle</a>
+          <a href="ophaalbevestigingen-list.php" class="btn-link"><?= htmlspecialchars($panelPickupsViewAll, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
         </header>
         <table class="data-table">
           <thead>
             <tr>
-              <th>Klant</th>
-              <th>Code</th>
-              <th>Datum gereed</th>
-              <th>Contact</th>
+              <?php foreach ($panelPickupsHeaders as $header): ?>
+                <th><?= htmlspecialchars($header, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+              <?php endforeach; ?>
             </tr>
           </thead>
           <tbody>
           <?php if (empty($upcomingPickups)): ?>
               <tr>
-                <td colspan="4" class="empty-state">Geen openstaande bevestigingen.</td>
+                <td colspan="4" class="empty-state"><?= htmlspecialchars($panelPickupsEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
               </tr>
             <?php else: ?>
               <?php foreach ($upcomingPickups as $pickup): ?>
+                <?php
+                  $pickupStatus = translate_dashboard_enum('dashboard.case_status.', (string) ($pickup['status'] ?? ''));
+                ?>
                 <tr>
                   <td>
                     <strong><?= htmlspecialchars((string) $pickup['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong><br>
-                    <span class="muted">Status: <?= htmlspecialchars((string) $pickup['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <span class="muted"><?= htmlspecialchars($panelPickupsStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>: <?= htmlspecialchars($pickupStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                   </td>
                   <td><?= htmlspecialchars((string) ($pickup['ophaalcode'] ?? $pickup['reference_code']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string) ($pickup['datumgereed'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td>
                     <?php if (!empty($pickup['phone'])): ?>
-                      <div class="muted">Tel: <?= htmlspecialchars((string) $pickup['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                      <div class="muted"><?= htmlspecialchars($panelPickupsPhoneLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>: <?= htmlspecialchars((string) $pickup['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
                     <?php endif; ?>
                     <?php if (!empty($pickup['email'])): ?>
-                      <div class="muted">E-mail: <?= htmlspecialchars((string) $pickup['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                      <div class="muted"><?= htmlspecialchars($panelPickupsEmailLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>: <?= htmlspecialchars((string) $pickup['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
                     <?php endif; ?>
                   </td>
                 </tr>
@@ -537,26 +754,26 @@ if ($trendData !== []) {
             <?php endif; ?>
           </tbody>
         </table>
-      w</article>
+      </article>
 
       <article class="dashboard__panel">
         <header class="dashboard__panel-header">
           <div>
-            <h2>Case verdeling</h2>
-            <p class="dashboard__panel-subtitle">Inzicht per type en status</p>
+            <h2><?= htmlspecialchars($panelCaseSummaryTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="dashboard__panel-subtitle"><?= htmlspecialchars($panelCaseSummarySubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <div class="case-summary">
           <?php if (empty($caseSummary)): ?>
-            <p class="empty-state">Nog geen cases aangemaakt.</p>
+            <p class="empty-state"><?= htmlspecialchars($caseSummaryEmptyMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php else: ?>
             <?php foreach ($caseSummary as $type => $statuses): ?>
               <article class="case-summary__item">
-                <h3><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $type)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <h3><?= htmlspecialchars(translate_dashboard_enum('dashboard.case_types.', (string) $type), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
                 <ul>
                   <?php foreach ($statuses as $status => $count): ?>
                     <li>
-                      <span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <span><?= htmlspecialchars(translate_dashboard_enum('dashboard.case_status.', (string) $status), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                       <strong><?= (int) $count ?></strong>
                     </li>
                   <?php endforeach; ?>
@@ -570,13 +787,13 @@ if ($trendData !== []) {
       <article class="dashboard__panel">
         <header class="dashboard__panel-header">
           <div>
-            <h2>Activiteit laatste <?= (int) $periodDays ?> dagen</h2>
-            <p class="dashboard__panel-subtitle">Aantal case-updates per dag</p>
+            <h2><?= htmlspecialchars($panelTrendTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="dashboard__panel-subtitle"><?= htmlspecialchars($panelTrendSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <div class="trend-list">
           <?php if (empty($trendData)): ?>
-            <p class="empty-state">Geen case-activiteit in deze periode.</p>
+            <p class="empty-state"><?= htmlspecialchars($caseTrendEmptyMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php else: ?>
             <ul>
               <?php foreach ($trendData as $dateKey => $value): ?>
@@ -593,24 +810,24 @@ if ($trendData !== []) {
       <article class="dashboard__panel">
         <header class="dashboard__panel-header">
            <div>
-            <h2>Verstuurde meldingen</h2>
-            <p class="dashboard__panel-subtitle">Kanaalprestatie en follow-up</p>
+            <h2><?= htmlspecialchars($panelNotificationsTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+            <p class="dashboard__panel-subtitle"><?= htmlspecialchars($panelNotificationsSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
         </header>
         <ul class="notifications-summary">
           <?php if (empty($notificationsByChannel)): ?>
-            <li class="empty-state">Nog geen meldingen verzonden in deze periode.</li>
+            <li class="empty-state"><?= htmlspecialchars($notificationEmptyMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
           <?php else: ?>
             <?php foreach ($notificationsByChannel as $channel => $count): ?>
               <li>
-                <span><?= htmlspecialchars(strtoupper((string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span><?= htmlspecialchars(translate_dashboard_enum('dashboard.notification_channels.', (string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <strong><?= (int) $count ?></strong>
               </li>
             <?php endforeach; ?>
           <?php endif; ?>
         </ul>
         <div class="notifications-summary__footer">
-          <span>Afgeronde cases: <strong><?= number_format($casesCompleted, 0, ',', '.') ?></strong></span>
+          <span><?= htmlspecialchars($panelNotificationsFooter, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
       </article>
     </section>
@@ -620,25 +837,25 @@ if ($trendData !== []) {
     <div class="modal__overlay" data-modal-close></div>
     <div class="modal__content" role="document">
       <header class="modal__header">
-        <h2 id="modalCasesTitle">Diepte-inzicht case traject</h2>
-        <button type="button" class="modal__close" data-modal-close aria-label="Sluit pop-up"><span aria-hidden="true">&times;</span></button>
+        <h2 id="modalCasesTitle"><?= htmlspecialchars($modalCasesTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars($modalCloseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><span aria-hidden="true">&times;</span></button>
       </header>
       <div class="modal__body">
-        <p>In de laatste <?= (int) $periodDays ?> dagen zijn <?= number_format($casesInPeriod, 0, ',', '.') ?> cases aangemaakt waarvan <?= number_format($casesCompleted, 0, ',', '.') ?> werden afgerond.</p>
-        <?php if ($casesCompletionRate !== null): ?>
-          <p class="modal__note">Afrondingspercentage: <strong><?= htmlspecialchars($casesCompletionRate . '%', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>.</p>
+        <p><?= htmlspecialchars($modalCasesSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <?php if ($modalCasesCompletionLabel !== null): ?>
+          <p class="modal__note"><?= htmlspecialchars($modalCasesCompletionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php endif; ?>
         <?php if (empty($caseSummary)): ?>
-          <p class="empty-state">Nog geen cases aangemaakt.</p>
+          <p class="empty-state"><?= htmlspecialchars($modalCaseEmptyMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php else: ?>
           <div class="modal__grid">
             <?php foreach ($caseSummary as $type => $statuses): ?>
               <article class="modal__card">
-                <h3><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $type)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <h3><?= htmlspecialchars(translate_dashboard_enum('dashboard.case_types.', (string) $type), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
                 <ul class="modal__list">
                   <?php foreach ($statuses as $status => $count): ?>
                     <li>
-                      <span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <span><?= htmlspecialchars(translate_dashboard_enum('dashboard.case_status.', (string) $status), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                       <strong><?= (int) $count ?></strong>
                     </li>
                   <?php endforeach; ?>
@@ -649,7 +866,7 @@ if ($trendData !== []) {
         <?php endif; ?>
       </div>
       <footer class="modal__footer">
-        <p>Tip: filter op type om specifieke diensten sneller te analyseren.</p>
+        <p><?= htmlspecialchars($modalCasesTip, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </footer>
     </div>
   </div>
@@ -658,21 +875,21 @@ if ($trendData !== []) {
     <div class="modal__overlay" data-modal-close></div>
     <div class="modal__content" role="document">
       <header class="modal__header">
-        <h2 id="modalWarehouseTitle">Magazijninzicht</h2>
-        <button type="button" class="modal__close" data-modal-close aria-label="Sluit pop-up"><span aria-hidden="true">&times;</span></button>
+        <h2 id="modalWarehouseTitle"><?= htmlspecialchars($modalWarehouseTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars($modalCloseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><span aria-hidden="true">&times;</span></button>
       </header>
       <div class="modal__body">
-        <p>Het magazijn bevat <?= number_format($totalWarehouseItems, 0, ',', '.') ?> registraties met <?= number_format($warehouseReadyTotal, 0, ',', '.') ?> klaar voor uitgifte en <?= number_format($warehouseReservedTotal, 0, ',', '.') ?> gereserveerd.</p>
+        <p><?= htmlspecialchars($modalWarehouseSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <ul class="modal__list modal__list--stacked">
-          <li><span>Beschikbaar</span><strong><?= number_format($warehouseAvailableTotal, 0, ',', '.') ?></strong></li>
-          <li><span>Klaar</span><strong><?= number_format($warehouseReadyTotal, 0, ',', '.') ?></strong></li>
-          <li><span>Gereserveerd</span><strong><?= number_format($warehouseReservedTotal, 0, ',', '.') ?></strong></li>
+          <li><span><?= htmlspecialchars($modalWarehouseLabels['available'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><strong><?= number_format($warehouseAvailableTotal, 0, ',', '.') ?></strong></li>
+          <li><span><?= htmlspecialchars($modalWarehouseLabels['ready'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><strong><?= number_format($warehouseReadyTotal, 0, ',', '.') ?></strong></li>
+          <li><span><?= htmlspecialchars($modalWarehouseLabels['reserved'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><strong><?= number_format($warehouseReservedTotal, 0, ',', '.') ?></strong></li>
         </ul>
         <?php if (!empty($warehouseStatusCounts)): ?>
           <div class="modal__grid modal__grid--compact">
             <?php foreach ($warehouseStatusCounts as $status => $count): ?>
               <div class="modal__stat">
-                <span><?= htmlspecialchars((string) ucfirst(str_replace('_', ' ', (string) $status)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span><?= htmlspecialchars(translate_dashboard_enum('dashboard.warehouse.status.', (string) $status), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <strong><?= (int) $count ?></strong>
               </div>
             <?php endforeach; ?>
@@ -680,7 +897,7 @@ if ($trendData !== []) {
         <?php endif; ?>
       </div>
       <footer class="modal__footer">
-        <p>Plan uitgiftes vanuit dit overzicht en stem af met het serviceteam.</p>
+        <p><?= htmlspecialchars($modalWarehouseTip, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </footer>
     </div>
   </div>
@@ -689,34 +906,34 @@ if ($trendData !== []) {
     <div class="modal__overlay" data-modal-close></div>
     <div class="modal__content" role="document">
       <header class="modal__header">
-        <h2 id="modalNotificationsTitle">Notificatiekanalen</h2>
-        <button type="button" class="modal__close" data-modal-close aria-label="Sluit pop-up"><span aria-hidden="true">&times;</span></button>
+        <h2 id="modalNotificationsTitle"><?= htmlspecialchars($modalNotificationsTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars($modalCloseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><span aria-hidden="true">&times;</span></button>
       </header>
       <div class="modal__body">
-        <p>In de geselecteerde periode zijn <?= number_format($notificationTotal, 0, ',', '.') ?> meldingen verstuurd naar klanten.</p>
+        <p><?= htmlspecialchars($modalNotificationsSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php if (empty($notificationsByChannel)): ?>
-          <p class="empty-state">Nog geen meldingen verzonden in deze periode.</p>
+          <p class="empty-state"><?= htmlspecialchars($modalNotificationEmptyMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <?php else: ?>
           <ul class="modal__list">
             <?php foreach ($notificationsByChannel as $channel => $count): ?>
               <li>
-                <span><?= htmlspecialchars(strtoupper((string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span><?= htmlspecialchars(translate_dashboard_enum('dashboard.notification_channels.', (string) $channel), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <strong><?= (int) $count ?></strong>
               </li>
             <?php endforeach; ?>
           </ul>
         <?php endif; ?>
-        <p class="modal__note">Open meldingen: <strong><?= number_format($pendingNotifications, 0, ',', '.') ?></strong>.</p>
+        <p class="modal__note"><?= htmlspecialchars($modalNotificationsOpen, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
       <footer class="modal__footer">
-        <p>Laat meldingen automatisch opvolgen of plan handmatige acties direct.</p>
+        <p><?= htmlspecialchars($modalNotificationsTip, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </footer>
     </div>
   </div>
 
   <footer class="main-footer">
     <div class="container">
-      <p>&copy; <?= date('Y') ?> Digivriend. Alle rechten voorbehouden.</p>
+      <p><?= htmlspecialchars($footerCopyright, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
     </div>
   </footer>
 

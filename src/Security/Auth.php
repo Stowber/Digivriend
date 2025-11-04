@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use App\Support\Lang\Translator;
+use App\Support\Repositories\EmployeeRepository;
 use PDO;
 
 final class Auth
@@ -29,6 +31,9 @@ final class Auth
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['language'] = self::resolveLanguage($pdo, $user['username'], (string) ($user['language'] ?? ''));
+
+        Translator::setLocale($_SESSION['language']);
 
         return true;
     }
@@ -88,5 +93,36 @@ final class Auth
         }
 
         return in_array($role, $allowedRoles, true);
+    }
+    public static function language(): string
+    {
+        if (!self::check()) {
+            return Translator::locale();
+        }
+
+        $locale = isset($_SESSION['language']) ? (string) $_SESSION['language'] : '';
+
+        return $locale !== '' ? $locale : Translator::locale();
+    }
+
+    private static function resolveLanguage(PDO $pdo, string $username, string $userLanguage): string
+    {
+        $preferred = strtolower(trim($userLanguage));
+
+        if ($preferred !== '') {
+            return $preferred;
+        }
+
+        $employeeRepository = new EmployeeRepository($pdo);
+        $employee = $employeeRepository->findByUsername($username);
+
+        if (is_array($employee)) {
+            $employeeLanguage = strtolower(trim((string) ($employee['language'] ?? '')));
+            if ($employeeLanguage !== '') {
+                return $employeeLanguage;
+            }
+        }
+
+        return Translator::locale();
     }
 }
