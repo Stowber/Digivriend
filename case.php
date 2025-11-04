@@ -728,6 +728,188 @@ if ($currentAction === 'intake-attendance' && $attendanceErrors !== []) {
 $notes = $noteRepository->forCase((int) $caseId);
 $csrfToken = Csrf::token();
 $checklists = $checklistRepository->forCase((int) $caseId);
+$checklistQuickActions = [
+    [
+        'id' => 'checklist-cleaning-modal',
+        'label' => 'Czyszczenie',
+        'eyebrow' => 'Szybkie działanie',
+        'description' => 'Wybierz rodzaj czyszczenia, aby błyskawicznie zaplanować prace porządkowe przy urządzeniu.',
+        'submit_label' => 'Dodaj zadanie czyszczenia',
+        'options' => [
+            [
+                'id' => 'physical',
+                'title' => 'Czyszczenie fizyczne',
+                'description' => 'Odkurzenie obudowy, wentylatorów oraz filtrów powietrza.',
+                'value' => 'Czyszczenie fizyczne',
+            ],
+            [
+                'id' => 'system',
+                'title' => 'Czyszczenie systemu',
+                'description' => 'Usuwanie zbędnych aplikacji, plików tymczasowych i autostartu.',
+                'value' => 'Czyszczenie systemu',
+            ],
+            [
+                'id' => 'cooling',
+                'title' => 'Konserwacja układu chłodzenia',
+                'description' => 'Demontaż i czyszczenie radiatorów, wymiana pasty/padów termicznych.',
+                'value' => 'Konserwacja układu chłodzenia',
+            ],
+            [
+                'id' => 'finishing',
+                'title' => 'Wykończenie i dezynfekcja',
+                'description' => 'Czyszczenie powierzchni zewnętrznych i dezynfekcja punktów dotyku.',
+                'value' => 'Końcowe czyszczenie i dezynfekcja',
+            ],
+        ],
+    ],
+    [
+        'id' => 'checklist-replacement-modal',
+        'label' => 'Wymiana',
+        'eyebrow' => 'Szybkie działanie',
+        'description' => 'Zaplanowane wymiany komponentów możesz dodać jednym kliknięciem.',
+        'submit_label' => 'Dodaj zadanie wymiany',
+        'options' => [
+            [
+                'id' => 'cpu',
+                'title' => 'CPU',
+                'description' => 'Demontaż starego procesora i instalacja nowego.',
+                'value' => 'Wymiana CPU',
+            ],
+            [
+                'id' => 'gpu',
+                'title' => 'GPU',
+                'description' => 'Wymiana karty graficznej wraz z konfiguracją sterowników.',
+                'value' => 'Wymiana GPU',
+            ],
+            [
+                'id' => 'motherboard',
+                'title' => 'Motherboard',
+                'description' => 'Wymiana płyty głównej oraz ponowne okablowanie.',
+                'value' => 'Wymiana płyty głównej',
+            ],
+            [
+                'id' => 'ram',
+                'title' => 'RAM',
+                'description' => 'Rozbudowa lub wymiana pamięci operacyjnej.',
+                'value' => 'Wymiana / rozbudowa RAM',
+            ],
+            [
+                'id' => 'psu',
+                'title' => 'PSU',
+                'description' => 'Demontaż i instalacja nowego zasilacza.',
+                'value' => 'Wymiana zasilacza',
+            ],
+            [
+                'id' => 'storage',
+                'title' => 'Dysk',
+                'description' => 'Wymiana dysku oraz przeniesienie danych jeśli wymagane.',
+                'value' => 'Wymiana dysku',
+            ],
+            [
+                'id' => 'other',
+                'title' => 'Inne komponenty',
+                'description' => 'Zadanie własne związane z wymianą lub montażem.',
+                'requires_input' => true,
+                'input_label' => 'Opisz komponent do wymiany',
+                'input_placeholder' => 'Np. wymiana chłodzenia wodnego',
+            ],
+        ],
+    ],
+    [
+        'id' => 'checklist-diagnostics-modal',
+        'label' => 'Diagnostyka',
+        'eyebrow' => 'Szybkie działanie',
+        'description' => 'Dodaj standardowe kroki diagnostyczne, aby uporządkować proces analizy.',
+        'submit_label' => 'Dodaj zadanie diagnostyczne',
+        'options' => [
+            [
+                'id' => 'hardware',
+                'title' => 'Diagnostyka sprzętowa',
+                'description' => 'Testy komponentów: CPU, RAM, storage, zasilanie.',
+                'value' => 'Diagnostyka sprzętowa',
+            ],
+            [
+                'id' => 'software',
+                'title' => 'Diagnostyka systemu',
+                'description' => 'Analiza logów, stabilności systemu i konfliktów sterowników.',
+                'value' => 'Diagnostyka systemowa',
+            ],
+            [
+                'id' => 'stress',
+                'title' => 'Testy obciążeniowe',
+                'description' => 'Przeprowadzenie testów stresowych i monitorowanie temperatur.',
+                'value' => 'Testy obciążeniowe',
+            ],
+            [
+                'id' => 'report',
+                'title' => 'Raport diagnostyczny',
+                'description' => 'Przygotowanie i omówienie wyników diagnozy.',
+                'value' => 'Przygotowanie raportu diagnostycznego',
+            ],
+            [
+                'id' => 'custom',
+                'title' => 'Własny scenariusz',
+                'description' => 'Dodaj dowolny krok diagnozy specyficzny dla tej sprawy.',
+                'requires_input' => true,
+                'input_label' => 'Opisz zadanie diagnostyczne',
+                'input_placeholder' => 'Np. diagnostyka RAID / macierzy NAS',
+            ],
+        ],
+    ],
+    [
+        'id' => 'checklist-updates-modal',
+        'label' => 'Aktualizacje i testy',
+        'eyebrow' => 'Szybkie działanie',
+        'description' => 'Wybierz działania związane z aktualizacjami, testami końcowymi lub zabezpieczeniami.',
+        'submit_label' => 'Dodaj zadanie serwisowe',
+        'options' => [
+            [
+                'id' => 'os_update',
+                'title' => 'Aktualizacja systemu',
+                'description' => 'Instalacja najnowszych aktualizacji systemu operacyjnego.',
+                'value' => 'Aktualizacja systemu operacyjnego',
+            ],
+            [
+                'id' => 'drivers',
+                'title' => 'Sterowniki',
+                'description' => 'Aktualizacja sterowników urządzeń oraz firmware.',
+                'value' => 'Aktualizacja sterowników i firmware',
+            ],
+            [
+                'id' => 'bios',
+                'title' => 'BIOS / UEFI',
+                'description' => 'Aktualizacja BIOS/UEFI i przywrócenie konfiguracji.',
+                'value' => 'Aktualizacja BIOS / UEFI',
+            ],
+            [
+                'id' => 'security',
+                'title' => 'Poprawki bezpieczeństwa',
+                'description' => 'Instalacja poprawek zabezpieczeń, konfiguracja antywirusa.',
+                'value' => 'Instalacja poprawek bezpieczeństwa',
+            ],
+            [
+                'id' => 'backup',
+                'title' => 'Kopia zapasowa',
+                'description' => 'Wykonanie kopii zapasowej danych klienta.',
+                'value' => 'Wykonanie kopii zapasowej',
+            ],
+            [
+                'id' => 'final-test',
+                'title' => 'Testy końcowe',
+                'description' => 'Sprawdzenie działania po naprawie, testy funkcjonalne.',
+                'value' => 'Testy końcowe po serwisie',
+            ],
+            [
+                'id' => 'custom',
+                'title' => 'Dodatkowe zadanie',
+                'description' => 'Dowolne działanie końcowe lub administracyjne.',
+                'requires_input' => true,
+                'input_label' => 'Opisz dodatkowe zadanie',
+                'input_placeholder' => 'Np. konfiguracja oprogramowania branżowego',
+            ],
+        ],
+    ],
+];
 $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN);
 ?>
 <!DOCTYPE html>
@@ -1192,12 +1374,20 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           <?php foreach ($checklists as $checklist): ?>
             <article class="checklist-card">
               <header class="checklist-card__header">
-                <div>
+                <div class="checklist-card__title">
                   <h3><?= htmlspecialchars((string) $checklist['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-                  <div class="muted">
-                    <?php if (!empty($checklist['assigned_to'])): ?>Toegewezen aan <?= htmlspecialchars((string) $checklist['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
-                    <?php if (!empty($checklist['due_at'])): ?> · Deadline <?= htmlspecialchars(date('d-m-Y', strtotime((string) $checklist['due_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
-                  </div>
+                  <?php
+                    $metaParts = [];
+                    if (!empty($checklist['assigned_to'])) {
+                        $metaParts[] = 'Toegewezen aan ' . htmlspecialchars((string) $checklist['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                    }
+                    if (!empty($checklist['due_at'])) {
+                        $metaParts[] = 'Deadline ' . htmlspecialchars(date('d-m-Y', strtotime((string) $checklist['due_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                    }
+                  ?>
+                  <?php if ($metaParts !== []): ?>
+                    <div class="checklist-card__meta"><?= implode(' · ', $metaParts) ?></div>
+                  <?php endif; ?>
                 </div>
                 <form method="POST">
                   <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
@@ -1206,6 +1396,20 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
                   <button type="submit" class="btn btn--ghost" onclick="return confirm('Checklist verwijderen?')">Verwijder</button>
                 </form>
               </header>
+
+              <?php if ($checklistQuickActions !== []): ?>
+                <div class="checklist-card__actions">
+                  <p class="checklist-card__actions-label" id="checklist-actions-<?= (int) $checklist['id'] ?>">Szybkie działania</p>
+                  <div class="checklist-quick-actions" role="group" aria-labelledby="checklist-actions-<?= (int) $checklist['id'] ?>">
+                    <?php foreach ($checklistQuickActions as $quickAction): ?>
+                      <?php if (empty($quickAction['id']) || empty($quickAction['label'])) { continue; } ?>
+                      <button type="button" class="checklist-quick-action" data-modal-target="<?= htmlspecialchars((string) $quickAction['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-checklist="<?= (int) $checklist['id'] ?>">
+                        <?= htmlspecialchars((string) $quickAction['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      </button>
+                    <?php endforeach; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
 
               <ul class="checklist-items">
                 <?php if (empty($checklist['items'])): ?>
@@ -1243,6 +1447,87 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           <?php endforeach; ?>
         <?php endif; ?>
       </div>
+      <?php if ($checklistQuickActions !== []): ?>
+        <?php foreach ($checklistQuickActions as $quickActionModal): ?>
+          <?php
+            $modalId = (string) ($quickActionModal['id'] ?? '');
+            if ($modalId === '') {
+                continue;
+            }
+            $modalTitleId = $modalId . '-title';
+            $modalOptions = is_array($quickActionModal['options'] ?? null) ? $quickActionModal['options'] : [];
+          ?>
+          <div class="modal checklist-modal" id="<?= htmlspecialchars($modalId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="<?= htmlspecialchars($modalTitleId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <div class="modal__panel" role="document">
+              <form method="POST" class="checklist-modal-form" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="add-checklist-item">
+                <input type="hidden" name="checklist_id" value="">
+                <input type="hidden" name="description" value="">
+                <header class="modal__header">
+                  <div>
+                    <?php if (!empty($quickActionModal['eyebrow'])): ?>
+                      <p class="modal__eyebrow"><?= htmlspecialchars((string) $quickActionModal['eyebrow'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                    <?php endif; ?>
+                    <h2 id="<?= htmlspecialchars($modalTitleId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars((string) ($quickActionModal['label'] ?? 'Checklist actie'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+                  </div>
+                  <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
+                </header>
+                <div class="modal__body">
+                  <?php if (!empty($quickActionModal['description'])): ?>
+                    <p class="checklist-modal__description"><?= htmlspecialchars((string) $quickActionModal['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <?php endif; ?>
+                  <fieldset class="checklist-modal__fieldset">
+                    <legend class="sr-only">Wybierz zadanie do dodania</legend>
+                    <div class="checklist-modal__options">
+                      <?php foreach ($modalOptions as $index => $option): ?>
+                        <?php
+                          $optionId = $modalId . '-option-' . ($option['id'] ?? ('option-' . $index));
+                          $optionTitle = (string) ($option['title'] ?? 'Opcja');
+                          $optionDescription = (string) ($option['description'] ?? '');
+                          $optionValue = (string) ($option['value'] ?? '');
+                          $requiresInput = !empty($option['requires_input']);
+                          $inputId = $requiresInput ? $optionId . '-input' : '';
+                        ?>
+                        <div class="checklist-modal__option">
+                          <div class="checklist-modal__option-header">
+                            <input type="radio"
+                              id="<?= htmlspecialchars($optionId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                              name="preset_option"
+                              value="<?= htmlspecialchars((string) ($option['id'] ?? ('option-' . $index)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                              <?php if ($index === 0): ?>required<?php endif; ?>
+                              <?php if ($optionValue !== ''): ?>data-description="<?= htmlspecialchars($optionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?php endif; ?>
+                              <?php if ($requiresInput): ?>data-requires-input="true" data-input-target="<?= htmlspecialchars($inputId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?php endif; ?>
+                            >
+                            <label for="<?= htmlspecialchars($optionId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                              <span class="checklist-modal__option-title"><?= htmlspecialchars($optionTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                              <?php if ($optionDescription !== ''): ?>
+                                <span class="checklist-modal__option-text"><?= htmlspecialchars($optionDescription, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                              <?php endif; ?>
+                            </label>
+                          </div>
+                          <?php if ($requiresInput): ?>
+                            <div class="checklist-modal__custom" data-custom-input="<?= htmlspecialchars($inputId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" hidden>
+                              <label for="<?= htmlspecialchars($inputId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars((string) ($option['input_label'] ?? 'Opis zadania'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                              <input type="text" id="<?= htmlspecialchars($inputId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars((string) ($option['input_placeholder'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="255">
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  </fieldset>
+                  <div class="checklist-modal__error" role="alert" hidden></div>
+                </div>
+                <footer class="modal__footer">
+                  <button type="submit" class="btn">
+                    <?= htmlspecialchars((string) ($quickActionModal['submit_label'] ?? 'Dodaj zadanie'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                  </button>
+                </footer>
+              </form>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </section>
 
     <section class="notes-section">
@@ -1441,6 +1726,8 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
       }
     })();
   </script>
+  <script src="js/modals.js"></script>
+  <script src="js/checklist-quick-actions.js"></script>
   <script src="js/field-help.js"></script>
 </body>
 </html>
