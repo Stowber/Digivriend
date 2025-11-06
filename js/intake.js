@@ -21,6 +21,14 @@
   };
   const resultSection = $('[data-result]', modal);
   const feedback = $('[data-feedback]', modal);
+  const translations = {
+    loading: modal.dataset.loadingMessage || 'Registration in progress…',
+    error: modal.dataset.errorMessage || 'Registration failed. Please try again.',
+    success: modal.dataset.successMessage || 'Intake saved successfully.',
+    exception: modal.dataset.exceptionMessage || 'An error occurred while saving. Check the details and try again.',
+    unknown: modal.dataset.unknownValue || 'Unknown'
+  };
+  const resultPlaceholder = resultSection ? resultSection.getAttribute('data-placeholder') || '-' : '-';
   const stepOrder = ['customer', 'visit'];
   let activeStep = 'customer';
   let isSubmitting = false;
@@ -161,7 +169,7 @@
     });
 
     setSubmitting(true);
-    showFeedback('Registratie wordt verwerkt…', 'success');
+    showFeedback(translations.loading, 'success');
 
     try {
       const response = await fetch('store-intake.php', {
@@ -175,7 +183,7 @@
       const data = await response.json();
 
       if (!response.ok || !data || !data.success) {
-        let message = 'Registratie is niet gelukt. Probeer opnieuw.';
+        let message = translations.error;
         if (data && data.error) {
           if (typeof data.error === 'string') {
             message = data.error;
@@ -198,10 +206,10 @@
         const pdfLink = $('[data-result-pdf]', resultSection);
 
         if (referenceNode) {
-          referenceNode.textContent = data.reference_code || 'Onbekend';
+          referenceNode.textContent = data.reference_code || translations.unknown;
         }
         if (appointmentNode) {
-          appointmentNode.textContent = data.appointment_at_formatted || '-';
+          appointmentNode.textContent = data.appointment_at_formatted || resultPlaceholder;
         }
         if (caseLink && data.case_url) {
           caseLink.href = data.case_url;
@@ -211,13 +219,13 @@
         }
       }
 
-      showFeedback('Intake is succesvol vastgelegd.', 'success');
+      showFeedback(translations.success, 'success');
       if (form) {
         form.hidden = true;
       }
     } catch (error) {
       console.error(error);
-      showFeedback('Er is een fout opgetreden tijdens het opslaan. Controleer de gegevens en probeer opnieuw.', 'error');
+      showFeedback(translations.exception, 'error');
     } finally {
       setSubmitting(false);
     }

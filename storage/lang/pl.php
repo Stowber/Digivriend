@@ -221,6 +221,363 @@ return [
             ],
         ],
     ],
+    'intake' => [
+        'meta' => [
+            'title' => 'Rejestracja klienta - Digivriend',
+        ],
+        'header' => [
+            'title' => 'Rejestracja klienta',
+            'description' => 'Rozpocznij każde zgłoszenie od usprawnionego procesu intake. Zapisz dane klienta, zaplanuj wizytę urządzenia i potwierdź intake w wiadomości e-mail.',
+            'action' => 'Rozpocznij nową rejestrację',
+            'steps_aria' => 'Przegląd procesu',
+            'steps' => [
+                'capture' => [
+                    'title' => 'Zbieranie danych',
+                    'description' => 'Imię i nazwisko, adres oraz dane kontaktowe.',
+                ],
+                'schedule' => [
+                    'title' => 'Planowanie wizyty',
+                    'description' => 'Zaplanuj termin przekazania urządzenia i zanotuj zgłoszony problem.',
+                ],
+                'confirm' => [
+                    'title' => 'Potwierdzenie i wysyłka',
+                    'description' => 'Klient otrzymuje plik PDF z kodem kreskowym i podsumowaniem intake.',
+                ],
+            ],
+        ],
+        'info_card' => [
+            'title' => 'Co dzieje się po rejestracji?',
+            'items' => [
+                'email' => 'Potwierdzenie intake wraz z kodem kreskowym trafia automatycznie na e-mail klienta.',
+                'cases' => 'Wizyta i sprawa od razu pojawiają się w module Klienci i urządzenia.',
+                'signature' => 'Po przybyciu pracownik skanuje kod kreskowy i zbiera podpis zgody.',
+            ],
+        ],
+        'modal' => [
+            'eyebrow' => 'Nowy proces intake',
+            'title' => 'Rejestracja danych klienta',
+        ],
+        'form' => [
+            'customer' => [
+                'aria' => 'Dane klienta',
+                'title' => 'Dane kontaktowe klienta',
+                'fields' => [
+                    'full_name' => 'Imię i nazwisko *',
+                    'email' => 'Adres e-mail *',
+                    'phone' => 'Telefon *',
+                    'address' => 'Adres *',
+                    'postal_code' => 'Kod pocztowy *',
+                    'city' => 'Miejscowość *',
+                ],
+                'next' => 'Następny krok',
+            ],
+            'visit' => [
+                'aria' => 'Szczegóły wizyty',
+                'title' => 'Wizyta i urządzenie',
+                'fields' => [
+                    'appointment_at' => 'Data i godzina wizyty *',
+                    'device_type' => 'Typ urządzenia',
+                    'device_brand' => 'Marka',
+                    'device_model' => 'Model',
+                    'device_serial' => 'Numer seryjny',
+                    'problem_description' => 'Krótki opis problemu',
+                ],
+                'device_type_placeholder' => '— Wybierz —',
+                'device_types' => [
+                    'laptop' => 'Laptop',
+                    'pc' => 'PC',
+                    'desktop' => 'Desktop',
+                    'phone' => 'Telefon',
+                    'tablet' => 'Tablet',
+                    'console' => 'Konsola',
+                ],
+                'problem_placeholder' => 'Np. nie włącza się…',
+                'back' => 'Wstecz',
+                'submit' => 'Zakończ rejestrację',
+            ],
+        ],
+        'result' => [
+            'title' => 'Intake potwierdzony',
+            'description' => 'Zapisaliśmy intake. Klient wkrótce otrzyma e-mail z kodem kreskowym i terminem wizyty.',
+            'reference' => 'Kod referencyjny',
+            'appointment' => 'Wizyta',
+            'placeholder' => '-',
+            'actions' => [
+                'case' => 'Zobacz sprawę',
+                'download' => 'Pobierz potwierdzenie',
+            ],
+        ],
+        'feedback' => [
+            'loading' => 'Trwa przetwarzanie rejestracji…',
+            'error' => 'Rejestracja nie powiodła się. Spróbuj ponownie.',
+            'success' => 'Intake zapisano pomyślnie.',
+            'exception' => 'Wystąpił błąd podczas zapisu. Sprawdź dane i spróbuj ponownie.',
+            'unknown' => 'Nieznane',
+        ],
+    ],
+    'warehouse' => [
+        'meta' => [
+            'title' => 'Magazyn - Digivriend',
+        ],
+        'header' => [
+            'title' => 'Magazyn',
+            'description' => 'Zarządzaj przyjęciami, rezerwacjami i wydaniami sprzętu powiązanego z naprawami. Wszystkie działania są powiązane z kartami serwisowymi i widoczne w całym systemie.',
+            'actions' => [
+                'open_modal' => 'Nowe przyjęcie',
+                'back' => 'Powrót do panelu',
+            ],
+        ],
+        'stats' => [
+            'items' => [
+                'title' => 'Pozycje w systemie',
+                'description' => 'Łączna liczba rekordów magazynowych',
+            ],
+            'available' => [
+                'title' => 'Dostępny stan',
+                'description' => 'Zapas dostępny do wydania',
+            ],
+            'reserved' => [
+                'title' => 'Zarezerwowane',
+                'description' => 'Aktualnie przypisane do napraw',
+            ],
+            'ready' => [
+                'title' => 'Gotowe do wydania',
+                'description' => 'Pozycje oznaczone jako gotowe',
+            ],
+        ],
+        'filters' => [
+            'aria' => 'Filtry magazynowe',
+            'status' => [
+                'label' => 'Status',
+                'all' => 'Wszystkie statusy',
+            ],
+            'search' => [
+                'label' => 'Szukaj',
+                'placeholder' => 'Kod, nazwa, referencja',
+            ],
+            'submit' => 'Filtruj',
+        ],
+        'table' => [
+            'headers' => [
+                'item' => 'Pozycja',
+                'status' => 'Status',
+                'quantity' => 'Ilość',
+                'location' => 'Lokalizacja',
+                'link' => 'Powiązanie',
+                'updated' => 'Ostatnia aktualizacja',
+                'actions' => 'Akcje',
+            ],
+            'empty' => 'Nie znaleziono pozycji spełniających kryteria.',
+            'reference_prefix' => 'Ref:',
+            'barcode_prefix' => 'Kod:',
+            'category_prefix' => 'Kategoria:',
+            'reserved_prefix' => 'Zarezerwowane:',
+            'case_prefix' => 'Case #',
+            'no_link' => 'Brak powiązania',
+            'actions' => [
+                'label' => 'Etykieta',
+                'case_details' => 'Szczegóły case',
+            ],
+        ],
+        'history' => [
+            'title' => 'Historia ruchów',
+            'empty' => 'Brak zarejestrowanych ruchów w ostatnim czasie.',
+            'item_prefix' => 'Pozycja:',
+            'reference_prefix' => 'Ref:',
+            'link_prefix' => 'Powiązanie:',
+            'notes_prefix' => 'Uwagi:',
+            'performed_by_prefix' => 'Operacja:',
+        ],
+        'modal' => [
+            'eyebrow' => 'Centrum operacji magazynowych',
+            'title' => 'Przyjęcia i wydania sprzętu',
+            'description' => 'Zarejestruj nowe przyjęcia, aktualizuj statusy operacyjne oraz dokumentuj wydania w uporządkowanym procesie krok po kroku.',
+            'close' => 'Zamknij okno',
+            'summary' => [
+                'aria' => 'Podsumowanie statusów magazynowych',
+                'received' => 'Pozycje oczekujące / przyjęte',
+                'reserved' => 'Pozycje zarezerwowane',
+                'in_service' => 'Sprzęt w obsłudze',
+                'completed' => 'Zamknięte operacje',
+            ],
+            'steps' => [
+                'aria' => 'Kroki operacji magazynowych',
+                'intake' => [
+                    'badge' => 'Krok 1',
+                    'title' => 'Przyjęcie sprzętu',
+                    'subtitle' => 'Dodaj nowe pozycje i rezerwacje.',
+                    'header' => [
+                        'title' => 'Rejestracja dostawy',
+                        'description' => 'Wprowadź nowe urządzenie do systemu wraz ze wszystkimi kluczowymi parametrami logistycznymi.',
+                    ],
+                    'form' => [
+                        'basic_legend' => 'Dane podstawowe',
+                        'name' => 'Nazwa pozycji',
+                        'quantity' => 'Ilość początkowa',
+                        'status' => 'Status początkowy',
+                        'category' => 'Kategoria / typ sprzętu',
+                        'category_placeholder' => 'np. Laptopy, urządzenia pomiarowe',
+                        'logistics_legend' => 'Powiązania logistyczne',
+                        'location' => 'Lokalizacja magazynowa',
+                        'location_placeholder' => 'np. Strefa A · Regał 2 · Półka 3',
+                        'case' => 'Powiązana sprawa (opcjonalnie)',
+                        'reference' => 'Kod referencyjny (opcjonalnie)',
+                        'reference_placeholder' => 'np. WH2404-001',
+                        'notes' => 'Uwagi operacyjne',
+                        'notes_placeholder' => 'Uwagi logistyczne, numer zamówienia itp.',
+                        'submit' => 'Zarejestruj pozycję',
+                    ],
+                    'checklist' => [
+                        'title' => 'Lista kontrolna przyjęcia',
+                        'items' => [
+                            'Zweryfikowano stan fizyczny sprzętu',
+                            'Dołączono akcesoria oraz dokumentację',
+                            'Przypisano odpowiedzialnego technika / opiekuna',
+                        ],
+                    ],
+                ],
+                'status' => [
+                    'badge' => 'Krok 2',
+                    'title' => 'Status i lokalizacja',
+                    'subtitle' => 'Aktualizuj lokalizacje oraz notatki.',
+                    'header' => [
+                        'title' => 'Kontrola jakości i status',
+                        'description' => 'Przypisz lokalizację, sprawdź kompletność i zaktualizuj status w trakcie procesu serwisowego.',
+                    ],
+                    'form' => [
+                        'current_legend' => 'Aktualne informacje',
+                        'item' => 'Pozycja w magazynie',
+                        'item_placeholder' => 'Wybierz pozycję',
+                        'status' => 'Nowy status operacyjny',
+                        'case' => 'Powiązana sprawa',
+                        'location' => 'Lokalizacja operacyjna',
+                        'location_placeholder' => 'Strefa kompletacji, stanowisko testowe itp.',
+                        'notes' => 'Notatki i ustalenia',
+                        'notes_placeholder' => 'Diagnoza, czynności wykonane, kolejne kroki.',
+                        'submit' => 'Zapisz aktualizację',
+                    ],
+                    'checklist' => [
+                        'title' => 'Wskazówki kontroli jakości',
+                        'items' => [
+                            'Sprawdź komplet akcesoriów i plombę serwisową',
+                            'Zaktualizuj lokalizację fizyczną po kontroli',
+                            'Poinformuj zespół o zmianie statusu (powiadomienie systemowe)',
+                        ],
+                    ],
+                ],
+                'movement' => [
+                    'badge' => 'Krok 3',
+                    'title' => 'Wydania i ruch',
+                    'subtitle' => 'Dokumentuj wydania, zwroty i korekty.',
+                    'header' => [
+                        'title' => 'Rejestrowanie ruchu magazynowego',
+                        'description' => 'Udokumentuj każdą zmianę stanu magazynowego – wydanie, zwrot, korektę lub przesunięcie.',
+                    ],
+                    'form' => [
+                        'legend' => 'Parametry ruchu',
+                        'item' => 'Pozycja',
+                        'item_placeholder' => 'Wybierz pozycję',
+                        'type' => 'Typ ruchu',
+                        'quantity' => 'Ilość',
+                        'case' => 'Powiązana sprawa (opcjonalnie)',
+                        'notes' => 'Uwagi do ruchu',
+                        'notes_placeholder' => 'Opis przesunięcia, osoby odpowiedzialne, powód korekty.',
+                        'submit' => 'Dodaj ruch magazynowy',
+                    ],
+                    'checklist' => [
+                        'title' => 'Standard dokumentacyjny',
+                        'items' => [
+                            'Zapisz numer dokumentu wydania / przyjęcia',
+                            'Upewnij się, że ilości po korekcie są zgodne ze stanem faktycznym',
+                            'Potwierdź operację podpisem osoby odpowiedzialnej',
+                        ],
+                    ],
+                ],
+            ],
+            'common' => [
+                'none' => 'Brak',
+            ],
+        ],
+        'messages' => [
+            'create' => [
+                'default_name' => 'Nowa pozycja',
+                'reference_unknown' => 'brak',
+                'success' => 'Dodano pozycję „:name” (kod referencyjny: :reference).',
+            ],
+            'status' => [
+                'success' => 'Status magazynowy został zaktualizowany.',
+            ],
+            'movement' => [
+                'success' => 'Ruch magazynowy został zapisany.',
+            ],
+        ],
+        'errors' => [
+            'create' => [
+                'quantity' => 'Podaj prawidłową ilość (0 lub więcej).',
+                'name_required' => 'Nazwa pozycji jest wymagana.',
+                'general' => 'Wystąpił błąd podczas zapisu pozycji. Spróbuj ponownie.',
+                'not_saved' => 'Pozycja magazynowa nie została zapisana.',
+            ],
+            'common' => [
+                'invalid_status' => 'Wybierz prawidłowy status.',
+            ],
+            'status' => [
+                'failed' => 'Nie udało się zmienić statusu.',
+                'exception' => 'Aktualizacja statusu zakończyła się błędem. Spróbuj ponownie.',
+                'item_required' => 'Wybierz pozycję do aktualizacji.',
+            ],
+            'movement' => [
+                'item_required' => 'Wybierz pozycję magazynową.',
+                'type' => 'Wybierz prawidłowy typ ruchu.',
+                'adjustment_quantity' => 'Podaj dodatnią lub ujemną korektę.',
+                'positive_quantity' => 'Podaj dodatnią wartość.',
+                'failed' => 'Nie udało się zapisać ruchu magazynowego.',
+                'exception' => 'Wystąpił błąd podczas zapisu ruchu. Spróbuj ponownie.',
+            ],
+            'unknown_action' => 'Nieznana akcja formularza.',
+            'missing_item' => 'Magazynowy element nie istnieje.',
+            'barcode' => [
+                'not_found' => 'Magazynowa pozycja nie została znaleziona.',
+                'render_failed' => 'Nie udało się wygenerować kodu kreskowego.',
+            ],
+            'label' => [
+                'invalid_id' => 'Nieprawidłowy identyfikator pozycji magazynowej.',
+                'not_found' => 'Pozycja magazynowa nie została znaleziona.',
+            ],
+        ],
+        'movements' => [
+            'auto_registration_note' => 'Automatyczne zarejestrowanie pozycji',
+        ],
+        'label' => [
+            'meta_title' => 'Etykieta magazynowa :reference',
+            'default_name' => 'Pozycja magazynowa',
+            'barcode_alt' => 'Kod kreskowy',
+            'reference' => 'Kod referencyjny',
+            'status' => 'Status',
+            'quantity' => 'Ilość',
+            'location' => 'Lokalizacja',
+            'case' => 'Case',
+            'case_basic' => 'Case #:number',
+            'case_with_reference' => 'Case #:number · :reference',
+            'customer' => 'Klient',
+        ],
+        'status_labels' => [
+            'expected' => 'Oczekiwane',
+            'received' => 'Przyjęte',
+            'reserved' => 'Zarezerwowane',
+            'in_service' => 'W naprawie',
+            'ready' => 'Gotowe do wydania',
+            'completed' => 'Wydane klientowi',
+        ],
+        'movement_labels' => [
+            'registered' => 'Rejestracja',
+            'inbound' => 'Przyjęcie',
+            'reserve' => 'Rezerwacja',
+            'release' => 'Zwolnienie',
+            'outbound' => 'Wydanie',
+            'adjustment' => 'Korekta',
+        ],
+    ],
     'dashboard' => [
         'meta' => [
             'title' => 'Digivriend - Panel',

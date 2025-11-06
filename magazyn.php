@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Response;
 use App\Security\Auth;
 use App\Security\Csrf;
+use App\Support\Lang\Translator;
 use App\Support\Repositories\WarehouseRepository;
 
 require __DIR__ . '/bootstrap.php';
@@ -73,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'record-movement') {
             $target = &$errors['movement'];
         }
-        $target['general'] = 'Sesja wygasła. Odśwież stronę i spróbuj ponownie.';
+        $target['general'] = __('messages.session_expired');
     } else {
         switch ($action) {
             case 'create-item':
@@ -87,17 +88,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $quantityInput = $_POST['quantity'] ?? 1;
                 $quantity = filter_var($quantityInput, FILTER_VALIDATE_INT);
                 if ($quantity === false || $quantity < 0) {
-                    $errors['create']['quantity'] = 'Podaj prawidłową ilość (0 lub więcej).';
+                    $errors['create']['quantity'] = __('warehouse.errors.create.quantity');
                 } else {
                     $createValues['quantity'] = $quantity;
                 }
 
                 if ($createValues['name'] === '') {
-                    $errors['create']['name'] = 'Nazwa pozycji jest wymagana.';
+                    $errors['create']['name'] = __('warehouse.errors.create.name_required');
                 }
 
                 if (!$warehouseRepository->isValidStatus($createValues['status'])) {
-                    $errors['create']['status'] = 'Wybierz prawidłowy status.';
+                    $errors['create']['status'] = __('warehouse.errors.common.invalid_status');
                 }
 
                 $caseIdInput = $_POST['case_id'] ?? null;
@@ -120,18 +121,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $createValues['reference_code'] !== '' ? $createValues['reference_code'] : null,
                             Auth::username()
                         );
-                        $_SESSION['warehouse_success'] = sprintf(
-                            'Dodano pozycję „%s” z kodem referencyjnym %s.',
-                            $item['name'] ?? 'Nowa pozycja',
-                            $item['reference_code'] ?? ''
-                        );
+
+                        $itemName = trim((string) ($item['name'] ?? ''));
+                        if ($itemName === '') {
+                            $itemName = __('warehouse.messages.create.default_name');
+                        }
+
+                        $itemReference = trim((string) ($item['reference_code'] ?? ''));
+                        if ($itemReference === '') {
+                            $itemReference = __('warehouse.messages.create.reference_unknown');
+                        }
+
+                        $_SESSION['warehouse_success'] = __('warehouse.messages.create.success', [
+                            'name' => $itemName,
+                            'reference' => $itemReference,
+                        ]);
                         $redirectTarget = 'magazyn.php?highlight=' . (int) ($item['id'] ?? 0);
                         if ($caseId !== null) {
                             $redirectTarget .= '&case=' . $caseId;
                         }
                         Response::redirect($redirectTarget);
                     } catch (\Throwable $exception) {
-                        $errors['create']['general'] = 'Wystąpił błąd podczas zapisu pozycji. Spróbuj ponownie.';
+                        $errors['create']['general'] = __('warehouse.errors.create.general');
                     }
                 }
                 break;
@@ -144,11 +155,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $statusItemId = filter_var($statusValues['item_id'], FILTER_VALIDATE_INT);
                 if ($statusItemId === false || $statusItemId <= 0) {
-                    $errors['status']['item_id'] = 'Wybierz pozycję do aktualizacji.';
+                    $errors['status']['item_id'] = __('warehouse.errors.status.item_required');
                 }
 
                 if (!$warehouseRepository->isValidStatus($statusValues['status'])) {
-                    $errors['status']['status'] = 'Wybierz prawidłowy status.';
+                    $errors['status']['status'] = __('warehouse.errors.common.invalid_status');
                 }
 
                 $statusCaseIdInput = $_POST['case_id'] ?? null;
@@ -168,17 +179,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $statusValues['notes']
                         );
                         if ($updated) {
-                            $_SESSION['warehouse_success'] = 'Status magazynowy został zaktualizowany.';
+                            $_SESSION['warehouse_success'] = __('warehouse.messages.status.success');
                             $redirectTarget = 'magazyn.php?highlight=' . (int) $statusItemId;
                             if ($statusCaseId !== null) {
                                 $redirectTarget .= '&case=' . $statusCaseId;
                             }
                             Response::redirect($redirectTarget);
                         } else {
-                            $errors['status']['general'] = 'Nie udało się zmienić statusu.';
+                            $errors['status']['general'] = __('warehouse.errors.status.failed');
                         }
                     } catch (\Throwable $exception) {
-                        $errors['status']['general'] = 'Aktualizacja statusu zakończyła się błędem. Spróbuj ponownie.';
+                        $errors['status']['general'] = __('warehouse.errors.status.exception');
                     }
                 }
                 break;
@@ -191,23 +202,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $movementItemId = filter_var($movementValues['item_id'], FILTER_VALIDATE_INT);
                 if ($movementItemId === false || $movementItemId <= 0) {
-                    $errors['movement']['item_id'] = 'Wybierz pozycję magazynową.';
+                    $errors['movement']['item_id'] = __('warehouse.errors.movement.item_required');
                 }
 
                 if (!$warehouseRepository->isValidMovementType($movementValues['movement_type'])) {
-                    $errors['movement']['movement_type'] = 'Wybierz prawidłowy typ ruchu.';
+                    $errors['movement']['movement_type'] = __('warehouse.errors.movement.type');
                 }
 
                 $movementQuantity = null;
                 if ($movementValues['movement_type'] === 'adjustment') {
                     $movementQuantity = filter_var($movementValues['quantity'], FILTER_VALIDATE_INT);
                     if ($movementQuantity === false || $movementQuantity === 0) {
-                        $errors['movement']['quantity'] = 'Podaj dodatnią lub ujemną korektę.';
+                        $errors['movement']['quantity'] = __('warehouse.errors.movement.adjustment_quantity');
                     }
                 } else {
                     $quantityPositive = filter_var($movementValues['quantity'], FILTER_VALIDATE_INT);
                     if ($quantityPositive === false || $quantityPositive <= 0) {
-                        $errors['movement']['quantity'] = 'Podaj dodatnią wartość.';
+                        $errors['movement']['quantity'] = __('warehouse.errors.movement.positive_quantity');
                     } else {
                         $movementQuantity = $quantityPositive;
                     }
@@ -231,23 +242,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             Auth::username()
                         );
                         if ($recorded) {
-                            $_SESSION['warehouse_success'] = 'Ruch magazynowy został zapisany.';
+                            $_SESSION['warehouse_success'] = __('warehouse.messages.movement.success');
                             $redirectTarget = 'magazyn.php?highlight=' . (int) $movementItemId . '#historia';
                             if ($movementCaseId !== null) {
                                 $redirectTarget .= '&case=' . $movementCaseId;
                             }
                             Response::redirect($redirectTarget);
                         } else {
-                            $errors['movement']['general'] = 'Nie udało się zapisać ruchu magazynowego.';
+                            $errors['movement']['general'] = __('warehouse.errors.movement.failed');
                         }
                     } catch (\Throwable $exception) {
-                        $errors['movement']['general'] = 'Wystąpił błąd podczas zapisu ruchu. Spróbuj ponownie.';
+                        $errors['movement']['general'] = __('warehouse.errors.movement.exception');
                     }
                 }
                 break;
 
             default:
-                $errors['create']['general'] = 'Nieznana akcja formularza.';
+                $errors['create']['general'] = __('warehouse.errors.unknown_action');
         }
     }
 }
@@ -283,25 +294,25 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
 
 ?>
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magazyn - Digivriend</title>
+  <title><?= htmlspecialchars(__('warehouse.meta.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/warehouse.css">
 </head>
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+      <a href="index.php" class="logo" aria-label="<?= htmlspecialchars(__('dashboard.header.logo_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <span class="logo__mark" aria-hidden="true">DV</span>
         <span class="logo__text">
           <span class="logo__title">Digivriend</span>
-          <span class="logo__subtitle">Serviceplatform</span>
+          <span class="logo__subtitle"><?= htmlspecialchars(__('dashboard.header.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </span>
       </a>
-      <nav class="main-nav" aria-label="Hoofd navigatie">
+      <nav class="main-nav" aria-label="<?= htmlspecialchars(__('nav.aria.main'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <?php render_main_nav('inventory'); ?>
       </nav>
     </div>
@@ -310,12 +321,12 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
   <main class="container warehouse">
     <div class="warehouse__header">
       <div>
-        <h1>Magazyn</h1>
-        <p>Zarządzaj przyjęciami, rezerwacjami i wydaniami sprzętu powiązanego z naprawami. Wszystkie działania są powiązane z kartami serwisowymi i widoczne w całym systemie.</p>
+        <h1><?= htmlspecialchars(__('warehouse.header.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+        <p><?= htmlspecialchars(__('warehouse.header.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
       <div class="warehouse-actions">
-        <button type="button" class="btn" data-open-intake>Nowe przyjęcie</button>
-        <a class="btn btn--ghost" href="index.php">Powrót do panelu</a>
+        <button type="button" class="btn" data-open-intake><?= htmlspecialchars(__('warehouse.header.actions.open_modal'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+        <a class="btn btn--ghost" href="index.php"><?= htmlspecialchars(__('warehouse.header.actions.back'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
       </div>
     </div>
 
@@ -325,24 +336,24 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
 
     <section class="warehouse__stats">
       <article class="warehouse__stat">
-        <h3>Pozycje w systemie</h3>
+        <h3><?= htmlspecialchars(__('warehouse.stats.items.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
         <strong><?= number_format($totalItems, 0, ',', ' ') ?></strong>
-        <span>Łączna liczba rekordów magazynowych</span>
+        <span><?= htmlspecialchars(__('warehouse.stats.items.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
       </article>
       <article class="warehouse__stat">
-        <h3>Dostępny stan</h3>
+        <h3><?= htmlspecialchars(__('warehouse.stats.available.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
         <strong><?= number_format($availableQuantity, 0, ',', ' ') ?></strong>
-        <span>Zapas dostępny do wydania</span>
+        <span><?= htmlspecialchars(__('warehouse.stats.available.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
       </article>
       <article class="warehouse__stat">
-        <h3>Zarezerwowane</h3>
+        <h3><?= htmlspecialchars(__('warehouse.stats.reserved.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
         <strong><?= number_format($totalReserved, 0, ',', ' ') ?></strong>
-        <span>Aktualnie przypisane do napraw</span>
+        <span><?= htmlspecialchars(__('warehouse.stats.reserved.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
       </article>
       <article class="warehouse__stat">
-        <h3>Gotowe do wydania</h3>
+        <h3><?= htmlspecialchars(__('warehouse.stats.ready.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
         <strong><?= number_format($readyCount, 0, ',', ' ') ?></strong>
-        <span>Pozycje oznaczone jako gotowe</span>
+        <span><?= htmlspecialchars(__('warehouse.stats.ready.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
       </article>
     </section>
 
@@ -350,24 +361,24 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
       <div class="warehouse__main">
         <section class="card warehouse-card">
           <div class="warehouse__filters">
-            <form method="get" aria-label="Filtry magazynowe">
+            <form method="get" aria-label="<?= htmlspecialchars(__('warehouse.filters.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
               <div>
-                <label for="status">Status</label>
+                <label for="status"><?= htmlspecialchars(__('warehouse.filters.status.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
                 <select id="status" name="status">
-                  <option value="">Wszystkie statusy</option>
+                  <option value=""><?= htmlspecialchars(__('warehouse.filters.status.all'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                   <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
                     <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $statusFilter === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                   <?php endforeach; ?>
                 </select>
               </div>
               <div>
-                <label for="q">Szukaj</label>
-                <input id="q" type="text" name="q" value="<?= htmlspecialchars($searchTerm, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="Kod, nazwa, referencja">
+                <label for="q"><?= htmlspecialchars(__('warehouse.filters.search.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                <input id="q" type="text" name="q" value="<?= htmlspecialchars($searchTerm, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('warehouse.filters.search.placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
               </div>
               <?php if ($prefillCaseId !== null): ?>
                 <input type="hidden" name="case" value="<?= (int) $prefillCaseId ?>">
               <?php endif; ?>
-              <button type="submit" class="btn">Filtruj</button>
+              <button type="submit" class="btn"><?= htmlspecialchars(__('warehouse.filters.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
             </form>
           </div>
 
@@ -375,19 +386,19 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
             <table class="warehouse-table">
               <thead>
                 <tr>
-                  <th>Pozycja</th>
-                  <th>Status</th>
-                  <th>Ilość</th>
-                  <th>Lokalizacja</th>
-                  <th>Powiązanie</th>
-                  <th>Ostatnia aktualizacja</th>
-                  <th>Akcje</th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.item'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.status'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.quantity'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.link'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.updated'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  <th><?= htmlspecialchars(__('warehouse.table.headers.actions'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
                 </tr>
               </thead>
               <tbody>
                 <?php if ($items === []): ?>
                   <tr>
-                    <td colspan="7">Nie znaleziono pozycji spełniających kryteria.</td>
+                    <td colspan="7"><?= htmlspecialchars(__('warehouse.table.empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   </tr>
                 <?php else: ?>
                   <?php foreach ($items as $item): ?>
@@ -408,13 +419,13 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                       <td>
                         <strong><?= htmlspecialchars((string) ($item['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
                         <?php if ($referenceCode !== ''): ?>
-                          <small>Ref: <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                          <small><?= htmlspecialchars(__('warehouse.table.reference_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                         <?php endif; ?>
                         <?php if ($barcode !== ''): ?>
-                          <small>Kod: <?= htmlspecialchars($barcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                          <small><?= htmlspecialchars(__('warehouse.table.barcode_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($barcode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                         <?php endif; ?>
                         <?php if (!empty($item['category'])): ?>
-                          <small>Kategoria: <?= htmlspecialchars((string) $item['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                          <small><?= htmlspecialchars(__('warehouse.table.category_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars((string) $item['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                         <?php endif; ?>
                       </td>
                       <td>
@@ -422,25 +433,25 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                       </td>
                       <td>
                         <?= number_format($quantity, 0, ',', ' ') ?>
-                        <small>Zarezerwowane: <?= number_format($reserved, 0, ',', ' ') ?></small>
+                        <small><?= htmlspecialchars(__('warehouse.table.reserved_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= number_format($reserved, 0, ',', ' ') ?></small>
                       </td>
                       <td><?= $location !== '' ? htmlspecialchars($location, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '—' ?></td>
                       <td>
                         <?php if ($caseId !== null && $caseId > 0): ?>
-                          <a href="case.php?id=<?= $caseId ?>">Case #<?= $caseId ?></a>
+                          <a href="case.php?id=<?= $caseId ?>"><?= htmlspecialchars(__('warehouse.table.case_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?= $caseId ?></a>
                           <?php if (!empty($item['customer_name'])): ?>
                             <small><?= htmlspecialchars((string) $item['customer_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                           <?php endif; ?>
                         <?php else: ?>
-                          <span class="muted">Brak powiązania</span>
+                          <span class="muted"><?= htmlspecialchars(__('warehouse.table.no_link'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                         <?php endif; ?>
                       </td>
                       <td><?= htmlspecialchars($timestamp, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                       <td>
                         <div class="warehouse-actions">
-                          <a class="btn btn--ghost" href="warehouse-label.php?id=<?= (int) ($item['id'] ?? 0) ?>" target="_blank" rel="noopener">Etykieta</a>
+                          <a class="btn btn--ghost" href="warehouse-label.php?id=<?= (int) ($item['id'] ?? 0) ?>" target="_blank" rel="noopener"><?= htmlspecialchars(__('warehouse.table.actions.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
                           <?php if ($caseId !== null && $caseId > 0): ?>
-                            <a class="btn btn--ghost" href="case.php?id=<?= $caseId ?>">Szczegóły case</a>
+                            <a class="btn btn--ghost" href="case.php?id=<?= $caseId ?>"><?= htmlspecialchars(__('warehouse.table.actions.case_details'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
                           <?php endif; ?>
                         </div>
                       </td>
@@ -453,13 +464,13 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
         </section>
 
         <section class="card warehouse-card" id="historia">
-          <h2>Historia ruchów</h2>
+          <h2><?= htmlspecialchars(__('warehouse.history.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
           <?php if (!empty($errors['movement']['general']) && empty($successMessage)): ?>
             <div class="alert alert--danger"><?= htmlspecialchars($errors['movement']['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
           <?php endif; ?>
           <div class="warehouse-history">
             <?php if ($recentMovements === []): ?>
-              <p class="muted">Brak zarejestrowanych ruchów w ostatnim czasie.</p>
+              <p class="muted"><?= htmlspecialchars(__('warehouse.history.empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
             <?php else: ?>
               <?php foreach ($recentMovements as $movement): ?>
                 <?php
@@ -476,17 +487,17 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                 <article class="warehouse-history__item">
                   <strong><?= htmlspecialchars($movementLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?= $movementQuantity !== 0 ? ' (' . ($movementQuantity > 0 ? '+' : '') . number_format($movementQuantity, 0, ',', ' ') . ')' : '' ?></strong>
                   <?php if (!empty($movement['item_name'])): ?>
-                    <div>Pozycja: <?= htmlspecialchars((string) $movement['item_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($movement['item_reference'])): ?> · Ref: <?= htmlspecialchars((string) $movement['item_reference'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></div>
+                    <div><?= htmlspecialchars(__('warehouse.history.item_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars((string) $movement['item_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($movement['item_reference'])): ?> · <?= htmlspecialchars(__('warehouse.history.reference_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars((string) $movement['item_reference'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></div>
                   <?php endif; ?>
                   <?php if ($movementCaseId !== null && $movementCaseId > 0): ?>
-                    <div>Powiązanie: <a href="case.php?id=<?= $movementCaseId ?>">Case #<?= $movementCaseId ?></a><?php if (!empty($movement['customer_name'])): ?> · <?= htmlspecialchars((string) $movement['customer_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></div>
+                    <div><?= htmlspecialchars(__('warehouse.history.link_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <a href="case.php?id=<?= $movementCaseId ?>"><?= htmlspecialchars(__('warehouse.table.case_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?= $movementCaseId ?></a><?php if (!empty($movement['customer_name'])): ?> · <?= htmlspecialchars((string) $movement['customer_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></div>
                   <?php endif; ?>
                   <?php if (!empty($movement['notes'])): ?>
-                    <div>Uwagi: <?= nl2br(htmlspecialchars((string) $movement['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
+                    <div><?= htmlspecialchars(__('warehouse.history.notes_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= nl2br(htmlspecialchars((string) $movement['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></div>
                   <?php endif; ?>
                   <time datetime="<?= htmlspecialchars((string) $movement['created_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($movementTimestamp, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></time>
                   <?php if (!empty($movement['performed_by'])): ?>
-                    <small>Operacja: <?= htmlspecialchars((string) $movement['performed_by'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
+                    <small><?= htmlspecialchars(__('warehouse.history.performed_by_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars((string) $movement['performed_by'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                   <?php endif; ?>
                 </article>
               <?php endforeach; ?>
@@ -508,55 +519,53 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
     <div class="intake-modal__dialog" role="document" aria-modal="true" aria-labelledby="warehouse-intake-title">
       <header class="intake-modal__header">
         <div>
-          <span class="intake-modal__eyebrow">Centrum operacji magazynowych</span>
-          <h2 id="warehouse-intake-title">Przyjęcia i wydania sprzętu</h2>
-          <p>
-            Zarejestruj nowe przyjęcia, aktualizuj statusy operacyjne oraz dokumentuj wydania w uporządkowanym procesie krok po kroku.
-          </p>
+          <span class="intake-modal__eyebrow"><?= htmlspecialchars(__('warehouse.modal.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <h2 id="warehouse-intake-title"><?= htmlspecialchars(__('warehouse.modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+          <p><?= htmlspecialchars(__('warehouse.modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         </div>
-        <button type="button" class="intake-modal__close" aria-label="Zamknij okno" data-close-intake>&times;</button>
+        <button type="button" class="intake-modal__close" aria-label="<?= htmlspecialchars(__('warehouse.modal.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-close-intake>&times;</button>
       </header>
 
-        <section class="intake-modal__summary" aria-label="Podsumowanie statusów magazynowych">
+      <section class="intake-modal__summary" aria-label="<?= htmlspecialchars(__('warehouse.modal.summary.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <div class="intake-modal__summary-item">
-          <span>Pozycje oczekujące / przyjęte</span>
+          <span><?= htmlspecialchars(__('warehouse.modal.summary.received'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <strong><?= number_format($receivedCount, 0, ',', ' ') ?></strong>
         </div>
         <div class="intake-modal__summary-item">
-          <span>Pozycje zarezerwowane</span>
+          <span><?= htmlspecialchars(__('warehouse.modal.summary.reserved'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <strong><?= number_format($reservedCount, 0, ',', ' ') ?></strong>
         </div>
         <div class="intake-modal__summary-item">
-          <span>Sprzęt w obsłudze</span>
+          <span><?= htmlspecialchars(__('warehouse.modal.summary.in_service'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <strong><?= number_format($inServiceCount, 0, ',', ' ') ?></strong>
         </div>
         <div class="intake-modal__summary-item">
-          <span>Zamknięte operacje</span>
+          <span><?= htmlspecialchars(__('warehouse.modal.summary.completed'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <strong><?= number_format($completedCount, 0, ',', ' ') ?></strong>
         </div>
       </section>
 
         <div class="intake-modal__body">
-        <nav class="intake-modal__steps" aria-label="Kroki operacji magazynowych">
+        <nav class="intake-modal__steps" aria-label="<?= htmlspecialchars(__('warehouse.modal.steps.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <button type="button" class="intake-modal__step is-active" data-intake-step="intake">
             <span class="intake-modal__step-number">1</span>
             <div>
-              <strong>Przyjęcie sprzętu</strong>
-              <small>Dodaj nowe pozycje i rezerwacje.</small>
+              <strong><?= htmlspecialchars(__('warehouse.modal.steps.intake.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+              <small><?= htmlspecialchars(__('warehouse.modal.steps.intake.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
             </div>
           </button>
           <button type="button" class="intake-modal__step" data-intake-step="status">
             <span class="intake-modal__step-number">2</span>
             <div>
-              <strong>Status i lokalizacja</strong>
-              <small>Aktualizuj lokalizacje oraz notatki.</small>
+              <strong><?= htmlspecialchars(__('warehouse.modal.steps.status.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+              <small><?= htmlspecialchars(__('warehouse.modal.steps.status.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
             </div>
           </button>
           <button type="button" class="intake-modal__step" data-intake-step="movement">
             <span class="intake-modal__step-number">3</span>
             <div>
-              <strong>Wydania i ruch</strong>
-              <small>Dokumentuj wydania, zwroty i korekty.</small>
+              <strong><?= htmlspecialchars(__('warehouse.modal.steps.movement.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+              <small><?= htmlspecialchars(__('warehouse.modal.steps.movement.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
             </div>
           </button>
         </nav>
@@ -565,10 +574,10 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
           <section class="intake-modal__panel is-active" data-intake-panel="intake">
             <article class="operations-step">
               <header class="operations-step__header">
-                <span class="operations-step__badge">Krok 1</span>
+                <span class="operations-step__badge"><?= htmlspecialchars(__('warehouse.modal.steps.intake.badge'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <div>
-                  <h3>Rejestracja dostawy</h3>
-                  <p>Wprowadź nowe urządzenie do systemu wraz ze wszystkimi kluczowymi parametrami logistycznymi.</p>
+                  <h3><?= htmlspecialchars(__('warehouse.modal.steps.intake.header.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                  <p><?= htmlspecialchars(__('warehouse.modal.steps.intake.header.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 </div>
                 </header>
               <?php if (!empty($errors['create']['general'])): ?>
@@ -579,22 +588,22 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                 <input type="hidden" name="action" value="create-item">
 
                 <fieldset class="operations-form__group">
-                  <legend>Dane podstawowe</legend>
+                  <legend><?= htmlspecialchars(__('warehouse.modal.steps.intake.form.basic_legend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></legend>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Nazwa pozycji
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <input type="text" name="name" value="<?= htmlspecialchars($createValues['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
                       <?php if (!empty($errors['create']['name'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
                     </label>
                     <label>
-                      Ilość początkowa
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.quantity'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <input type="number" min="0" name="quantity" value="<?= (int) $createValues['quantity'] ?>">
                       <?php if (!empty($errors['create']['quantity'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
                     </label>
                   </div>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Status początkowy
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.status'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="status">
                         <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
                           <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $createValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
@@ -603,52 +612,59 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                       <?php if (!empty($errors['create']['status'])): ?><span class="form-error"><?= htmlspecialchars($errors['create']['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
                     </label>
                     <label>
-                      Kategoria / typ sprzętu
-                      <input type="text" name="category" value="<?= htmlspecialchars($createValues['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. Laptopy, urządzenia pomiarowe">
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.category'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <input type="text" name="category" value="<?= htmlspecialchars($createValues['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.intake.form.category_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                     </label>
                   </div>
                 </fieldset>
 
                 <fieldset class="operations-form__group">
-                  <legend>Powiązania logistyczne</legend>
+                  <legend><?= htmlspecialchars(__('warehouse.modal.steps.intake.form.logistics_legend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></legend>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Lokalizacja magazynowa
-                      <input type="text" name="location" value="<?= htmlspecialchars($createValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. Strefa A · Regał 2 · Półka 3">
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <input type="text" name="location" value="<?= htmlspecialchars($createValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.intake.form.location_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                     </label>
                     <label>
-                      Powiązana sprawa (opcjonalnie)
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.case'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="case_id">
-                        <option value="">Brak</option>
+                        <option value=""><?= htmlspecialchars(__('warehouse.modal.common.none'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php foreach ($caseOptions as $caseOption): ?>
-                          <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
-                          <option value="<?= $caseOptionId ?>"<?= $createValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                          <?php
+                            $caseOptionId = (int) ($caseOption['id'] ?? 0);
+                            $caseOptionName = trim((string) ($caseOption['full_name'] ?? ''));
+                            $caseOptionLabel = __('warehouse.table.case_prefix') . $caseOptionId;
+                            if ($caseOptionName !== '') {
+                                $caseOptionLabel .= ' · ' . $caseOptionName;
+                            }
+                          ?>
+                          <option value="<?= $caseOptionId ?>"<?= $createValues['case_id'] === $caseOptionId ? ' selected' : '' ?>><?= htmlspecialchars($caseOptionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                       </select>
                     </label>
                   </div>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Kod referencyjny (opcjonalnie)
-                      <input type="text" name="reference_code" value="<?= htmlspecialchars($createValues['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="np. WH2404-001">
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.reference'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <input type="text" name="reference_code" value="<?= htmlspecialchars($createValues['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.intake.form.reference_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                     </label>
                     <label class="operations-form__label--notes">
-                      Uwagi operacyjne
-                      <textarea name="notes" rows="3" placeholder="Uwagi logistyczne, numer zamówienia itp."><?= htmlspecialchars($createValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                      <?= htmlspecialchars(__('warehouse.modal.steps.intake.form.notes'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <textarea name="notes" rows="3" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.intake.form.notes_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($createValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                     </label>
                   </div>
                 </fieldset>
 
                 <div class="operations-step__footer">
                   <div>
-                    <span class="operations-step__hint-title">Lista kontrolna przyjęcia</span>
+                    <span class="operations-step__hint-title"><?= htmlspecialchars(__('warehouse.modal.steps.intake.checklist.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                     <ul class="operations-step__checklist">
-                      <li>Zweryfikowano stan fizyczny sprzętu</li>
-                      <li>Dołączono akcesoria oraz dokumentację</li>
-                      <li>Przypisano odpowiedzialnego technika / opiekuna</li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.intake.checklist.items.0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.intake.checklist.items.1'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.intake.checklist.items.2'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
                     </ul>
                   </div>
-                  <button type="submit" class="btn">Zarejestruj pozycję</button>
+                  <button type="submit" class="btn"><?= htmlspecialchars(__('warehouse.modal.steps.intake.form.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 </div>
               </form>
             </article>
@@ -657,10 +673,10 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
           <section class="intake-modal__panel" data-intake-panel="status">
             <article class="operations-step">
               <header class="operations-step__header">
-                <span class="operations-step__badge">Krok 2</span>
+                <span class="operations-step__badge"><?= htmlspecialchars(__('warehouse.modal.steps.status.badge'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <div>
-                  <h3>Kontrola jakości i status</h3>
-                  <p>Przypisz lokalizację, sprawdź kompletność i zaktualizuj status w trakcie procesu serwisowego.</p>
+                  <h3><?= htmlspecialchars(__('warehouse.modal.steps.status.header.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                  <p><?= htmlspecialchars(__('warehouse.modal.steps.status.header.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 </div>
                 </header>
               <?php if (!empty($errors['status']['general'])): ?>
@@ -671,12 +687,12 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                 <input type="hidden" name="action" value="update-status">
 
                 <fieldset class="operations-form__group">
-                  <legend>Aktualne informacje</legend>
+                  <legend><?= htmlspecialchars(__('warehouse.modal.steps.status.form.current_legend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></legend>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Pozycja w magazynie
+                      <?= htmlspecialchars(__('warehouse.modal.steps.status.form.item'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="item_id" required>
-                        <option value="">Wybierz pozycję</option>
+                        <option value=""><?= htmlspecialchars(__('warehouse.modal.steps.status.form.item_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php foreach ($itemOptions as $option): ?>
                           <?php $optionId = (int) ($option['id'] ?? 0); ?>
                           <option value="<?= $optionId ?>"<?= (string) $statusValues['item_id'] === (string) $optionId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($option['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($option['barcode'])): ?> · <?= htmlspecialchars((string) $option['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></option>
@@ -685,7 +701,7 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                       <?php if (!empty($errors['status']['item_id'])): ?><span class="form-error"><?= htmlspecialchars($errors['status']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
                     </label>
                     <label>
-                      Nowy status operacyjny
+                      <?= htmlspecialchars(__('warehouse.modal.steps.status.form.status'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="status" required>
                         <?php foreach ($statusLabels as $statusKey => $statusLabel): ?>
                           <option value="<?= htmlspecialchars((string) $statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $statusValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
@@ -696,36 +712,43 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                   </div>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Powiązana sprawa
+                      <?= htmlspecialchars(__('warehouse.modal.steps.status.form.case'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="case_id">
-                        <option value="">Brak</option>
+                        <option value=""><?= htmlspecialchars(__('warehouse.modal.common.none'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php foreach ($caseOptions as $caseOption): ?>
-                          <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
-                          <option value="<?= $caseOptionId ?>"<?= $statusValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                          <?php
+                            $caseOptionId = (int) ($caseOption['id'] ?? 0);
+                            $caseOptionName = trim((string) ($caseOption['full_name'] ?? ''));
+                            $caseOptionLabel = __('warehouse.table.case_prefix') . $caseOptionId;
+                            if ($caseOptionName !== '') {
+                                $caseOptionLabel .= ' · ' . $caseOptionName;
+                            }
+                          ?>
+                          <option value="<?= $caseOptionId ?>"<?= $statusValues['case_id'] === $caseOptionId ? ' selected' : '' ?>><?= htmlspecialchars($caseOptionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                       </select>
                     </label>
                     <label>
-                      Lokalizacja operacyjna
-                      <input type="text" name="location" value="<?= htmlspecialchars($statusValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="Strefa kompletacji, stanowisko testowe itp.">
+                      <?= htmlspecialchars(__('warehouse.modal.steps.status.form.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <input type="text" name="location" value="<?= htmlspecialchars($statusValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.status.form.location_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                     </label>
                   </div>
                   <label class="operations-form__label--notes">
-                    Notatki i ustalenia
-                    <textarea name="notes" rows="3" placeholder="Diagnoza, czynności wykonane, kolejne kroki."><?= htmlspecialchars($statusValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                    <?= htmlspecialchars(__('warehouse.modal.steps.status.form.notes'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                    <textarea name="notes" rows="3" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.status.form.notes_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($statusValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                   </label>
                 </fieldset>
 
                 <div class="operations-step__footer">
                   <div>
-                    <span class="operations-step__hint-title">Wskazówki kontroli jakości</span>
+                    <span class="operations-step__hint-title"><?= htmlspecialchars(__('warehouse.modal.steps.status.checklist.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                     <ul class="operations-step__checklist">
-                      <li>Sprawdź komplet akcesoriów i plombę serwisową</li>
-                      <li>Zaktualizuj lokalizację fizyczną po kontroli</li>
-                      <li>Poinformuj zespół o zmianie statusu (powiadomienie systemowe)</li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.status.checklist.items.0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.status.checklist.items.1'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.status.checklist.items.2'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
                     </ul>
                   </div>
-                  <button type="submit" class="btn">Zapisz aktualizację</button>
+                  <button type="submit" class="btn"><?= htmlspecialchars(__('warehouse.modal.steps.status.form.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 </div>
                 </form>
             </article>
@@ -734,10 +757,10 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
           <section class="intake-modal__panel" data-intake-panel="movement">
             <article class="operations-step">
               <header class="operations-step__header">
-                <span class="operations-step__badge">Krok 3</span>
+                <span class="operations-step__badge"><?= htmlspecialchars(__('warehouse.modal.steps.movement.badge'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <div>
-                  <h3>Rejestrowanie ruchu magazynowego</h3>
-                  <p>Udokumentuj każdą zmianę stanu magazynowego – wydanie, zwrot, korektę lub przesunięcie.</p>
+                  <h3><?= htmlspecialchars(__('warehouse.modal.steps.movement.header.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                  <p><?= htmlspecialchars(__('warehouse.modal.steps.movement.header.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 </div>
                  </header>
               <?php if (!empty($errors['movement']['general'])): ?>
@@ -748,12 +771,12 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                 <input type="hidden" name="action" value="record-movement">
 
                 <fieldset class="operations-form__group">
-                  <legend>Parametry ruchu</legend>
+                  <legend><?= htmlspecialchars(__('warehouse.modal.steps.movement.form.legend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></legend>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Pozycja
+                      <?= htmlspecialchars(__('warehouse.modal.steps.movement.form.item'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="item_id" required>
-                        <option value="">Wybierz pozycję</option>
+                        <option value=""><?= htmlspecialchars(__('warehouse.modal.steps.movement.form.item_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php foreach ($itemOptions as $option): ?>
                           <?php $optionId = (int) ($option['id'] ?? 0); ?>
                           <option value="<?= $optionId ?>"<?= (string) $movementValues['item_id'] === (string) $optionId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($option['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php if (!empty($option['barcode'])): ?> · <?= htmlspecialchars((string) $option['barcode'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?></option>
@@ -762,7 +785,7 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                       <?php if (!empty($errors['movement']['item_id'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['item_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
                     </label>
                     <label>
-                      Typ ruchu
+                      <?= htmlspecialchars(__('warehouse.modal.steps.movement.form.type'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="movement_type" required>
                         <?php foreach ($movementLabels as $movementKey => $movementLabel): ?>
                           <option value="<?= htmlspecialchars((string) $movementKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $movementValues['movement_type'] === $movementKey ? ' selected' : '' ?>><?= htmlspecialchars($movementLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
@@ -773,37 +796,44 @@ $modalShouldOpen = $_SERVER['REQUEST_METHOD'] === 'POST' && (
                   </div>
                   <div class="operations-form__row operations-form__row--two">
                     <label>
-                      Ilość
+                      <?= htmlspecialchars(__('warehouse.modal.steps.movement.form.quantity'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <input type="number" name="quantity" value="<?= htmlspecialchars((string) $movementValues['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                       <?php if (!empty($errors['movement']['quantity'])): ?><span class="form-error"><?= htmlspecialchars($errors['movement']['quantity'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><?php endif; ?>
                     </label>
                     <label>
-                      Powiązana sprawa (opcjonalnie)
+                      <?= htmlspecialchars(__('warehouse.modal.steps.movement.form.case'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       <select name="case_id">
-                        <option value="">Brak</option>
+                        <option value=""><?= htmlspecialchars(__('warehouse.modal.common.none'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php foreach ($caseOptions as $caseOption): ?>
-                          <?php $caseOptionId = (int) ($caseOption['id'] ?? 0); ?>
-                          <option value="<?= $caseOptionId ?>"<?= $movementValues['case_id'] === $caseOptionId ? ' selected' : '' ?>>Case #<?= $caseOptionId ?> · <?= htmlspecialchars((string) ($caseOption['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                          <?php
+                            $caseOptionId = (int) ($caseOption['id'] ?? 0);
+                            $caseOptionName = trim((string) ($caseOption['full_name'] ?? ''));
+                            $caseOptionLabel = __('warehouse.table.case_prefix') . $caseOptionId;
+                            if ($caseOptionName !== '') {
+                                $caseOptionLabel .= ' · ' . $caseOptionName;
+                            }
+                          ?>
+                          <option value="<?= $caseOptionId ?>"<?= $movementValues['case_id'] === $caseOptionId ? ' selected' : '' ?>><?= htmlspecialchars($caseOptionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                       </select>
                     </label>
                   </div>
                   <label class="operations-form__label--notes">
-                    Uwagi do ruchu
-                    <textarea name="notes" rows="3" placeholder="Opis przesunięcia, osoby odpowiedzialne, powód korekty."><?= htmlspecialchars($movementValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                    <?= htmlspecialchars(__('warehouse.modal.steps.movement.form.notes'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                    <textarea name="notes" rows="3" placeholder="<?= htmlspecialchars(__('warehouse.modal.steps.movement.form.notes_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($movementValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                   </label>
                 </fieldset>
 
                 <div class="operations-step__footer">
                   <div>
-                    <span class="operations-step__hint-title">Standard dokumentacyjny</span>
+                    <span class="operations-step__hint-title"><?= htmlspecialchars(__('warehouse.modal.steps.movement.checklist.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                     <ul class="operations-step__checklist">
-                      <li>Zapisz numer dokumentu wydania / przyjęcia</li>
-                      <li>Upewnij się, że ilości po korekcie są zgodne ze stanem faktycznym</li>
-                      <li>Potwierdź operację podpisem osoby odpowiedzialnej</li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.movement.checklist.items.0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.movement.checklist.items.1'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                      <li><?= htmlspecialchars(__('warehouse.modal.steps.movement.checklist.items.2'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
                     </ul>
                   </div>
-                  <button type="submit" class="btn">Dodaj ruch magazynowy</button>
+                  <button type="submit" class="btn"><?= htmlspecialchars(__('warehouse.modal.steps.movement.form.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 </div>
                 </form>
             </article>

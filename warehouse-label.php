@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Lang\Translator;
 use App\Support\Repositories\WarehouseRepository;
 
 require __DIR__ . '/bootstrap.php';
@@ -12,14 +13,14 @@ $warehouseRepository = new WarehouseRepository($pdo);
 $itemId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 if ($itemId === null || $itemId === false) {
     http_response_code(400);
-    echo 'Nieprawidłowy identyfikator pozycji magazynowej.';
+    echo __('warehouse.errors.label.invalid_id');
     exit;
 }
 
 $item = $warehouseRepository->findItem((int) $itemId);
 if ($item === null) {
     http_response_code(404);
-    echo 'Pozycja magazynowa nie została znaleziona.';
+    echo __('warehouse.errors.label.not_found');
     exit;
 }
 
@@ -35,10 +36,12 @@ $location = trim((string) ($item['location'] ?? ''));
 $barcodeUrl = 'warehouse-barcode.php?id=' . (int) $item['id'];
 ?>
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
   <meta charset="UTF-8">
-  <title>Etykieta magazynowa <?= htmlspecialchars($referenceCode !== '' ? $referenceCode : (string) $item['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
+  <title><?= htmlspecialchars(__('warehouse.label.meta_title', [
+      'reference' => $referenceCode !== '' ? $referenceCode : (string) ($item['id'] ?? ''),
+  ]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -100,25 +103,28 @@ $barcodeUrl = 'warehouse-barcode.php?id=' . (int) $item['id'];
 </head>
 <body>
   <div class="label">
-    <h1><?= htmlspecialchars((string) ($item['name'] ?? 'Pozycja magazynowa'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+    <h1><?= htmlspecialchars((string) ($item['name'] ?? __('warehouse.label.default_name')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
     <div class="barcode">
-      <img src="<?= htmlspecialchars($barcodeUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" alt="Kod kreskowy">
+       <img src="<?= htmlspecialchars($barcodeUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" alt="<?= htmlspecialchars(__('warehouse.label.barcode_alt'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <div><?= htmlspecialchars($barcodeValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
     </div>
     <dl>
       <?php if ($referenceCode !== ''): ?>
-        <div><dt>Kod referencyjny</dt><dd><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
+        <div><dt><?= htmlspecialchars(__('warehouse.label.reference'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt><dd><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
       <?php endif; ?>
-      <div><dt>Status</dt><dd><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
-      <div><dt>Ilość</dt><dd><?= (int) $quantity ?></dd></div>
+      <div><dt><?= htmlspecialchars(__('warehouse.label.status'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt><dd><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
+      <div><dt><?= htmlspecialchars(__('warehouse.label.quantity'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt><dd><?= (int) $quantity ?></dd></div>
       <?php if ($location !== ''): ?>
-        <div><dt>Lokalizacja</dt><dd><?= htmlspecialchars($location, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
+        <div><dt><?= htmlspecialchars(__('warehouse.label.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt><dd><?= htmlspecialchars($location, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
       <?php endif; ?>
       <?php if ($caseId !== null && $caseId > 0): ?>
-        <div><dt>Case</dt><dd>Nr <?= $caseId ?><?= $caseReference !== '' ? ' · ' . htmlspecialchars($caseReference, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '' ?></dd></div>
+        <div><dt><?= htmlspecialchars(__('warehouse.label.case'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt><dd><?= htmlspecialchars($caseReference !== ''
+            ? __('warehouse.label.case_with_reference', ['number' => $caseId, 'reference' => $caseReference])
+            : __('warehouse.label.case_basic', ['number' => $caseId]),
+            ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
       <?php endif; ?>
       <?php if ($customerName !== ''): ?>
-        <div><dt>Klant</dt><dd><?= htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
+        <div><dt><?= htmlspecialchars(__('warehouse.label.customer'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt><dd><?= htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd></div>
       <?php endif; ?>
     </dl>
   </div>

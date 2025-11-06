@@ -9,27 +9,28 @@ use App\Support\Clock;
 use PDO;
 use PDOException;
 use RuntimeException;
+use function __;
 
 final class WarehouseRepository
 {
     /** @var array<string, string> */
-    private const STATUS_LABELS = [
-        'expected' => 'Oczekiwane',
-        'received' => 'Przyjęte',
-        'reserved' => 'Zarezerwowane',
-        'in_service' => 'W naprawie',
-        'ready' => 'Gotowe do wydania',
-        'completed' => 'Wydane klientowi',
+    private const STATUS_LABEL_KEYS = [
+        'expected' => 'warehouse.status_labels.expected',
+        'received' => 'warehouse.status_labels.received',
+        'reserved' => 'warehouse.status_labels.reserved',
+        'in_service' => 'warehouse.status_labels.in_service',
+        'ready' => 'warehouse.status_labels.ready',
+        'completed' => 'warehouse.status_labels.completed',
     ];
 
     /** @var array<string, string> */
-    private const MOVEMENT_LABELS = [
-        'registered' => 'Rejestracja',
-        'inbound' => 'Przyjęcie',
-        'reserve' => 'Rezerwacja',
-        'release' => 'Zwolnienie',
-        'outbound' => 'Wydanie',
-        'adjustment' => 'Korekta',
+    private const MOVEMENT_LABEL_KEYS = [
+        'registered' => 'warehouse.movement_labels.registered',
+        'inbound' => 'warehouse.movement_labels.inbound',
+        'reserve' => 'warehouse.movement_labels.reserve',
+        'release' => 'warehouse.movement_labels.release',
+        'outbound' => 'warehouse.movement_labels.outbound',
+        'adjustment' => 'warehouse.movement_labels.adjustment',
     ];
 
     public function __construct(private readonly PDO $pdo)
@@ -41,7 +42,13 @@ final class WarehouseRepository
      */
     public function statusLabels(): array
     {
-        return self::STATUS_LABELS;
+        $labels = [];
+
+        foreach (self::STATUS_LABEL_KEYS as $status => $translationKey) {
+            $labels[$status] = __($translationKey);
+        }
+
+        return $labels;
     }
 
     /**
@@ -49,17 +56,23 @@ final class WarehouseRepository
      */
     public function movementLabels(): array
     {
-        return self::MOVEMENT_LABELS;
+        $labels = [];
+
+        foreach (self::MOVEMENT_LABEL_KEYS as $movement => $translationKey) {
+            $labels[$movement] = __($translationKey);
+        }
+
+        return $labels;
     }
 
     public function isValidStatus(string $status): bool
     {
-        return isset(self::STATUS_LABELS[$status]);
+        return isset(self::STATUS_LABEL_KEYS[$status]);
     }
 
     public function isValidMovementType(string $movementType): bool
     {
-        return isset(self::MOVEMENT_LABELS[$movementType]);
+        return isset(self::MOVEMENT_LABEL_KEYS[$movementType]);
     }
 
     /**
@@ -115,7 +128,7 @@ final class WarehouseRepository
     public function statusCounts(): array
     {
         $statement = $this->pdo->query('SELECT status, COUNT(*) AS total FROM warehouse_items GROUP BY status');
-        $counts = array_fill_keys(array_keys(self::STATUS_LABELS), 0);
+        $counts = array_fill_keys(array_keys(self::STATUS_LABEL_KEYS), 0);
 
         if ($statement !== false) {
             foreach ($statement->fetchAll() ?: [] as $row) {
@@ -172,7 +185,7 @@ final class WarehouseRepository
 
         $name = trim($name);
         if ($name === '') {
-            throw new RuntimeException('Naam van magazynowego elementu nie może być pusta.');
+            throw new RuntimeException(__('warehouse.errors.create.name_required'));
         }
 
         $quantity = max(0, $quantity);
@@ -212,11 +225,17 @@ final class WarehouseRepository
 
         $itemId = (int) $this->pdo->lastInsertId();
 
-        $this->recordMovement($itemId, 'registered', $quantity, $caseId, 'Automatyczne zarejestrowanie pozycji', $performedBy);
-
+        $this->recordMovement(
+            $itemId,
+            'registered',
+            $quantity,
+            $caseId,
+            __('warehouse.movements.auto_registration_note'),
+            $performedBy
+        );
         $item = $this->findItem($itemId);
         if ($item === null) {
-            throw new RuntimeException('Magazynowy element nie został zapisany.');
+            throw new RuntimeException(__('warehouse.errors.create.not_saved'));
         }
 
         return $item;
@@ -386,7 +405,7 @@ final class WarehouseRepository
     {
         $item = $this->findRawItem($itemId);
         if ($item === null) {
-            throw new RuntimeException('Magazynowy element nie istnieje.');
+            throw new RuntimeException(__('warehouse.errors.missing_item'));
         }
 
         $existingBarcode = trim((string) ($item['barcode'] ?? ''));

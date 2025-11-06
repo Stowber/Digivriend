@@ -23,7 +23,7 @@ if ($itemId) {
 if ($item === null) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Magazynowa pozycja nie została znaleziona.';
+    echo __('warehouse.errors.barcode.not_found');
     exit;
 }
 
@@ -33,7 +33,7 @@ try {
 } catch (\Throwable $exception) {
     http_response_code(500);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Nie udało się wygenerować kodu kreskowego.';
+    echo __('warehouse.errors.barcode.render_failed');
     exit;
 }
 

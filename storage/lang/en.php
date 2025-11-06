@@ -221,6 +221,363 @@ return [
             ],
         ],
     ],
+    'intake' => [
+        'meta' => [
+            'title' => 'Customer intake - Digivriend',
+        ],
+        'header' => [
+            'title' => 'Customer intake',
+            'description' => 'Start each service request with a streamlined intake workflow. Capture customer details, schedule the device visit, and confirm the intake instantly via email.',
+            'action' => 'Start new registration',
+            'steps_aria' => 'Process overview',
+            'steps' => [
+                'capture' => [
+                    'title' => 'Capture details',
+                    'description' => 'Name, address, and contact information.',
+                ],
+                'schedule' => [
+                    'title' => 'Schedule appointment',
+                    'description' => 'Plan the drop-off visit and record the reported issue.',
+                ],
+                'confirm' => [
+                    'title' => 'Confirm & send',
+                    'description' => 'The customer receives a PDF with the barcode and intake summary.',
+                ],
+            ],
+        ],
+        'info_card' => [
+            'title' => 'What happens after the registration?',
+            'items' => [
+                'email' => 'The intake confirmation is emailed to the customer together with the barcode.',
+                'cases' => 'The appointment and case appear immediately in Customers & devices.',
+                'signature' => 'Upon arrival the staff scan the barcode and collect the consent signature.',
+            ],
+        ],
+        'modal' => [
+            'eyebrow' => 'New intake process',
+            'title' => 'Register customer details',
+        ],
+        'form' => [
+            'customer' => [
+                'aria' => 'Customer details',
+                'title' => 'Customer contact details',
+                'fields' => [
+                    'full_name' => 'Name *',
+                    'email' => 'Email address *',
+                    'phone' => 'Phone *',
+                    'address' => 'Address *',
+                    'postal_code' => 'Postal code *',
+                    'city' => 'City *',
+                ],
+                'next' => 'Next step',
+            ],
+            'visit' => [
+                'aria' => 'Appointment details',
+                'title' => 'Appointment and device',
+                'fields' => [
+                    'appointment_at' => 'Appointment date & time *',
+                    'device_type' => 'Device type',
+                    'device_brand' => 'Brand',
+                    'device_model' => 'Model',
+                    'device_serial' => 'Serial number',
+                    'problem_description' => 'Short problem description',
+                ],
+                'device_type_placeholder' => '— Select —',
+                'device_types' => [
+                    'laptop' => 'Laptop',
+                    'pc' => 'PC',
+                    'desktop' => 'Desktop',
+                    'phone' => 'Phone',
+                    'tablet' => 'Tablet',
+                    'console' => 'Console',
+                ],
+                'problem_placeholder' => 'e.g. will not start…',
+                'back' => 'Back',
+                'submit' => 'Complete registration',
+            ],
+        ],
+        'result' => [
+            'title' => 'Intake confirmed',
+            'description' => 'We recorded the intake. The customer will receive an email with the barcode and appointment shortly.',
+            'reference' => 'Reference code',
+            'appointment' => 'Appointment',
+            'placeholder' => '-',
+            'actions' => [
+                'case' => 'View case',
+                'download' => 'Download confirmation',
+            ],
+        ],
+        'feedback' => [
+            'loading' => 'Registration in progress…',
+            'error' => 'Registration failed. Please try again.',
+            'success' => 'Intake saved successfully.',
+            'exception' => 'An error occurred while saving. Check the details and try again.',
+            'unknown' => 'Unknown',
+        ],
+    ],
+    'warehouse' => [
+        'meta' => [
+            'title' => 'Warehouse - Digivriend',
+        ],
+        'header' => [
+            'title' => 'Warehouse',
+            'description' => 'Manage inbound items, reservations, and releases for service equipment with full workflow visibility.',
+            'actions' => [
+                'open_modal' => 'New intake',
+                'back' => 'Back to dashboard',
+            ],
+        ],
+        'stats' => [
+            'items' => [
+                'title' => 'Items in system',
+                'description' => 'Total inventory records',
+            ],
+            'available' => [
+                'title' => 'Available stock',
+                'description' => 'Inventory ready to hand over',
+            ],
+            'reserved' => [
+                'title' => 'Reserved',
+                'description' => 'Currently assigned to repairs',
+            ],
+            'ready' => [
+                'title' => 'Ready for pickup',
+                'description' => 'Items marked as ready',
+            ],
+        ],
+        'filters' => [
+            'aria' => 'Warehouse filters',
+            'status' => [
+                'label' => 'Status',
+                'all' => 'All statuses',
+            ],
+            'search' => [
+                'label' => 'Search',
+                'placeholder' => 'Code, name, reference',
+            ],
+            'submit' => 'Filter',
+        ],
+        'table' => [
+            'headers' => [
+                'item' => 'Item',
+                'status' => 'Status',
+                'quantity' => 'Quantity',
+                'location' => 'Location',
+                'link' => 'Link',
+                'updated' => 'Last update',
+                'actions' => 'Actions',
+            ],
+            'empty' => 'No items match the current filters.',
+            'reference_prefix' => 'Ref:',
+            'barcode_prefix' => 'Code:',
+            'category_prefix' => 'Category:',
+            'reserved_prefix' => 'Reserved:',
+            'case_prefix' => 'Case #',
+            'no_link' => 'No link',
+            'actions' => [
+                'label' => 'Label',
+                'case_details' => 'Case details',
+            ],
+        ],
+        'history' => [
+            'title' => 'Movement history',
+            'empty' => 'No movements recorded recently.',
+            'item_prefix' => 'Item:',
+            'reference_prefix' => 'Ref:',
+            'link_prefix' => 'Link:',
+            'notes_prefix' => 'Notes:',
+            'performed_by_prefix' => 'Handled by:',
+        ],
+        'modal' => [
+            'eyebrow' => 'Warehouse operations hub',
+            'title' => 'Equipment intake and releases',
+            'description' => 'Register new intake, update operational statuses, and document releases with a guided workflow.',
+            'close' => 'Close window',
+            'summary' => [
+                'aria' => 'Warehouse status summary',
+                'received' => 'Expected / received items',
+                'reserved' => 'Reserved items',
+                'in_service' => 'In service',
+                'completed' => 'Closed operations',
+            ],
+            'steps' => [
+                'aria' => 'Warehouse process steps',
+                'intake' => [
+                    'badge' => 'Step 1',
+                    'title' => 'Equipment intake',
+                    'subtitle' => 'Add new items and reservations.',
+                    'header' => [
+                        'title' => 'Delivery registration',
+                        'description' => 'Enter the new device with all key logistics parameters.',
+                    ],
+                    'form' => [
+                        'basic_legend' => 'Basic details',
+                        'name' => 'Item name',
+                        'quantity' => 'Initial quantity',
+                        'status' => 'Initial status',
+                        'category' => 'Category / device type',
+                        'category_placeholder' => 'e.g. Laptops, measuring equipment',
+                        'logistics_legend' => 'Logistics links',
+                        'location' => 'Warehouse location',
+                        'location_placeholder' => 'e.g. Zone A · Rack 2 · Shelf 3',
+                        'case' => 'Related case (optional)',
+                        'reference' => 'Reference code (optional)',
+                        'reference_placeholder' => 'e.g. WH2404-001',
+                        'notes' => 'Operational notes',
+                        'notes_placeholder' => 'Logistics notes, order number, etc.',
+                        'submit' => 'Register item',
+                    ],
+                    'checklist' => [
+                        'title' => 'Intake checklist',
+                        'items' => [
+                            'Physical condition verified',
+                            'Accessories and documentation attached',
+                            'Responsible technician assigned',
+                        ],
+                    ],
+                ],
+                'status' => [
+                    'badge' => 'Step 2',
+                    'title' => 'Status and location',
+                    'subtitle' => 'Update locations and notes.',
+                    'header' => [
+                        'title' => 'Quality control and status',
+                        'description' => 'Assign location, verify completeness, and update status during service.',
+                    ],
+                    'form' => [
+                        'current_legend' => 'Current information',
+                        'item' => 'Warehouse item',
+                        'item_placeholder' => 'Select item',
+                        'status' => 'New operational status',
+                        'case' => 'Related case',
+                        'location' => 'Operational location',
+                        'location_placeholder' => 'Consolidation zone, test bench, etc.',
+                        'notes' => 'Notes and arrangements',
+                        'notes_placeholder' => 'Diagnosis, performed actions, next steps.',
+                        'submit' => 'Save update',
+                    ],
+                    'checklist' => [
+                        'title' => 'Quality control tips',
+                        'items' => [
+                            'Check accessories and service seal',
+                            'Update physical location after inspection',
+                            'Notify the team about the status change (system notification)',
+                        ],
+                    ],
+                ],
+                'movement' => [
+                    'badge' => 'Step 3',
+                    'title' => 'Releases and movement',
+                    'subtitle' => 'Document releases, returns, and adjustments.',
+                    'header' => [
+                        'title' => 'Recording warehouse movement',
+                        'description' => 'Document every inventory change—release, return, adjustment, or transfer.',
+                    ],
+                    'form' => [
+                        'legend' => 'Movement parameters',
+                        'item' => 'Item',
+                        'item_placeholder' => 'Select item',
+                        'type' => 'Movement type',
+                        'quantity' => 'Quantity',
+                        'case' => 'Related case (optional)',
+                        'notes' => 'Movement notes',
+                        'notes_placeholder' => 'Describe transfer, responsible people, reason for adjustment.',
+                        'submit' => 'Add warehouse movement',
+                    ],
+                    'checklist' => [
+                        'title' => 'Documentation standard',
+                        'items' => [
+                            'Record issue/receipt document number',
+                            'Ensure post-adjustment quantities match stock',
+                            'Confirm the operation with a responsible signature',
+                        ],
+                    ],
+                ],
+            ],
+            'common' => [
+                'none' => 'None',
+            ],
+        ],
+        'messages' => [
+            'create' => [
+                'default_name' => 'New item',
+                'reference_unknown' => 'no reference',
+                'success' => 'Item ":name" added (reference: :reference).',
+            ],
+            'status' => [
+                'success' => 'Warehouse status updated.',
+            ],
+            'movement' => [
+                'success' => 'Warehouse movement recorded.',
+            ],
+        ],
+        'errors' => [
+            'create' => [
+                'quantity' => 'Enter a valid quantity (0 or more).',
+                'name_required' => 'Item name is required.',
+                'general' => 'An error occurred while saving the item. Try again.',
+                'not_saved' => 'The warehouse item could not be saved.',
+            ],
+            'common' => [
+                'invalid_status' => 'Choose a valid status.',
+            ],
+            'status' => [
+                'failed' => 'Unable to change the status.',
+                'exception' => 'Status update failed. Try again.',
+                'item_required' => 'Select an item to update.',
+            ],
+            'movement' => [
+                'item_required' => 'Select a warehouse item.',
+                'type' => 'Choose a valid movement type.',
+                'adjustment_quantity' => 'Enter a positive or negative adjustment.',
+                'positive_quantity' => 'Enter a positive value.',
+                'failed' => 'Unable to save the warehouse movement.',
+                'exception' => 'An error occurred while saving the movement. Try again.',
+            ],
+            'unknown_action' => 'Unknown form action.',
+            'missing_item' => 'The warehouse item does not exist.',
+            'barcode' => [
+                'not_found' => 'Warehouse item not found.',
+                'render_failed' => 'Failed to generate the barcode.',
+            ],
+            'label' => [
+                'invalid_id' => 'Invalid warehouse item identifier.',
+                'not_found' => 'Warehouse item not found.',
+            ],
+        ],
+        'movements' => [
+            'auto_registration_note' => 'Automatic item registration',
+        ],
+        'label' => [
+            'meta_title' => 'Warehouse label :reference',
+            'default_name' => 'Warehouse item',
+            'barcode_alt' => 'Barcode',
+            'reference' => 'Reference code',
+            'status' => 'Status',
+            'quantity' => 'Quantity',
+            'location' => 'Location',
+            'case' => 'Case',
+            'case_basic' => 'Case #:number',
+            'case_with_reference' => 'Case #:number · :reference',
+            'customer' => 'Customer',
+        ],
+        'status_labels' => [
+            'expected' => 'Expected',
+            'received' => 'Received',
+            'reserved' => 'Reserved',
+            'in_service' => 'In service',
+            'ready' => 'Ready for pickup',
+            'completed' => 'Delivered to customer',
+        ],
+        'movement_labels' => [
+            'registered' => 'Registration',
+            'inbound' => 'Inbound',
+            'reserve' => 'Reserve',
+            'release' => 'Release',
+            'outbound' => 'Outbound',
+            'adjustment' => 'Adjustment',
+        ],
+    ],
     'dashboard' => [
         'meta' => [
             'title' => 'Digivriend - Dashboard',

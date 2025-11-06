@@ -3,18 +3,105 @@
 declare(strict_types=1);
 
 use App\Security\Csrf;
+use App\Support\Lang\Translator;
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/templates/partials/main-nav.php';
 
 $csrfToken = Csrf::token();
+
+$logoAriaLabel = __('dashboard.header.logo_aria');
+$logoSubtitle = __('dashboard.header.subtitle');
+$appName = __('app.name');
+
+$heroTitle = __('intake.header.title');
+$heroDescription = __('intake.header.description');
+$heroAction = __('intake.header.action');
+$heroStepsAria = __('intake.header.steps_aria');
+$heroSteps = [
+    [
+        'number' => 1,
+        'title' => __('intake.header.steps.capture.title'),
+        'description' => __('intake.header.steps.capture.description'),
+    ],
+    [
+        'number' => 2,
+        'title' => __('intake.header.steps.schedule.title'),
+        'description' => __('intake.header.steps.schedule.description'),
+    ],
+    [
+        'number' => 3,
+        'title' => __('intake.header.steps.confirm.title'),
+        'description' => __('intake.header.steps.confirm.description'),
+    ],
+];
+
+$infoCardTitle = __('intake.info_card.title');
+$infoCardItems = [
+    __('intake.info_card.items.email'),
+    __('intake.info_card.items.cases'),
+    __('intake.info_card.items.signature'),
+];
+
+$modalEyebrow = __('intake.modal.eyebrow');
+$modalTitle = __('intake.modal.title');
+$modalCloseLabel = __('common.close');
+
+$customerPanelAria = __('intake.form.customer.aria');
+$customerPanelTitle = __('intake.form.customer.title');
+$customerFields = [
+    ['name' => 'full_name', 'label' => __('intake.form.customer.fields.full_name'), 'type' => 'text', 'attributes' => ['autocomplete' => 'name', 'required' => true, 'maxlength' => 191]],
+    ['name' => 'email', 'label' => __('intake.form.customer.fields.email'), 'type' => 'email', 'attributes' => ['autocomplete' => 'email', 'required' => true, 'maxlength' => 191]],
+    ['name' => 'phone', 'label' => __('intake.form.customer.fields.phone'), 'type' => 'tel', 'attributes' => ['autocomplete' => 'tel', 'required' => true, 'maxlength' => 32]],
+    ['name' => 'address', 'label' => __('intake.form.customer.fields.address'), 'type' => 'text', 'wide' => true, 'attributes' => ['autocomplete' => 'street-address', 'required' => true, 'maxlength' => 255]],
+    ['name' => 'postal_code', 'label' => __('intake.form.customer.fields.postal_code'), 'type' => 'text', 'attributes' => ['autocomplete' => 'postal-code', 'required' => true, 'maxlength' => 16]],
+    ['name' => 'city', 'label' => __('intake.form.customer.fields.city'), 'type' => 'text', 'attributes' => ['autocomplete' => 'address-level2', 'required' => true, 'maxlength' => 120]],
+];
+$customerNextLabel = __('intake.form.customer.next');
+
+$visitPanelAria = __('intake.form.visit.aria');
+$visitPanelTitle = __('intake.form.visit.title');
+$visitFields = [
+    ['name' => 'appointment_at', 'label' => __('intake.form.visit.fields.appointment_at'), 'type' => 'datetime-local', 'attributes' => ['required' => true]],
+    ['name' => 'device_type', 'label' => __('intake.form.visit.fields.device_type'), 'type' => 'select'],
+    ['name' => 'device_brand', 'label' => __('intake.form.visit.fields.device_brand'), 'type' => 'text', 'attributes' => ['maxlength' => 120]],
+    ['name' => 'device_model', 'label' => __('intake.form.visit.fields.device_model'), 'type' => 'text', 'attributes' => ['maxlength' => 191]],
+    ['name' => 'device_serial', 'label' => __('intake.form.visit.fields.device_serial'), 'type' => 'text', 'attributes' => ['maxlength' => 120]],
+    ['name' => 'problem_description', 'label' => __('intake.form.visit.fields.problem_description'), 'type' => 'textarea', 'wide' => true, 'attributes' => ['rows' => 4, 'maxlength' => 500, 'placeholder' => __('intake.form.visit.problem_placeholder')]],
+];
+$deviceTypePlaceholder = __('intake.form.visit.device_type_placeholder');
+$deviceTypeOptions = [
+    '' => $deviceTypePlaceholder,
+    'Laptop' => __('intake.form.visit.device_types.laptop'),
+    'PC' => __('intake.form.visit.device_types.pc'),
+    'Desktop' => __('intake.form.visit.device_types.desktop'),
+    'Phone' => __('intake.form.visit.device_types.phone'),
+    'Tablet' => __('intake.form.visit.device_types.tablet'),
+    'Console' => __('intake.form.visit.device_types.console'),
+];
+$visitBackLabel = __('intake.form.visit.back');
+$visitSubmitLabel = __('intake.form.visit.submit');
+
+$resultTitle = __('intake.result.title');
+$resultDescription = __('intake.result.description');
+$resultReferenceLabel = __('intake.result.reference');
+$resultAppointmentLabel = __('intake.result.appointment');
+$resultPlaceholder = __('intake.result.placeholder');
+$resultCaseLabel = __('intake.result.actions.case');
+$resultDownloadLabel = __('intake.result.actions.download');
+
+$feedbackLoading = __('intake.feedback.loading');
+$feedbackError = __('intake.feedback.error');
+$feedbackSuccess = __('intake.feedback.success');
+$feedbackException = __('intake.feedback.exception');
+$feedbackUnknown = __('intake.feedback.unknown');
 ?>
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
   <meta charset="UTF-8">
-  <title>Klant registratie - Digivriend</title>
+  <title><?= htmlspecialchars(__('intake.meta.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/intake.css">
@@ -22,14 +109,14 @@ $csrfToken = Csrf::token();
 <body>
   <header class="main-header">
     <div class="container">
-      <a href="index.php" class="logo" aria-label="Digivriend dashboard">
+      <a href="index.php" class="logo" aria-label="<?= htmlspecialchars($logoAriaLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <span class="logo__mark" aria-hidden="true">DV</span>
         <span class="logo__text">
-          <span class="logo__title">Digivriend</span>
-          <span class="logo__subtitle">Serviceplatform</span>
+          <span class="logo__title"><?= htmlspecialchars($appName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="logo__subtitle"><?= htmlspecialchars($logoSubtitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </span>
       </a>
-      <nav class="main-nav" aria-label="Hoofd navigatie">
+      <nav class="main-nav" aria-label="<?= htmlspecialchars(__('nav.aria.main'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <?php render_main_nav('intake'); ?>
       </nav>
     </div>
@@ -38,154 +125,148 @@ $csrfToken = Csrf::token();
   <main class="container intake-page">
     <section class="page-hero">
       <div class="page-hero__content">
-        <h1>Klant registratie</h1>
+        <h1><?= htmlspecialchars($heroTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
         <p class="page-hero__intro">
-          Start elke serviceaanvraag met een gestroomlijnd intakeproces. Registreer de klantgegevens,
-          plan het bezoek voor het apparaat en bevestig de intake direct per e-mail.
+          <?= htmlspecialchars($heroDescription, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </p>
         <button class="btn btn--primary" type="button" data-intake-open>
-          Nieuwe registratie starten
+          <?= htmlspecialchars($heroAction, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </button>
       </div>
-      <ul class="page-hero__steps" aria-label="Procesoverzicht">
-        <li>
-          <span class="page-hero__step-number">1</span>
-          <div>
-            <strong>Gegevens vastleggen</strong>
-            <p>Naam, adres en contactinformatie van de klant.</p>
-          </div>
-        </li>
-        <li>
-          <span class="page-hero__step-number">2</span>
-          <div>
-            <strong>Afspraak plannen</strong>
-            <p>Maak een afspraak voor het inleveren van het apparaat en noteer het probleem.</p>
-          </div>
-        </li>
-        <li>
-          <span class="page-hero__step-number">3</span>
-          <div>
-            <strong>Bevestigen & verzenden</strong>
-            <p>De klant ontvangt een PDF met barcode en intake afspraken.</p>
-          </div>
-        </li>
+      <ul class="page-hero__steps" aria-label="<?= htmlspecialchars($heroStepsAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+        <?php foreach ($heroSteps as $step): ?>
+          <li>
+            <span class="page-hero__step-number"><?= (int) $step['number'] ?></span>
+            <div>
+              <strong><?= htmlspecialchars($step['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+              <p><?= htmlspecialchars($step['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            </div>
+          </li>
+        <?php endforeach; ?>
       </ul>
     </section>
 
     <section class="info-card">
-      <h2>Wat gebeurt er na de registratie?</h2>
+      <h2><?= htmlspecialchars($infoCardTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
       <ol class="info-card__list">
-        <li>De intakebevestiging wordt automatisch naar de klant gemaild met barcode.</li>
-        <li>De afspraak en case verschijnen meteen in <strong>Klanten &amp; apparaten</strong>.</li>
-        <li>Bij binnenkomst scant de medewerker de barcode en laat de klant de toestemmingsverklaring ondertekenen.</li>
+        <?php foreach ($infoCardItems as $item): ?>
+          <li><?= htmlspecialchars($item, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+        <?php endforeach; ?>
       </ol>
     </section>
   </main>
 
-  <div class="intake-modal" data-intake-modal hidden>
+  <div
+    class="intake-modal"
+    data-intake-modal
+    hidden
+    data-loading-message="<?= htmlspecialchars($feedbackLoading, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+    data-error-message="<?= htmlspecialchars($feedbackError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+    data-success-message="<?= htmlspecialchars($feedbackSuccess, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+    data-exception-message="<?= htmlspecialchars($feedbackException, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+    data-unknown-value="<?= htmlspecialchars($feedbackUnknown, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+  >
     <div class="intake-modal__backdrop" data-intake-close aria-hidden="true"></div>
     <div class="intake-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="intakeModalTitle">
       <header class="intake-modal__header">
-        <p class="intake-modal__eyebrow">Nieuw intakeproces</p>
-        <h2 id="intakeModalTitle">Klantgegevens registreren</h2>
-        <button type="button" class="intake-modal__close" data-intake-close aria-label="Sluiten">&times;</button>
+        <p class="intake-modal__eyebrow"><?= htmlspecialchars($modalEyebrow, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <h2 id="intakeModalTitle"><?= htmlspecialchars($modalTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <button type="button" class="intake-modal__close" data-intake-close aria-label="<?= htmlspecialchars($modalCloseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
       </header>
       <div class="intake-modal__body">
         <form class="intake-form" id="intakeForm" novalidate>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-          <section class="intake-form__panel" data-step="customer" aria-label="Klantgegevens">
-            <h3>Contactgegevens klant</h3>
+          <section class="intake-form__panel" data-step="customer" aria-label="<?= htmlspecialchars($customerPanelAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <h3><?= htmlspecialchars($customerPanelTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
             <div class="form-grid">
-              <label class="form-field">
-                <span>Naam *</span>
-                <input type="text" name="full_name" autocomplete="name" required maxlength="191">
-              </label>
-              <label class="form-field">
-                <span>E-mailadres *</span>
-                <input type="email" name="email" autocomplete="email" required maxlength="191">
-              </label>
-              <label class="form-field">
-                <span>Telefoon *</span>
-                <input type="tel" name="phone" autocomplete="tel" required maxlength="32">
-              </label>
-              <label class="form-field form-field--wide">
-                <span>Adres *</span>
-                <input type="text" name="address" autocomplete="street-address" required maxlength="255">
-              </label>
-              <label class="form-field">
-                <span>Postcode *</span>
-                <input type="text" name="postal_code" autocomplete="postal-code" required maxlength="16">
-              </label>
-              <label class="form-field">
-                <span>Plaats *</span>
-                <input type="text" name="city" autocomplete="address-level2" required maxlength="120">
-              </label>
+              <?php foreach ($customerFields as $field): ?>
+                <label class="form-field<?= !empty($field['wide']) ? ' form-field--wide' : '' ?>">
+                  <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  <input
+                    type="<?= htmlspecialchars($field['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    name="<?= htmlspecialchars($field['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    <?php foreach ($field['attributes'] as $attr => $value): ?>
+                      <?php if (is_bool($value)): ?>
+                        <?= $value ? ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '' ?>
+                      <?php else: ?>
+                        <?= ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>="<?= htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      <?php endif; ?>
+                    <?php endforeach; ?>
+                  >
+                </label>
+              <?php endforeach; ?>
             </div>
             <footer class="intake-form__actions">
-              <button type="button" class="btn btn--primary" data-next-step>Volgende stap</button>
+              <button type="button" class="btn btn--primary" data-next-step><?= htmlspecialchars($customerNextLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
             </footer>
           </section>
 
-          <section class="intake-form__panel" data-step="visit" hidden aria-label="Afspraakgegevens">
-            <h3>Afspraak en apparaat</h3>
+          <section class="intake-form__panel" data-step="visit" hidden aria-label="<?= htmlspecialchars($visitPanelAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <h3><?= htmlspecialchars($visitPanelTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
             <div class="form-grid">
-              <label class="form-field">
-                <span>Datum &amp; tijd afspraak *</span>
-                <input type="datetime-local" name="appointment_at" required>
-              </label>
-              <label class="form-field">
-                <span>Type apparaat</span>
-                <select name="device_type">
-                  <option value="">— Kies —</option>
-                  <option value="Laptop">Laptop</option>
-                  <option value="PC">PC</option>
-                  <option value="Desktop">Desktop</option>
-                  <option value="Telefon">Telefon</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="Konsola">Konsola</option>
-                </select>
-              </label>
-              <label class="form-field">
-                <span>Merk</span>
-                <input type="text" name="device_brand" maxlength="120">
-              </label>
-              <label class="form-field">
-                <span>Model</span>
-                <input type="text" name="device_model" maxlength="191">
-              </label>
-              <label class="form-field">
-                <span>Serienummer</span>
-                <input type="text" name="device_serial" maxlength="120">
-              </label>
-              <label class="form-field form-field--wide">
-                <span>Korte probleemomschrijving</span>
-                <textarea name="problem_description" rows="4" maxlength="500" placeholder="Bijv. start niet meer op…"></textarea>
-              </label>
+              <?php foreach ($visitFields as $field): ?>
+                <?php $attributes = $field['attributes'] ?? []; ?>
+                <?php if ($field['type'] === 'select'): ?>
+                  <label class="form-field">
+                    <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <select name="<?= htmlspecialchars($field['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                      <?php foreach ($deviceTypeOptions as $value => $label): ?>
+                        <option value="<?= htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
+                <?php elseif ($field['type'] === 'textarea'): ?>
+                  <label class="form-field<?= !empty($field['wide']) ? ' form-field--wide' : '' ?>">
+                    <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <textarea
+                      name="<?= htmlspecialchars($field['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      <?php foreach ($attributes as $attr => $value): ?>
+                        <?= ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>="<?= htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      <?php endforeach; ?>
+                    ></textarea>
+                  </label>
+                <?php else: ?>
+                  <label class="form-field<?= !empty($field['wide']) ? ' form-field--wide' : '' ?>">
+                    <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <input
+                      type="<?= htmlspecialchars($field['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      name="<?= htmlspecialchars($field['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      <?php foreach ($attributes as $attr => $value): ?>
+                        <?php if (is_bool($value)): ?>
+                          <?= $value ? ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '' ?>
+                        <?php else: ?>
+                          <?= ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>="<?= htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        <?php endif; ?>
+                      <?php endforeach; ?>
+                    >
+                  </label>
+                <?php endif; ?>
+              <?php endforeach; ?>
             </div>
             <footer class="intake-form__actions">
-              <button type="button" class="btn btn--ghost" data-prev-step>Terug</button>
-              <button type="submit" class="btn btn--primary">Registratie afronden</button>
+              <button type="button" class="btn btn--ghost" data-prev-step><?= htmlspecialchars($visitBackLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+              <button type="submit" class="btn btn--primary"><?= htmlspecialchars($visitSubmitLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
             </footer>
           </section>
         </form>
 
-        <section class="intake-result" data-result hidden aria-live="polite">
+        <section class="intake-result" data-result hidden aria-live="polite" data-placeholder="<?= htmlspecialchars($resultPlaceholder, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <div class="intake-result__icon" aria-hidden="true">✅</div>
-          <h3>Intake bevestigd</h3>
-          <p>We hebben de intake vastgelegd. De klant ontvangt zo dadelijk een e-mail met de barcode en afspraak.</p>
+          <h3><?= htmlspecialchars($resultTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+          <p><?= htmlspecialchars($resultDescription, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <dl class="intake-result__summary">
             <div>
-              <dt>Referentiecode</dt>
-              <dd data-result-reference>-</dd>
+              <dt><?= htmlspecialchars($resultReferenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd data-result-reference><?= htmlspecialchars($resultPlaceholder, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
             <div>
-              <dt>Afspraak</dt>
-              <dd data-result-appointment>-</dd>
+              <dt><?= htmlspecialchars($resultAppointmentLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd data-result-appointment><?= htmlspecialchars($resultPlaceholder, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
           </dl>
           <div class="intake-result__actions">
-            <a class="btn btn--primary" data-result-case href="#">Bekijk case</a>
-            <a class="btn btn--secondary" data-result-pdf href="#" target="_blank" rel="noopener">Download bevestiging</a>
+            <a class="btn btn--primary" data-result-case href="#"><?= htmlspecialchars($resultCaseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+            <a class="btn btn--secondary" data-result-pdf href="#" target="_blank" rel="noopener"><?= htmlspecialchars($resultDownloadLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
           </div>
         </section>
 

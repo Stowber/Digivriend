@@ -221,6 +221,363 @@ return [
             ],
         ],
     ],
+    'intake' => [
+        'meta' => [
+            'title' => 'Klantregistratie - Digivriend',
+        ],
+        'header' => [
+            'title' => 'Klantregistratie',
+            'description' => 'Start elke serviceaanvraag met een gestroomlijnd intakeproces. Registreer de klantgegevens, plan het bezoek voor het apparaat en bevestig de intake direct per e-mail.',
+            'action' => 'Nieuwe registratie starten',
+            'steps_aria' => 'Procesoverzicht',
+            'steps' => [
+                'capture' => [
+                    'title' => 'Gegevens vastleggen',
+                    'description' => 'Naam, adres en contactgegevens van de klant.',
+                ],
+                'schedule' => [
+                    'title' => 'Afspraak plannen',
+                    'description' => 'Plan het inlevermoment en noteer het gemelde probleem.',
+                ],
+                'confirm' => [
+                    'title' => 'Bevestigen & verzenden',
+                    'description' => 'De klant ontvangt een PDF met barcode en intakeoverzicht.',
+                ],
+            ],
+        ],
+        'info_card' => [
+            'title' => 'Wat gebeurt er na de registratie?',
+            'items' => [
+                'email' => 'De intakebevestiging wordt automatisch naar de klant gemaild met barcode.',
+                'cases' => 'De afspraak en case verschijnen meteen in Klanten & apparaten.',
+                'signature' => 'Bij binnenkomst scant de medewerker de barcode en laat de klant tekenen.',
+            ],
+        ],
+        'modal' => [
+            'eyebrow' => 'Nieuw intakeproces',
+            'title' => 'Klantgegevens registreren',
+        ],
+        'form' => [
+            'customer' => [
+                'aria' => 'Klantgegevens',
+                'title' => 'Contactgegevens klant',
+                'fields' => [
+                    'full_name' => 'Naam *',
+                    'email' => 'E-mailadres *',
+                    'phone' => 'Telefoon *',
+                    'address' => 'Adres *',
+                    'postal_code' => 'Postcode *',
+                    'city' => 'Plaats *',
+                ],
+                'next' => 'Volgende stap',
+            ],
+            'visit' => [
+                'aria' => 'Afspraakgegevens',
+                'title' => 'Afspraak en apparaat',
+                'fields' => [
+                    'appointment_at' => 'Datum & tijd afspraak *',
+                    'device_type' => 'Type apparaat',
+                    'device_brand' => 'Merk',
+                    'device_model' => 'Model',
+                    'device_serial' => 'Serienummer',
+                    'problem_description' => 'Korte probleemomschrijving',
+                ],
+                'device_type_placeholder' => '— Kies —',
+                'device_types' => [
+                    'laptop' => 'Laptop',
+                    'pc' => 'PC',
+                    'desktop' => 'Desktop',
+                    'phone' => 'Telefoon',
+                    'tablet' => 'Tablet',
+                    'console' => 'Console',
+                ],
+                'problem_placeholder' => 'Bijv. start niet meer op…',
+                'back' => 'Terug',
+                'submit' => 'Registratie afronden',
+            ],
+        ],
+        'result' => [
+            'title' => 'Intake bevestigd',
+            'description' => 'We hebben de intake vastgelegd. De klant ontvangt zo dadelijk een e-mail met de barcode en afspraak.',
+            'reference' => 'Referentiecode',
+            'appointment' => 'Afspraak',
+            'placeholder' => '-',
+            'actions' => [
+                'case' => 'Bekijk case',
+                'download' => 'Download bevestiging',
+            ],
+        ],
+        'feedback' => [
+            'loading' => 'Registratie wordt verwerkt…',
+            'error' => 'Registratie is niet gelukt. Probeer opnieuw.',
+            'success' => 'Intake is succesvol vastgelegd.',
+            'exception' => 'Er is een fout opgetreden tijdens het opslaan. Controleer de gegevens en probeer opnieuw.',
+            'unknown' => 'Onbekend',
+        ],
+    ],
+    'warehouse' => [
+        'meta' => [
+            'title' => 'Magazijn - Digivriend',
+        ],
+        'header' => [
+            'title' => 'Magazijn',
+            'description' => 'Beheer inkomende items, reserveringen en uitgiftes voor serviceapparatuur met volledige zichtbaarheid.',
+            'actions' => [
+                'open_modal' => 'Nieuwe intake',
+                'back' => 'Terug naar dashboard',
+            ],
+        ],
+        'stats' => [
+            'items' => [
+                'title' => 'Items in het systeem',
+                'description' => 'Totaal aantal magazijnrecords',
+            ],
+            'available' => [
+                'title' => 'Beschikbare voorraad',
+                'description' => 'Voorraad klaar voor uitgifte',
+            ],
+            'reserved' => [
+                'title' => 'Gereserveerd',
+                'description' => 'Momenteel gekoppeld aan reparaties',
+            ],
+            'ready' => [
+                'title' => 'Klaar voor uitgifte',
+                'description' => 'Items gemarkeerd als klaar',
+            ],
+        ],
+        'filters' => [
+            'aria' => 'Magazijnfilters',
+            'status' => [
+                'label' => 'Status',
+                'all' => 'Alle statussen',
+            ],
+            'search' => [
+                'label' => 'Zoeken',
+                'placeholder' => 'Code, naam, referentie',
+            ],
+            'submit' => 'Filteren',
+        ],
+        'table' => [
+            'headers' => [
+                'item' => 'Item',
+                'status' => 'Status',
+                'quantity' => 'Aantal',
+                'location' => 'Locatie',
+                'link' => 'Koppeling',
+                'updated' => 'Laatste update',
+                'actions' => 'Acties',
+            ],
+            'empty' => 'Geen items gevonden voor de huidige filters.',
+            'reference_prefix' => 'Ref:',
+            'barcode_prefix' => 'Code:',
+            'category_prefix' => 'Categorie:',
+            'reserved_prefix' => 'Gereserveerd:',
+            'case_prefix' => 'Dossier #',
+            'no_link' => 'Geen koppeling',
+            'actions' => [
+                'label' => 'Label',
+                'case_details' => 'Dossierdetails',
+            ],
+        ],
+        'history' => [
+            'title' => 'Bewegingsgeschiedenis',
+            'empty' => 'Geen recente bewegingen geregistreerd.',
+            'item_prefix' => 'Item:',
+            'reference_prefix' => 'Ref:',
+            'link_prefix' => 'Koppeling:',
+            'notes_prefix' => 'Notities:',
+            'performed_by_prefix' => 'Uitgevoerd door:',
+        ],
+        'modal' => [
+            'eyebrow' => 'Magazijn-operatiecentrum',
+            'title' => 'Intakes en uitgiftes van apparatuur',
+            'description' => 'Registreer nieuwe intakes, werk statussen bij en documenteer uitgiftes via een begeleide workflow.',
+            'close' => 'Venster sluiten',
+            'summary' => [
+                'aria' => 'Overzicht magazijnstatussen',
+                'received' => 'Verwachte / ontvangen items',
+                'reserved' => 'Gereserveerde items',
+                'in_service' => 'In behandeling',
+                'completed' => 'Afgeronde operaties',
+            ],
+            'steps' => [
+                'aria' => 'Magazijnprocesstappen',
+                'intake' => [
+                    'badge' => 'Stap 1',
+                    'title' => 'Intake apparatuur',
+                    'subtitle' => 'Voeg nieuwe items en reserveringen toe.',
+                    'header' => [
+                        'title' => 'Registratie levering',
+                        'description' => 'Voer het nieuwe apparaat met alle logistieke parameters in.',
+                    ],
+                    'form' => [
+                        'basic_legend' => 'Basisgegevens',
+                        'name' => 'Itemnaam',
+                        'quantity' => 'Beginvoorraad',
+                        'status' => 'Beginstatus',
+                        'category' => 'Categorie / apparaattype',
+                        'category_placeholder' => 'bijv. Laptops, meetapparatuur',
+                        'logistics_legend' => 'Logistieke koppelingen',
+                        'location' => 'Magazijnlocatie',
+                        'location_placeholder' => 'bijv. Zone A · Rek 2 · Plank 3',
+                        'case' => 'Gerelateerd dossier (optioneel)',
+                        'reference' => 'Referentiecode (optioneel)',
+                        'reference_placeholder' => 'bijv. WH2404-001',
+                        'notes' => 'Operationele notities',
+                        'notes_placeholder' => 'Logistieke opmerkingen, ordernummer, etc.',
+                        'submit' => 'Item registreren',
+                    ],
+                    'checklist' => [
+                        'title' => 'Intakechecklist',
+                        'items' => [
+                            'Fysieke staat gecontroleerd',
+                            'Accessoires en documentatie toegevoegd',
+                            'Verantwoordelijke technicus toegewezen',
+                        ],
+                    ],
+                ],
+                'status' => [
+                    'badge' => 'Stap 2',
+                    'title' => 'Status en locatie',
+                    'subtitle' => 'Werk locaties en notities bij.',
+                    'header' => [
+                        'title' => 'Kwaliteitscontrole en status',
+                        'description' => 'Wijs een locatie toe, controleer volledigheid en werk de status bij.',
+                    ],
+                    'form' => [
+                        'current_legend' => 'Huidige informatie',
+                        'item' => 'Magazijnitem',
+                        'item_placeholder' => 'Selecteer item',
+                        'status' => 'Nieuwe operationele status',
+                        'case' => 'Gerelateerd dossier',
+                        'location' => 'Operationele locatie',
+                        'location_placeholder' => 'Consolidatiezone, testopstelling, etc.',
+                        'notes' => 'Notities en afspraken',
+                        'notes_placeholder' => 'Diagnose, uitgevoerde acties, volgende stappen.',
+                        'submit' => 'Update opslaan',
+                    ],
+                    'checklist' => [
+                        'title' => 'Tips voor kwaliteitscontrole',
+                        'items' => [
+                            'Controleer accessoires en servicezegel',
+                            'Werk de fysieke locatie bij na controle',
+                            'Informeer het team over de statuswijziging (systeemmelding)',
+                        ],
+                    ],
+                ],
+                'movement' => [
+                    'badge' => 'Stap 3',
+                    'title' => 'Uitgiftes en bewegingen',
+                    'subtitle' => 'Documenteer uitgiftes, retouren en correcties.',
+                    'header' => [
+                        'title' => 'Registratie magazijnbeweging',
+                        'description' => 'Documenteer elke voorraadwijziging – uitgifte, retour, correctie of verplaatsing.',
+                    ],
+                    'form' => [
+                        'legend' => 'Bewegingsparameters',
+                        'item' => 'Item',
+                        'item_placeholder' => 'Selecteer item',
+                        'type' => 'Type beweging',
+                        'quantity' => 'Aantal',
+                        'case' => 'Gerelateerd dossier (optioneel)',
+                        'notes' => 'Bewegingsnotities',
+                        'notes_placeholder' => 'Beschrijf verplaatsing, verantwoordelijken en reden van correctie.',
+                        'submit' => 'Magazijnbeweging toevoegen',
+                    ],
+                    'checklist' => [
+                        'title' => 'Documentatiestandaard',
+                        'items' => [
+                            'Noteer uitgifte-/ontvangstdocumentnummer',
+                            'Zorg dat hoeveelheden na de correctie overeenkomen met de voorraad',
+                            'Bevestig de handeling met de handtekening van de verantwoordelijke',
+                        ],
+                    ],
+                ],
+            ],
+            'common' => [
+                'none' => 'Geen',
+            ],
+        ],
+        'messages' => [
+            'create' => [
+                'default_name' => 'Nieuw item',
+                'reference_unknown' => 'geen referentie',
+                'success' => 'Item ":name" toegevoegd (referentie: :reference).',
+            ],
+            'status' => [
+                'success' => 'Magazijnstatus bijgewerkt.',
+            ],
+            'movement' => [
+                'success' => 'Magazijnbeweging geregistreerd.',
+            ],
+        ],
+        'errors' => [
+            'create' => [
+                'quantity' => 'Voer een geldige hoeveelheid in (0 of meer).',
+                'name_required' => 'Itemnaam is verplicht.',
+                'general' => 'Er is een fout opgetreden bij het opslaan van het item. Probeer het opnieuw.',
+                'not_saved' => 'Het magazijnitem kon niet worden opgeslagen.',
+            ],
+            'common' => [
+                'invalid_status' => 'Kies een geldige status.',
+            ],
+            'status' => [
+                'failed' => 'Status kan niet worden gewijzigd.',
+                'exception' => 'Status bijwerken is mislukt. Probeer het opnieuw.',
+                'item_required' => 'Selecteer een item om bij te werken.',
+            ],
+            'movement' => [
+                'item_required' => 'Selecteer een magazijnitem.',
+                'type' => 'Kies een geldig type beweging.',
+                'adjustment_quantity' => 'Voer een positieve of negatieve correctie in.',
+                'positive_quantity' => 'Voer een positieve waarde in.',
+                'failed' => 'Magazijnbeweging kon niet worden opgeslagen.',
+                'exception' => 'Er is een fout opgetreden bij het opslaan van de beweging. Probeer het opnieuw.',
+            ],
+            'unknown_action' => 'Onbekende formulieractie.',
+            'missing_item' => 'Het magazijnitem bestaat niet.',
+            'barcode' => [
+                'not_found' => 'Magazijnitem niet gevonden.',
+                'render_failed' => 'Kan barcode niet genereren.',
+            ],
+            'label' => [
+                'invalid_id' => 'Ongeldige magazijnitem-ID.',
+                'not_found' => 'Magazijnitem niet gevonden.',
+            ],
+        ],
+        'movements' => [
+            'auto_registration_note' => 'Automatische registratie van item',
+        ],
+        'label' => [
+            'meta_title' => 'Magazijnlabel :reference',
+            'default_name' => 'Magazijnitem',
+            'barcode_alt' => 'Barcode',
+            'reference' => 'Referentiecode',
+            'status' => 'Status',
+            'quantity' => 'Aantal',
+            'location' => 'Locatie',
+            'case' => 'Dossier',
+            'case_basic' => 'Dossier #:number',
+            'case_with_reference' => 'Dossier #:number · :reference',
+            'customer' => 'Klant',
+        ],
+        'status_labels' => [
+            'expected' => 'Verwacht',
+            'received' => 'Ontvangen',
+            'reserved' => 'Gereserveerd',
+            'in_service' => 'In behandeling',
+            'ready' => 'Klaar voor uitgifte',
+            'completed' => 'Afgeleverd bij klant',
+        ],
+        'movement_labels' => [
+            'registered' => 'Registratie',
+            'inbound' => 'Binnenkomst',
+            'reserve' => 'Reservering',
+            'release' => 'Vrijgave',
+            'outbound' => 'Uitgifte',
+            'adjustment' => 'Correctie',
+        ],
+    ],
     'dashboard' => [
         'meta' => [
             'title' => 'Digivriend - Dashboard',
