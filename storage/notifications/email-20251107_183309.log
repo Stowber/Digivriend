@@ -1,0 +1,74 @@
+kanaal: email
+ontvanger: contact@digivriend.nl
+onderwerp: Bevestiging intake afspraak IN-251107-3934
+status: sent
+aangemaakt: 2025-11-07 18:33:09
+verzonden: 2025-11-07 18:33:09
+bericht:
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digivriend</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5fb; font-family:'Helvetica Neue', Arial, sans-serif; color:#1c2333;">
+    <span style="display:none!important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">Uw intake is succesvol ingepland</span>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background-color:#f4f5fb;">
+        <tr>
+            <td style="padding:40px 16px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; max-width:680px; margin:0 auto;">
+                    <tr>
+                        <td style="padding:0;">
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 24px 60px rgba(28,35,51,0.12);">
+                                <tr>
+                                    <td style="padding:40px 36px; background:linear-gradient(125deg,#2463eb,#10b4d2);">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+                                            <tr>
+                                                <td style="font-size:26px; font-weight:700; color:#ffffff; letter-spacing:0.4px;">Digivriend</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding-top:10px; font-size:16px; color:rgba(255,255,255,0.92); line-height:1.5;">Bevestiging intake afspraak</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:36px 36px 28px;">
+                                        <p style="margin:0 0 18px; font-size:16px; line-height:1.65; color:#1c2333;">Beste Jakub Mieszala,</p><p style="margin:0 0 18px; font-size:16px; line-height:1.65; color:#1c2333;">Dank voor het inplannen van uw bezoek. We kijken ernaar uit om u persoonlijk te ontvangen en meteen met uw apparaat aan de slag te gaan.</p><p style="margin:0 0 18px; font-size:16px; line-height:1.65; color:#1c2333;">Neem dit bericht mee (digitaal of uitgeprint) zodat we uw intake razendsnel kunnen starten.</p>
+                                        <div style="margin-top:28px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; border-radius:14px; overflow:hidden; border:1px solid #e1e5f2;">
+        <tr>
+    <td style="padding:14px 18px; width:44%; font-size:14px; font-weight:600; color:#1c2333; background-color:#f1f3fb; border-bottom:1px solid #e1e5f2;">Afspraakmoment</td>
+    <td style="padding:14px 18px; font-size:14px; color:#384152; background-color:#f8f9ff; border-bottom:1px solid #e1e5f2;">14-11-2025 21:32</td>
+</tr><tr>
+    <td style="padding:14px 18px; width:44%; font-size:14px; font-weight:600; color:#1c2333; background-color:#f1f3fb; border-bottom:none;">Referentiecode</td>
+    <td style="padding:14px 18px; font-size:14px; color:#384152; background-color:#f8f9ff; border-bottom:none;">IN-251107-3934</td>
+</tr>
+    </table>
+</div>
+                                        
+                                        <div style="margin-top:28px;"><p style="margin:0 0 16px; font-size:15px; line-height:1.65; color:#1c2333;">Komt het toch niet uit? Laat het ons weten, dan plannen we direct een nieuw moment voor u.</p></div>
+                                        <div style="margin-top:32px;"><p style="margin:0 0 6px; font-size:15px; line-height:1.6; color:#1c2333;">Met vriendelijke groet,</p><p style="margin:0; font-size:15px; line-height:1.6; color:#1c2333; font-weight:600;">Team Digivriend</p></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:24px 36px 36px; background-color:#f7f8fc;">
+                                        <div style="font-size:13px; line-height:1.7; color:#4f5d75;"><p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#1c2333;">Vragen? Wij staan voor u klaar.</p><span style="display:inline-block; margin-right:16px;"><span style="font-weight:600; color:#1c2333;">E-mail:</span> <a href="mailto:servicedesk@digivriend.nl" style="color:#2463eb; text-decoration:none;">servicedesk@digivriend.nl</a></span><br><span style="display:inline-block; margin-right:16px;"><span style="font-weight:600; color:#1c2333;">Telefoon:</span> <a href="tel:0337854284" style="color:#2463eb; text-decoration:none;">033 - 785 4284</a></span><br><span style="display:block; margin-top:8px; font-size:13px; color:#4f5d75;">De Ganskuijl 103B · 3817 EZ Amersfoort</span><br><span style="display:inline-block; margin-top:8px;"><a href="https://digivriend.nl" style="color:#2463eb; text-decoration:none;">https://digivriend.nl</a></span></div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align:center; font-size:12px; color:#7b859b; padding:18px 12px 0;">
+                            © 2025 Digivriend · Service met een glimlach
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+----------------------------------------
