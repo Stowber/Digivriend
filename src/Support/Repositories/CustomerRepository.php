@@ -20,7 +20,7 @@ final class CustomerRepository
     {
         $limit = max(1, min(500, $limit));
 
-        $sql = 'SELECT id, full_name, email, phone FROM customers';
+        $sql = 'SELECT id, full_name, email, phone, last_interaction_at, updated_at FROM customers';
         $conditions = [];
         $params = [];
 
