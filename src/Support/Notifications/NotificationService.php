@@ -11,92 +11,13 @@ use PDO;
 
 final class NotificationService
 {
-    private const LOGO_DATA_URI =
-        'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYX' .
-        'llciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMTYuODUgMTE0LjU1Ij4KICA8ZGVmcz4KICAgIDxzdHlsZT' .
-        '4KICAgICAgLmNscy0xIHsKICAgICAgICBmaWxsOiAjMTk2MTkxOwogICAgICB9CgogICAgICAuY2xzLTEsIC5jbHMtMiB7CiAgICAgICAgc3Ryb2tlLXdpZH' .
-        'RoOiAwcHg7CiAgICAgIH0KCiAgICAgIC5jbHMtMywgLmNscy00LCAuY2xzLTUsIC5jbHMtNiB7CiAgICAgICAgZmlsbDogbm9uZTsKICAgICAgICBzdHJva2' .
-        'UtbWl0ZXJsaW1pdDogMTA7CiAgICAgIH0KCiAgICAgIC5jbHMtMywgLmNscy01IHsKICAgICAgICBzdHJva2Utd2lkdGg6IC43cHg7CiAgICAgIH0KCiAgIC' .
-        'AgIC5jbHMtMywgLmNscy02IHsKICAgICAgICBzdHJva2U6ICNlYzY2MjU7CiAgICAgIH0KCiAgICAgIC5jbHMtNyB7CiAgICAgICAgbGV0dGVyLXNwYWNpbm' .
-        'c6IC4xNGVtOwogICAgICB9CgogICAgICAuY2xzLTIgewogICAgICAgIGZpbGw6ICNlYzY2MjU7CiAgICAgIH0KCiAgICAgIC5jbHMtNCwgLmNscy01IHsKIC' .
-        'AgICAgICBzdHJva2U6ICMxOTYxOTE7CiAgICAgIH0KCiAgICAgIC5jbHMtNCwgLmNscy02IHsKICAgICAgICBzdHJva2Utd2lkdGg6IDEuMnB4OwogICAgIC' .
-        'B9CgogICAgICAuY2xzLTggewogICAgICAgIGxldHRlci1zcGFjaW5nOiAuMTdlbTsKICAgICAgfQoKICAgICAgLmNscy05IHsKICAgICAgICBsZXR0ZXItc3' .
-        'BhY2luZzogLjA3ZW07CiAgICAgIH0KCiAgICAgIC5jbHMtMTAgewogICAgICAgIGxldHRlci1zcGFjaW5nOiAuMTRlbTsKICAgICAgfQoKICAgICAgLmNscy' .
-        '0xMSB7CiAgICAgICAgZmlsbDogIzAxMDEwMTsKICAgICAgICBmb250LWZhbWlseTogV2FudGVkU2Fuc1ZhcmlhYmxlLVJlZ3VsYXIsICdXYW50ZWQgU2Fucy' .
-        'BWYXJpYWJsZSc7CiAgICAgICAgZm9udC1zaXplOiA4LjQ3cHg7CiAgICAgICAgZm9udC12YXJpYXRpb24tc2V0dGluZ3M6ICd3Z2h0JyA0MDA7CiAgICAgIH' .
-        '0KCiAgICAgIC5jbHMtMTIgewogICAgICAgIGxldHRlci1zcGFjaW5nOiAuMTJlbTsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPGc+CiAgIC' .
-        'A8Zz4KICAgICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJNMzIuODYsNzkuNjVjMCwxLjM5LS4zMiwyLjY5LS45NSwzLjktLjY0LDEuMi0xLjUxLDIuMjUtMi' .
-        '42MSwzLjE1LTEuMS44OS0yLjM4LDEuNi0zLjg1LDIuMTItMS40Ni41Mi0zLjAyLjc3LTQuNjcuNzdoLTExLjU2bDEuOTEtMTAuNzZoNS4zNGwtMS4xMSw2Lj' .
-        'MyaDYuMTljLjgzLDAsMS42LS4xMSwyLjMxLS4zNC43MS0uMjIsMS4zMy0uNTQsMS44Ni0uOTUuNTItLjQxLjk0LS45MSwxLjI1LTEuNDguMzEtLjU4LjQ2LT' .
-        'EuMjEuNDYtMS45LDAtLjUzLS4xMS0xLjAyLS4zMi0xLjQ3LS4yMi0uNDUtLjUyLS44My0uOS0xLjE2LS4zOS0uMzMtLjg1LS41OC0xLjM5LS43Ni0uNTQtLj' .
-        'E4LTEuMTQtLjI3LTEuNzktLjI3aC0xMS41Nmw0LjIxLTQuNDloOC4xNmMxLjM2LDAsMi41OS4xOCwzLjcuNTQsMS4xMS4zNiwyLjA2Ljg2LDIuODUsMS41MS' .
-        '43OS42NSwxLjQsMS40MiwxLjgzLDIuMzEuNDMuODkuNjUsMS44OC42NSwyLjk3WiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0zOS4zMiw4OS' .
-        '41OWgtNS4zNGwzLjA3LTE3LjI3aDUuMzJsLTMuMDUsMTcuMjdaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTU1LjIxLDc4LjhoMTEuMDVsLT' .
-        'EuOTEsMTAuNzloLTExLjg1Yy0xLjM0LDAtMi41Ny0uMTktMy42OC0uNTgtMS4xMS0uMzktMi4wNi0uOTItMi44NC0xLjYtLjc4LS42OC0xLjM5LTEuNDgtMS' .
-        '44Mi0yLjQxLS40My0uOTMtLjY1LTEuOTQtLjY1LTMuMDIsMC0xLjQxLjMyLTIuNzEuOTUtMy45LjY0LTEuMTksMS41LTIuMjEsMi41OC0zLjA2LDEuMDgtLj' .
-        'g1LDIuMzYtMS41MSwzLjgyLTEuOTksMS40Ni0uNDcsMy4wMi0uNzEsNC42Ny0uNzFoMTIuMzZsLTQuMjYsNC40OWgtOC45Yy0uNzksMC0xLjU0LjEyLTIuMj' .
-        'YuMzYtLjcxLjI0LTEuMzQuNTgtMS44NywxLjAxLS41My40My0uOTYuOTQtMS4yOCwxLjUyLS4zMi41OS0uNDgsMS4yMi0uNDgsMS45MSwwLDEuMDguNCwxLj' .
-        'k0LDEuMiwyLjU4LjguNjQsMS44Ny45NSwzLjIxLjk1aDYuNTZsLjQ0LTIuNWgtOC45NmwzLjktMy44NVoiLz4KICAgICAgPHBhdGggY2xhc3M9ImNscy0yIi' .
-        'BkPSJNNzIuODQsODkuNTloLTUuMzRsMy4wNy0xNy4yN2g1LjMybC0zLjA1LDE3LjI3WiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik04NC40My' .
-        'w3Mi4zMmw1Ljc2LDExLjQ2LDEwLjEyLTExLjQ2aDYuMzJsLTEzLjgzLDE1LjYxYy0uNDUuNS0uOTguOTUtMS42LDEuMzRzLTEuMzUuNTktMi4xOS41OS0xLj' .
-        'Q1LS4xOS0xLjkyLS41NWMtLjQ3LS4zNy0uODYtLjgzLTEuMTUtMS4zOGwtOC4wMy0xNS42MWg2LjUzWiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIG' .
-        'Q9Ik0xMjcuOTIsODkuNTloLTcuMTVsLTMuMDUtNC41N2gtOC4yMWwtLjgsNC41N2gtNS4zNGwxLjU1LTguODNoMTUuMDJjLjQ1LDAsLjg3LS4wNSwxLjI4LS' .
-        '4xNS40LS4xLjc2LS4yNSwxLjA2LS40NC4zLS4xOS41NC0uNDMuNzItLjcxLjE4LS4yOC4yNy0uNi4yNy0uOTQsMC0uNTctLjIzLS45OS0uNy0xLjI4LS40Ni' .
-        '0uMjgtMS4xMS0uNDMtMS45NC0uNDNoLTE1LjAybDQuMjgtNC40OWgxMS4xYy44OSwwLDEuODEuMDgsMi43NS4yMy45NC4xNSwxLjc5LjQzLDIuNTUuODQuNz' .
-        'cuNCwxLjM5Ljk0LDEuODcsMS42MS40OC42Ny43MiwxLjUyLjcyLDIuNTYsMCwuNzctLjEzLDEuNTEtLjQsMi4yMi0uMjcuNzEtLjY1LDEuMzQtMS4xNCwxLj' .
-        'kxLS40OS41Ny0xLjA4LDEuMDUtMS43NywxLjQ1LS42OS40LTEuNDUuNjctMi4yNy44My4yNC4yMi41MS41MS44MS44NS4zLjM0LjY5LjgyLDEuMTcsMS40Mm' .
-        'wyLjYxLDMuMzZaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEzNS4yNSw4OS41OWgtNS4zNGwzLjA3LTE3LjI3aDUuMzJsLTMuMDUsMTcuMj' .
-        'daIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE1OS40Myw4NS4xNWwtNC4yMyw0LjQ0aC0xNi42MmwzLjA3LTE3LjI3aDE5Ljk4bC00LjI2LD' .
-        'QuNDloLTExLjE4bC0uMzYsMi4wNmgxMy42NWwtMy43MiwzLjkyaC0xMC42M2wtLjQxLDIuMzVoMTQuNzFaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMS' .
-        'IgZD0iTTE3Ny45MSw4OS44N2MtLjM2LDAtLjY5LS4wNi0uOTktLjE3LS4zLS4xMS0uNjMtLjM3LS45OS0uNzZsLTguOS05LjUtMS43OCwxMC4xNGgtNC44NW' .
-        'wyLjUtMTQuMzJjLjEtLjU3LjI3LTEuMDYuNDktMS40Ny4yMi0uNDEuNDktLjc1LjgxLTEuMDEuMzItLjI2LjY3LS40NSwxLjA1LS41Ny4zOC0uMTIuNzctLj' .
-        'E4LDEuMTYtLjE4LjMzLDAsLjY1LjA2Ljk4LjE3LjMzLjExLjY2LjM3LDEuMDEuNzZsOC45LDkuNSwxLjgxLTEwLjE0aDQuODVsLTIuNTYsMTQuM2MtLjEuNT' .
-        'ctLjI3LDEuMDYtLjUsMS40Ny0uMjMuNDEtLjUuNzUtLjgxLDEuMDItLjMxLjI3LS42NS40Ni0xLjAzLjU4LS4zOC4xMi0uNzYuMTgtMS4xNC4xOFoiLz4KIC' .
-        'AgICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMjA3LjY5LDc5LjY1YzAsMS4zOS0uMzIsMi42OS0uOTUsMy45LS42NCwxLjItMS41MSwyLjI1LTIuNjEsMy' .
-        '4xNS0xLjEuODktMi4zOCwxLjYtMy44NSwyLjEyLTEuNDYuNTItMy4wMi43Ny00LjY3Ljc3aC0xMS41NmwxLjkxLTEwLjc2aDUuMzRsLTEuMTEsNi4zMmg2Lj' .
-        'E5Yy44MywwLDEuNi0uMTEsMi4zMS0uMzQuNzEtLjIyLDEuMzMtLjU0LDEuODYtLjk1LjUyLS40MS45NC0uOTEsMS4yNS0xLjQ4LjMxLS41OC40Ni0xLjIxLj' .
-        'Q2LTEuOSwwLS41My0uMTEtMS4wMi0uMzItMS40Ny0uMjItLjQ1LS41Mi0uODMtLjktMS4xNi0uMzktLjMzLS44NS0uNTgtMS4zOS0uNzZzLTEuMTQtLjI3LT' .
-        'EuNzktLjI3aC0xMS41Nmw0LjIxLTQuNDloOC4xNmMxLjM2LDAsMi41OS4xOCwzLjcuNTQsMS4xMS4zNiwyLjA2Ljg2LDIuODUsMS41MS43OS42NSwxLjQsMS' .
-        '40MiwxLjgzLDIuMzEuNDMuODkuNjUsMS44OC42NSwyLjk3WiIvPgogICAgPC9nPgogICAgPHRleHQgY2xhc3M9ImNscy0xMSIgdHJhbnNmb3JtPSJ0cmFuc2' .
-        'xhdGUoOS4xNiAxMDMuMTEpIj48dHNwYW4gY2xhc3M9ImNscy03IiB4PSIwIiB5PSIwIj5CRTwvdHNwYW4+PHRzcGFuIGNsYXNzPSJjbHMtOSIgeD0iMTIuMT' .
-        'IiIHk9IjAiPlQ8L3RzcGFuPjx0c3BhbiBjbGFzcz0iY2xzLTEwIiB4PSIxOC4wNiIgeT0iMCI+QUFMPC90c3Bhbj48dHNwYW4gY2xhc3M9ImNscy0xMiIgeD' .
-        '0iMzcuOTIiIHk9IjAiPkI8L3RzcGFuPjx0c3BhbiBjbGFzcz0iY2xzLTEwIiB4PSI0My45NCIgeT0iMCI+QTwvdHNwYW4+PHRzcGFuIGNsYXNzPSJjbHMtOC' .
-        'IgeD0iNTEiIHk9IjAiPlI8L3RzcGFuPjx0c3BhbiBjbGFzcz0iY2xzLTEwIiB4PSI1Ny4zNSIgeT0iMCI+RSBDT01QVVRFPC90c3Bhbj48dHNwYW4gY2xhc3' .
-        'M9ImNscy04IiB4PSIxMTUuNzIiIHk9IjAiPlI8L3RzcGFuPjx0c3BhbiBjbGFzcz0iY2xzLTciIHg9IjEyMi4wNyIgeT0iMCI+SFVMUCBBQU4gSFVJUzwvdH' .
-        'NwYW4+PC90ZXh0PgogIDwvZz4KICA8Zz4KICAgIDxnPgogICAgICA8Zz4KICAgICAgICA8bGluZSBjbGFzcz0iY2xzLTQiIHgxPSIxNTAuMTIiIHkxPSI1MS' .
-        '4wNyIgeDI9IjEzNS40NiIgeTI9IjM2LjQiLz4KICAgICAgICA8cG9seWxpbmUgY2xhc3M9ImNscy00IiBwb2ludHM9IjcyLjk5IDUxLjggODUuMyAzOS40OS' .
-        'A4OC42MSAzNi4xOCA5MS45NyAzMi44MiA5NS4wOCAyOS43MSAxMDguNjIgMTYuMTcgMTIxLjg2IDI5LjQxIi8+CiAgICAgICAgPGxpbmUgY2xhc3M9ImNscy' .
-        '00IiB4MT0iMTQzLjc1IiB5MT0iNTEuMzEiIHgyPSIxMzIuMjYiIHkyPSIzOS44MiIvPgogICAgICAgIDxsaW5lIGNsYXNzPSJjbHMtNCIgeDE9Ijc5LjQ5Ii' .
-        'B5MT0iNTIuMjgiIHgyPSI4OC44MSIgeTI9IjQyLjk2Ii8+CiAgICAgICAgPGxpbmUgY2xhc3M9ImNscy00IiB4MT0iMTM2Ljk3IiB5MT0iNTAuODgiIHgyPS' .
-        'IxMjkuMDciIHkyPSI0Mi45OSIvPgogICAgICAgIDxsaW5lIGNsYXNzPSJjbHMtNCIgeDE9IjEzMS4xNSIgeTE9IjUwLjg4IiB4Mj0iMTI2LjQiIHkyPSI0Ni' .
-        '4xMyIvPgogICAgICAgIDxwb2x5bGluZSBjbGFzcz0iY2xzLTQiIHBvaW50cz0iNjYuNDYgNTEuMjMgODEuNzUgMzUuOTQgODUuMDYgMzIuNjMgODguNDMgMj' .
-        'kuMjcgOTEuNDYgMjYuMjQgMTA4LjM3IDkuMzIgMTI0Ljc4IDI1LjczIi8+CiAgICAgICAgPHBvbHlsaW5lIGNsYXNzPSJjbHMtNCIgcG9pbnRzPSI4OC4yMi' .
-        'A0My41NSA5MS45NyAzOS44IDEwOC44IDIyLjk3IDExOC42MyAzMi41NSAxMTUuNjcgMzUuNDEgMTA5LjU0IDI5LjczIDg2LjQgNTEuOTkiLz4KICAgICAgIC' .
-        'A8Y2lyY2xlIGNsYXNzPSJjbHMtNSIgY3g9IjE1MC44MiIgY3k9IjUxLjYzIiByPSIxLjA5Ii8+CiAgICAgICAgPGNpcmNsZSBjbGFzcz0iY2xzLTUiIGN4PS' .
-        'IxNDQuNTMiIGN5PSI1Mi4wNiIgcj0iMS4wOSIvPgogICAgICAgIDxjaXJjbGUgY2xhc3M9ImNscy01IiBjeD0iMTM3Ljg3IiBjeT0iNTEuNzYiIHI9IjEuMD' .
-        'kiLz4KICAgICAgICA8Y2lyY2xlIGNsYXNzPSJjbHMtNSIgY3g9IjEzMS44MiIgY3k9IjUxLjc2IiByPSIxLjA5Ii8+CiAgICAgICAgPHBhdGggY2xhc3M9Im' .
-        'Nscy01IiBkPSJNODUuODksNTMuNzZjLS42NCwwLTEuMTUtLjU2LTEuMDgtMS4yMS4wNi0uNS40Ni0uOS45Ni0uOTYuNjYtLjA3LDEuMjEuNDQsMS4yMSwxLj' .
-        'A4LDAsLjc4LS42NywxLjA5LTEuMDksMS4wOVoiLz4KICAgICAgICA8Y2lyY2xlIGNsYXNzPSJjbHMtNSIgY3g9Ijc5LjA5IiBjeT0iNTIuODkiIHI9IjEuMD' .
-        'kiLz4KICAgICAgICA8Y2lyY2xlIGNsYXNzPSJjbHMtNSIgY3g9IjcyLjI3IiBjeT0iNTIuNjciIHI9IjEuMDkiLz4KICAgICAgICA8Y2lyY2xlIGNsYXNzPS' .
-        'JjbHMtNSIgY3g9IjY1LjY0IiBjeT0iNTIuMTMiIHI9IjEuMDkiLz4KICAgICAgPC9nPgogICAgICA8Zz4KICAgICAgICA8bGluZSBjbGFzcz0iY2xzLTYiIH' .
-        'gxPSI4NS42MiIgeTE9IjIwLjgzIiB4Mj0iOTEuNDYiIHkyPSIyNi4yNCIvPgogICAgICAgIDxsaW5lIGNsYXNzPSJjbHMtNiIgeDE9IjEyNS4wMSIgeTE9Ij' .
-        'I2LjM2IiB4Mj0iMTMwLjg0IiB5Mj0iMjAuODgiLz4KICAgICAgICA8bGluZSBjbGFzcz0iY2xzLTYiIHgxPSI3OS4wOSIgeTE9IjE5Ljk0IiB4Mj0iODguND' .
-        'MiIHkyPSIyOS4yNyIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtNiIgZD0iTTcyLjcsMjAuMjdzNi4wNSw2LjA1LDEyLjM2LDEyLjM2Ii8+CiAgICAgIC' .
-        'AgPGxpbmUgY2xhc3M9ImNscy02IiB4MT0iODEuNzUiIHkxPSIzNS45NCIgeDI9IjY2LjI3IiB5Mj0iMjAuNDYiLz4KICAgICAgICA8cG9seWxpbmUgY2xhc3' .
-        'M9ImNscy02IiBwb2ludHM9IjEwMi4yOSAzNi43IDEwOC4zNyA0Mi40OCAxMTUuNjcgMzUuNDEgMTE4LjYzIDMyLjU1IDEyMS44NiAyOS40MSAxMjUuMjEgMj' .
-        'YuMTYiLz4KICAgICAgICA8Y2lyY2xlIGNsYXNzPSJjbHMtMyIgY3g9IjE1MS4yMSIgY3k9IjIwLjUyIiByPSIxLjA5Ii8+CiAgICAgICAgPGNpcmNsZSBjbG' .
-        'Fzcz0iY2xzLTMiIGN4PSI2NS42NiIgY3k9IjE5Ljg4IiByPSIxLjA5Ii8+CiAgICAgICAgPGNpcmNsZSBjbGFzcz0iY2xzLTMiIGN4PSI3Mi4wMyIgY3k9Ij' .
-        'E5LjY5IiByPSIxLjA5Ii8+CiAgICAgICAgPGNpcmNsZSBjbGFzcz0iY2xzLTMiIGN4PSI3OC40NSIgY3k9IjE5LjI4IiByPSIxLjA5Ii8+CiAgICAgICAgPG' .
-        'NpcmNsZSBjbGFzcz0iY2xzLTMiIGN4PSI4NC44MSIgY3k9IjE5LjkiIHI9IjEuMDkiLz4KICAgICAgICA8Y2lyY2xlIGNsYXNzPSJjbHMtMyIgY3g9IjEzMS' .
-        '40NCIgY3k9IjIwLjIyIiByPSIxLjA5Ii8+CiAgICAgICAgPGNpcmNsZSBjbGFzcz0iY2xzLTMiIGN4PSIxNDQuODQiIGN5PSIxOS45NCIgcj0iMS4wOSIvPg' .
-        'ogICAgICAgIDxjaXJjbGUgY2xhc3M9ImNscy0zIiBjeD0iMTM4LjAxIiBjeT0iMTkuOSIgcj0iMS4wOSIvPgogICAgICA8L2c+CiAgICAgIDxwYXRoIGNsYX' .
-        'NzPSJjbHMtNiIgZD0iTTk4LjcsMzkuNzdsOS42Nyw5LjY3LjE3LjE3Yy4xNS0uMTUuMzEtLjMxLjMxLS4zMWwyOC43NS0yOC43NSIvPgogICAgICA8cGF0aC' .
-        'BjbGFzcz0iY2xzLTYiIGQ9Ik05NS4xNyw0My4zOGwxMy4wMSwxMy4wMS4yLjJjMy0zLDM1LjkxLTM1LjkxLDM1LjkxLTM1LjkxIi8+CiAgICAgIDxwYXRoIG' .
-        'NsYXNzPSJjbHMtNiIgZD0iTTE1MC43NSwyMS4xMmwtNDIuMjgsNDIuMjgtLjI3LjI3Yy0uMjItLjIyLS40NC0uNDQtLjQ0LS40NGwtMTYuMzgtMTYuMzgiLz' .
-        '4KICAgIDwvZz4KICAgIDxsaW5lIGNsYXNzPSJjbHMtNCIgeDE9Ijc3LjM2IiB5MT0iNDAuMzMiIHgyPSI5My42NyIgeTI9IjI0LjAzIi8+CiAgICA8bGluZS' .
-        'BjbGFzcz0iY2xzLTQiIHgxPSI5MC40OSIgeTE9IjQ4LjA2IiB4Mj0iMTA0LjAzIiB5Mj0iMzUuMDMiLz4KICA8L2c+Cjwvc3ZnPg==';
-    public function __construct(private readonly PDO $pdo)
-    {
+    private EmailLayoutRenderer $emailLayout;
+
+    public function __construct(
+        private readonly PDO $pdo,
+        ?EmailLayoutRenderer $emailLayout = null
+    ) {
+        $this->emailLayout = $emailLayout ?? new EmailLayoutRenderer();
     }
 
     public function sendPickupReady(?int $caseId, ?int $customerId, string $recipient, array $payload): void
@@ -335,7 +256,7 @@ final class NotificationService
 
         return match ($type) {
              'pickup_ready' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'Uw apparaat staat klaar voor afhalen',
                     'Uw apparaat staat klaar',
                     [
@@ -363,7 +284,7 @@ final class NotificationService
                 ),
             ],
             'pickup_confirmation' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'Wij hebben geregistreerd dat uw apparaat is opgehaald',
                     'Bedankt voor uw bezoek',
                     [
@@ -389,7 +310,7 @@ final class NotificationService
                 ),
             ],
             'intake_confirmation' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'Uw intake is succesvol ingepland',
                     'Bevestiging intake afspraak',
                     [
@@ -417,7 +338,7 @@ final class NotificationService
                 ),
             ],
             'intake_arrival' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'We hebben uw apparaat ontvangen',
                     'Ontvangstbevestiging service intake',
                     [
@@ -442,7 +363,7 @@ final class NotificationService
                 ),
             ],
             'intake_rescheduled' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'Uw intake is verplaatst',
                     'Nieuwe intake afspraak bevestigd',
                     [
@@ -467,7 +388,7 @@ final class NotificationService
                 ),
             ],
             'intake_cancelled' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'We hebben uw intake geannuleerd',
                     'Bevestiging annulering intake',
                     [
@@ -492,7 +413,7 @@ final class NotificationService
                 ),
             ],
             'intake_no_show' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'We hebben u gemist bij de intake',
                     'We hebben u gemist',
                     [
@@ -519,7 +440,7 @@ final class NotificationService
                 ),
             ],
             'pc_build_release' => [
-                'html' => $this->renderEmailLayout(
+                'html' => $this->emailLayout->renderEmailLayout(
                     'Twój zestaw PC jest gotowy do odbioru',
                     'Zestaw PC gotowy!',
                     [
@@ -550,301 +471,14 @@ final class NotificationService
                 ),
             ],
             'sms_generic' => [
-                'html' => $this->renderPlainBlock($safePayload['body'] ?? ''),
+                'html' => $this->emailLayout->renderPlainBlock($safePayload['body'] ?? ''),
                 'text' => $safePayload['body'] ?? '',
             ],
             default => [
-                'html' => $this->renderPlainBlock($safePayload['body'] ?? ''),
+                'html' => $this->emailLayout->renderPlainBlock($safePayload['body'] ?? ''),
                 'text' => $safePayload['body'] ?? '',
             ],
         };
-    }
-
-    private function renderEmailLayout(
-        string $preheader,
-        string $headline,
-        array $introParagraphs,
-        array $detailRows,
-        ?array $cta,
-        array $additionalParagraphs,
-        array $contact
-    ): string {
-        $preheaderText = $this->escape($preheader);
-        $headlineText = $this->escape($headline);
-        $introHtml = $this->buildParagraphs($introParagraphs);
-        $detailsHtml = $this->buildDetailRows($detailRows);
-        $ctaHtml = $this->buildCtaBlock($cta);
-        $additionalHtml = $this->buildParagraphs($additionalParagraphs, true);
-        $contactHtml = $this->buildContactBlock($contact);
-        $logoDataUri = $this->getLogoDataUri();
-
-        $signatureHtml = '<div style="margin-top:36px;">'
-            . '<p style="margin:0 0 6px; font-size:15px; line-height:1.6; color:#1b2559;">Met vriendelijke groet,</p>'
-            . '<p style="margin:0; font-size:15px; line-height:1.6; color:#0f1f3d; font-weight:700; letter-spacing:0.2px;">Team Digivriend</p>'
-            . '</div>';
-
-        $additionalSection = $additionalHtml === '' ? '' : '<div style="margin-top:28px;">' . $additionalHtml . '</div>';
-
-        $year = date('Y');
-
-        return <<<HTML
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digivriend</title>
-</head>
-<body style="margin:0; padding:0; background-color:#0b1220; font-family:'Helvetica Neue', Arial, sans-serif; color:#111827;">
-    <span style="display:none!important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">$preheaderText</span>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background:linear-gradient(180deg,#0b1220 0%,#0f172a 60%,#16213c 100%);">
-        <tr>
-           <td style="padding:56px 16px 64px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; max-width:720px; margin:0 auto;">
-                    <tr>
-                        <td style="padding:0;">
-                            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background:#ffffff; border-radius:28px; overflow:hidden; box-shadow:0 32px 80px rgba(8,15,35,0.35);">
-                                <tr>
-                                    <td style="padding:52px 48px 44px; background:linear-gradient(135deg,#101f3a 0%,#1f3e92 50%,#2563eb 82%); text-align:center;">
-                                        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
-                                            <tr>
-                                                <td style="text-align:center;">
-                                                    <span style="display:inline-block; padding:8px 18px; border-radius:999px; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.22); font-size:13px; font-weight:600; letter-spacing:0.6px; text-transform:uppercase; color:rgba(255,255,255,0.92);">Service update</span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-top:28px;" align="center">
-                                                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                                                        <tr>
-                                                             <td style="padding:20px; border-radius:20px; background:rgba(10,20,43,0.45); border:1px solid rgba(255,255,255,0.25);">
-                                                                <img src="{$logoDataUri}" alt="Digivriend" style="display:block; height:48px; width:auto;">
-                                                            </td>
-                                                        </tr>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-top:26px; font-size:30px; font-weight:700; color:#ffffff; letter-spacing:0.2px;">$headlineText</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-top:12px; font-size:15px; line-height:1.75; color:rgba(255,255,255,0.86);">Betrouwbare computerhulp aan huis</td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="height:6px; background:linear-gradient(90deg,#ec6625 0%,#2563eb 100%); padding:0; font-size:0; line-height:0;">&nbsp;</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:44px 48px 36px; background-color:#ffffff;">
-                                        $introHtml
-                                        $detailsHtml
-                                        $ctaHtml
-                                        $additionalSection
-                                        $signatureHtml
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:32px 48px 40px; background:linear-gradient(140deg,#0f172a 0%,#152a4d 65%,#1d3f77 100%);">
-                                        $contactHtml
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align:center; font-size:12px; color:rgba(226,232,240,0.7); padding:22px 12px 0;">
-                            © $year Digivriend · Service met een glimlach
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-HTML;
-    }
-
-    private function getLogoDataUri(): string
-    {
-        return self::LOGO_DATA_URI;
-    }
-
-    private function renderPlainBlock(string $content): string
-    {
-        $text = trim($content);
-
-        if ($text === '') {
-            return '<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:16px; line-height:1.6; color:#1a2442;">&nbsp;</p>';
-        }
-
-        return '<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:16px; line-height:1.6; color:#1a2442;">'
-            . nl2br($this->escape($text))
-            . '</p>';
-    }
-
-    private function buildParagraphs(array $paragraphs, bool $subtle = false): string
-    {
-        $blocks = [];
-
-        foreach ($paragraphs as $paragraph) {
-            if (!is_string($paragraph)) {
-                continue;
-            }
-
-            $trimmed = trim($paragraph);
-            if ($trimmed === '') {
-                continue;
-            }
-
-            $blocks[] = sprintf(
-                '<p style="margin:0 0 %dpx; font-size:%s; line-height:1.68; color:%s;">%s</p>',
-                $subtle ? 16 : 20,
-                $subtle ? '15px' : '16px',
-                $subtle ? 'rgba(26,36,66,0.78)' : '#1a2442',
-                nl2br($this->escape($trimmed))
-            );
-        }
-
-        return implode('', $blocks);
-    }
-
-    private function buildDetailRows(array $rows): string
-    {
-        $rowHtml = [];
-
-        foreach ($rows as $label => $value) {
-            if (!is_string($value)) {
-                continue;
-            }
-
-            $valueTrimmed = trim($value);
-            if ($valueTrimmed === '') {
-                continue;
-            }
-
-            $labelText = $this->escape(is_string($label) ? $label : (string) $label);
-            $valueText = nl2br($this->escape($valueTrimmed));
-
-            $rowHtml[] = <<<HTML
-<tr>
-    <td style="padding:18px 22px; width:40%; font-size:13px; font-weight:700; letter-spacing:0.45px; text-transform:uppercase; color:#1e2a4a; background-color:rgba(36,99,235,0.08); border-bottom:1px solid rgba(15,23,42,0.08);">$labelText</td>
-    <td style="padding:18px 22px; font-size:15px; color:#27314f; background-color:#ffffff; border-bottom:1px solid rgba(15,23,42,0.05);">$valueText</td>
-</tr>
-HTML;
-        }
-
-        if ($rowHtml === []) {
-            return '';
-        }
-
-        $lastIndex = array_key_last($rowHtml);
-        if ($lastIndex !== null) {
-            $rowHtml[$lastIndex] = str_replace('border-bottom:1px solid #e1e5f2;', 'border-bottom:none;', $rowHtml[$lastIndex]);
-        }
-
-        $rowsMarkup = implode('', $rowHtml);
-
-        return <<<HTML
-<div style="margin-top:32px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; border-radius:18px; overflow:hidden; border:1px solid rgba(36,99,235,0.2); background:linear-gradient(145deg,rgba(248,250,255,0.96),#ffffff);">
-        $rowsMarkup
-    </table>
-</div>
-HTML;
-    }
-
-    private function buildCtaBlock(?array $cta): string
-    {
-        if ($cta === null) {
-            return '';
-        }
-
-        $label = isset($cta['label']) ? (string) $cta['label'] : (string) ($cta[0] ?? '');
-        $url = isset($cta['url']) ? (string) $cta['url'] : (string) ($cta[1] ?? '');
-        $subtext = isset($cta['subtext']) ? (string) $cta['subtext'] : (string) ($cta[2] ?? '');
-
-        $hasLabel = trim($label) !== '';
-        $hasUrl = trim($url) !== '';
-        $hasSubtext = trim($subtext) !== '';
-
-        if (!$hasLabel && !$hasSubtext) {
-            return '';
-        }
-
-        $labelText = $this->escape($label);
-        $subtextText = $hasSubtext ? nl2br($this->escape($subtext)) : '';
-
-        if ($hasUrl && $hasLabel) {
-            $urlText = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-
-            $subtextBlock = $hasSubtext
-                ? '<p style="margin:14px 0 0; font-size:13px; color:rgba(255,255,255,0.9);">' . $subtextText . '</p>'
-                : '';
-
-            return <<<HTML
-<div style="margin-top:34px; padding:30px; border-radius:20px; background:linear-gradient(135deg,#12305f 0%,#2563eb 55%,#f97316 120%); color:#ffffff; text-align:center; box-shadow:0 20px 45px rgba(15,23,42,0.28);">
-    <a href="$urlText" style="display:inline-block; padding:15px 30px; background-color:#ffffff; color:#12305f; font-weight:700; font-size:15px; border-radius:999px; text-decoration:none; box-shadow:0 14px 30px rgba(12,54,140,0.28);">$labelText</a>
-    $subtextBlock
-</div>
-HTML;
-        }
-
-        $content = '<p style="margin:0; font-size:15px; font-weight:600; color:#1c2333;">' . $labelText . '</p>';
-        if ($hasSubtext) {
-            $content .= '<p style="margin:8px 0 0; font-size:13px; color:#4f5d75;">' . $subtextText . '</p>';
-        }
-
-        return '<div style="margin-top:28px; padding:22px; border-radius:16px; background-color:#eef2ff;">' . $content . '</div>';
-    }
-
-    private function buildContactBlock(array $contact): string
-    {
-        $email = isset($contact['email']) ? trim((string) $contact['email']) : '';
-        $phone = isset($contact['phone']) ? trim((string) $contact['phone']) : '';
-        $address = isset($contact['address']) ? trim((string) $contact['address']) : '';
-        $website = isset($contact['website']) ? trim((string) $contact['website']) : '';
-
-        $items = [];
-        if ($email !== '') {
-            $items[] = '<div style="margin-bottom:14px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">E-mail</span><a href="mailto:'
-                . htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" style="display:inline-block; margin-top:4px; font-size:15px; font-weight:600; color:#fbbf75; text-decoration:none;">' . $this->escape($email) . '</a></div>';
-        }
-
-        if ($phone !== '') {
-            $sanitisedPhoneLink = preg_replace('/[^+\d]/', '', $phone);
-            if ($sanitisedPhoneLink === null || $sanitisedPhoneLink === '') {
-                $sanitisedPhoneLink = $phone;
-            }
-
-            $items[] = '<div style="margin-bottom:14px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">Telefoon</span><a href="tel:'
-                . htmlspecialchars($sanitisedPhoneLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" style="display:inline-block; margin-top:4px; font-size:15px; font-weight:600; color:#63d1ff; text-decoration:none;">' . $this->escape($phone) . '</a></div>';
-        }
-
-        if ($address !== '') {
-            $items[] = '<div style="margin-bottom:14px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">Adres</span><span style="display:block; margin-top:4px; font-size:14px; color:rgba(255,255,255,0.8);">' . $this->escape($address) . '</span></div>';
-        }
-
-        if ($website !== '') {
-            $items[] = '<div style="margin-bottom:4px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">Website</span><a href="'
-                . htmlspecialchars($website, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" style="display:inline-block; margin-top:4px; font-size:15px; font-weight:600; color:#93c5fd; text-decoration:none;">' . $this->escape($website) . '</a></div>';
-        }
-
-        $itemsHtml = implode('', $items);
-
-        return '<div style="text-align:left; font-size:14px; line-height:1.8; color:rgba(255,255,255,0.82);">'
-            . '<p style="margin:0 0 18px; font-size:16px; font-weight:600; color:#ffffff;">Even snel contact opnemen?</p>'
-            . ($itemsHtml !== '' ? $itemsHtml : '<p style="margin:0; font-size:14px; color:rgba(255,255,255,0.75);">Wij staan elke dag voor u klaar via onze bekende kanalen.</p>')
-            . '</div>';
-    }
-
-    private function escape(string $value): string
-    {
-        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     private function convertHtmlToText(string $html): string
