@@ -327,7 +327,7 @@ final class NotificationService
         }, $payload);
 
         $contact = [
-            'email' => $safePayload['company_email'] ?? 'servicedesk@digivriend.nl',
+            'email' => $safePayload['company_email'] ?? 'contact@digivriend.nl',
             'phone' => $safePayload['company_phone'] ?? '033 - 785 4284',
             'address' => $safePayload['company_address'] ?? 'De Ganskuijl 103B · 3817 EZ Amersfoort',
             'website' => $safePayload['company_website'] ?? 'https://digivriend.nl',
@@ -578,9 +578,9 @@ final class NotificationService
         $contactHtml = $this->buildContactBlock($contact);
         $logoDataUri = $this->getLogoDataUri();
 
-        $signatureHtml = '<div style="margin-top:32px;">'
-            . '<p style="margin:0 0 6px; font-size:15px; line-height:1.6; color:#1c2333;">Met vriendelijke groet,</p>'
-            . '<p style="margin:0; font-size:15px; line-height:1.6; color:#1c2333; font-weight:600;">Team Digivriend</p>'
+        $signatureHtml = '<div style="margin-top:36px;">'
+            . '<p style="margin:0 0 6px; font-size:15px; line-height:1.6; color:#1b2559;">Met vriendelijke groet,</p>'
+            . '<p style="margin:0; font-size:15px; line-height:1.6; color:#0f1f3d; font-weight:700; letter-spacing:0.2px;">Team Digivriend</p>'
             . '</div>';
 
         $additionalSection = $additionalHtml === '' ? '' : '<div style="margin-top:28px;">' . $additionalHtml . '</div>';
@@ -595,44 +595,48 @@ final class NotificationService
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digivriend</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f4f5fb; font-family:'Helvetica Neue', Arial, sans-serif; color:#1c2333;">
+<body style="margin:0; padding:0; background-color:#0b1220; font-family:'Helvetica Neue', Arial, sans-serif; color:#111827;">
     <span style="display:none!important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden;">$preheaderText</span>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background-color:#f4f5fb;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background:linear-gradient(180deg,#0b1220 0%,#0f172a 60%,#16213c 100%);">
         <tr>
-            <td style="padding:40px 16px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; max-width:680px; margin:0 auto;">
+           <td style="padding:56px 16px 64px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; max-width:720px; margin:0 auto;">
                     <tr>
                         <td style="padding:0;">
-                            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 24px 60px rgba(28,35,51,0.12);">
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; background:#ffffff; border-radius:28px; overflow:hidden; box-shadow:0 32px 80px rgba(8,15,35,0.35);">
                                 <tr>
-                                    <td style="padding:40px 36px; background:linear-gradient(135deg,#0f1f3a,#2463eb 55%,#ec6625 115%);">
+                                    <td style="padding:52px 48px 44px; background:linear-gradient(135deg,#101f3a 0%,#1f3e92 50%,#2563eb 82%); text-align:center;">
                                         <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
                                             <tr>
-                                                <td style="padding-right:0;">
-                                                    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse;">
+                                                <td style="text-align:center;">
+                                                    <span style="display:inline-block; padding:8px 18px; border-radius:999px; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.22); font-size:13px; font-weight:600; letter-spacing:0.6px; text-transform:uppercase; color:rgba(255,255,255,0.92);">Service update</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding-top:28px;" align="center">
+                                                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
                                                         <tr>
-                                                            <td style="vertical-align:middle; width:1%;">
-                                                                <img src="{$logoDataUri}" alt="Digivriend" style="display:block; height:40px; width:auto;">
-                                                            </td>
-                                                            <td style="vertical-align:middle; padding-left:16px;">
-                                                                <span style="display:block; font-size:26px; font-weight:700; color:#ffffff; letter-spacing:0.32px;">Digivriend</span>
-                                                                <span style="display:block; margin-top:6px; font-size:14px; font-weight:500; color:rgba(255,255,255,0.88); letter-spacing:0.1px;">Betrouwbare computerhulp aan huis</span>
+                                                             <td style="padding:20px; border-radius:20px; background:rgba(10,20,43,0.45); border:1px solid rgba(255,255,255,0.25);">
+                                                                <img src="{$logoDataUri}" alt="Digivriend" style="display:block; height:48px; width:auto;">
                                                             </td>
                                                         </tr>
                                                     </table>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td style="padding-top:10px; font-size:16px; color:rgba(255,255,255,0.92); line-height:1.5;">$headlineText</td>
+                                                <td style="padding-top:26px; font-size:30px; font-weight:700; color:#ffffff; letter-spacing:0.2px;">$headlineText</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding-top:12px; font-size:15px; line-height:1.75; color:rgba(255,255,255,0.86);">Betrouwbare computerhulp aan huis</td>
                                             </tr>
                                         </table>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="height:4px; background:linear-gradient(90deg,#ec6625,#2463eb); padding:0; font-size:0; line-height:0;">&nbsp;</td>
+                                    <td style="height:6px; background:linear-gradient(90deg,#ec6625 0%,#2563eb 100%); padding:0; font-size:0; line-height:0;">&nbsp;</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:36px 36px 28px;">
+                                    <td style="padding:44px 48px 36px; background-color:#ffffff;">
                                         $introHtml
                                         $detailsHtml
                                         $ctaHtml
@@ -641,7 +645,7 @@ final class NotificationService
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:24px 36px 36px; background-color:#f7f8fc;">
+                                    <td style="padding:32px 48px 40px; background:linear-gradient(140deg,#0f172a 0%,#152a4d 65%,#1d3f77 100%);">
                                         $contactHtml
                                     </td>
                                 </tr>
@@ -649,7 +653,7 @@ final class NotificationService
                         </td>
                     </tr>
                     <tr>
-                        <td style="text-align:center; font-size:12px; color:#7b859b; padding:18px 12px 0;">
+                        <td style="text-align:center; font-size:12px; color:rgba(226,232,240,0.7); padding:22px 12px 0;">
                             © $year Digivriend · Service met een glimlach
                         </td>
                     </tr>
@@ -672,10 +676,10 @@ HTML;
         $text = trim($content);
 
         if ($text === '') {
-            return '<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:16px; line-height:1.6; color:#1c2333;">&nbsp;</p>';
+            return '<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:16px; line-height:1.6; color:#1a2442;">&nbsp;</p>';
         }
 
-        return '<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:16px; line-height:1.6; color:#1c2333;">'
+        return '<p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:16px; line-height:1.6; color:#1a2442;">'
             . nl2br($this->escape($text))
             . '</p>';
     }
@@ -695,9 +699,10 @@ HTML;
             }
 
             $blocks[] = sprintf(
-                '<p style="margin:0 0 %dpx; font-size:%s; line-height:1.65; color:#1c2333;">%s</p>',
-                $subtle ? 16 : 18,
+                '<p style="margin:0 0 %dpx; font-size:%s; line-height:1.68; color:%s;">%s</p>',
+                $subtle ? 16 : 20,
                 $subtle ? '15px' : '16px',
+                $subtle ? 'rgba(26,36,66,0.78)' : '#1a2442',
                 nl2br($this->escape($trimmed))
             );
         }
@@ -724,8 +729,8 @@ HTML;
 
             $rowHtml[] = <<<HTML
 <tr>
-    <td style="padding:14px 18px; width:44%; font-size:14px; font-weight:600; color:#1c2333; background-color:#f1f3fb; border-bottom:1px solid #e1e5f2;">$labelText</td>
-    <td style="padding:14px 18px; font-size:14px; color:#384152; background-color:#f8f9ff; border-bottom:1px solid #e1e5f2;">$valueText</td>
+    <td style="padding:18px 22px; width:40%; font-size:13px; font-weight:700; letter-spacing:0.45px; text-transform:uppercase; color:#1e2a4a; background-color:rgba(36,99,235,0.08); border-bottom:1px solid rgba(15,23,42,0.08);">$labelText</td>
+    <td style="padding:18px 22px; font-size:15px; color:#27314f; background-color:#ffffff; border-bottom:1px solid rgba(15,23,42,0.05);">$valueText</td>
 </tr>
 HTML;
         }
@@ -742,8 +747,8 @@ HTML;
         $rowsMarkup = implode('', $rowHtml);
 
         return <<<HTML
-<div style="margin-top:28px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; border-radius:14px; overflow:hidden; border:1px solid #e1e5f2;">
+<div style="margin-top:32px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; border-radius:18px; overflow:hidden; border:1px solid rgba(36,99,235,0.2); background:linear-gradient(145deg,rgba(248,250,255,0.96),#ffffff);">
         $rowsMarkup
     </table>
 </div>
@@ -779,8 +784,8 @@ HTML;
                 : '';
 
             return <<<HTML
-<div style="margin-top:30px; padding:26px; border-radius:16px; background:linear-gradient(120deg,#2463eb,#4dd0e1 60%,#ec6625 120%); color:#ffffff; text-align:center;">
-    <a href="$urlText" style="display:inline-block; padding:14px 26px; background-color:#ffffff; color:#1c3faa; font-weight:600; font-size:15px; border-radius:999px; text-decoration:none; box-shadow:0 10px 25px rgba(12,54,140,0.25);">$labelText</a>
+<div style="margin-top:34px; padding:30px; border-radius:20px; background:linear-gradient(135deg,#12305f 0%,#2563eb 55%,#f97316 120%); color:#ffffff; text-align:center; box-shadow:0 20px 45px rgba(15,23,42,0.28);">
+    <a href="$urlText" style="display:inline-block; padding:15px 30px; background-color:#ffffff; color:#12305f; font-weight:700; font-size:15px; border-radius:999px; text-decoration:none; box-shadow:0 14px 30px rgba(12,54,140,0.28);">$labelText</a>
     $subtextBlock
 </div>
 HTML;
@@ -803,9 +808,9 @@ HTML;
 
         $items = [];
         if ($email !== '') {
-            $items[] = '<span style="display:inline-block; margin-right:16px;"><span style="font-weight:600; color:#1c2333;">E-mail:</span> <a href="mailto:'
+            $items[] = '<div style="margin-bottom:14px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">E-mail</span><a href="mailto:'
                 . htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" style="color:#2463eb; text-decoration:none;">' . $this->escape($email) . '</a></span>';
+                . '" style="display:inline-block; margin-top:4px; font-size:15px; font-weight:600; color:#fbbf75; text-decoration:none;">' . $this->escape($email) . '</a></div>';
         }
 
         if ($phone !== '') {
@@ -814,26 +819,26 @@ HTML;
                 $sanitisedPhoneLink = $phone;
             }
 
-            $items[] = '<span style="display:inline-block; margin-right:16px;"><span style="font-weight:600; color:#1c2333;">Telefoon:</span> <a href="tel:'
+            $items[] = '<div style="margin-bottom:14px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">Telefoon</span><a href="tel:'
                 . htmlspecialchars($sanitisedPhoneLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" style="color:#2463eb; text-decoration:none;">' . $this->escape($phone) . '</a></span>';
+                . '" style="display:inline-block; margin-top:4px; font-size:15px; font-weight:600; color:#63d1ff; text-decoration:none;">' . $this->escape($phone) . '</a></div>';
         }
 
         if ($address !== '') {
-            $items[] = '<span style="display:block; margin-top:8px; font-size:13px; color:#4f5d75;">' . $this->escape($address) . '</span>';
+            $items[] = '<div style="margin-bottom:14px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">Adres</span><span style="display:block; margin-top:4px; font-size:14px; color:rgba(255,255,255,0.8);">' . $this->escape($address) . '</span></div>';
         }
 
         if ($website !== '') {
-            $items[] = '<span style="display:inline-block; margin-top:8px;"><a href="'
+            $items[] = '<div style="margin-bottom:4px;"><span style="display:block; font-size:11px; letter-spacing:0.7px; text-transform:uppercase; color:rgba(255,255,255,0.55);">Website</span><a href="'
                 . htmlspecialchars($website, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" style="color:#2463eb; text-decoration:none;">' . $this->escape($website) . '</a></span>';
+                . '" style="display:inline-block; margin-top:4px; font-size:15px; font-weight:600; color:#93c5fd; text-decoration:none;">' . $this->escape($website) . '</a></div>';
         }
 
-        $itemsHtml = implode('<br>', $items);
+        $itemsHtml = implode('', $items);
 
-        return '<div style="font-size:13px; line-height:1.7; color:#4f5d75;">'
-            . '<p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#1c2333;">Vragen? Wij staan voor u klaar.</p>'
-            . ($itemsHtml !== '' ? $itemsHtml : '')
+        return '<div style="text-align:left; font-size:14px; line-height:1.8; color:rgba(255,255,255,0.82);">'
+            . '<p style="margin:0 0 18px; font-size:16px; font-weight:600; color:#ffffff;">Even snel contact opnemen?</p>'
+            . ($itemsHtml !== '' ? $itemsHtml : '<p style="margin:0; font-size:14px; color:rgba(255,255,255,0.75);">Wij staan elke dag voor u klaar via onze bekende kanalen.</p>')
             . '</div>';
     }
 
