@@ -252,17 +252,18 @@ final class NotificationService
             'phone' => $safePayload['company_phone'] ?? '033 - 785 4284',
             'address' => $safePayload['company_address'] ?? 'De Ganskuijl 103B · 3817 EZ Amersfoort',
             'website' => $safePayload['company_website'] ?? 'https://digivriend.nl',
+            'logo' => $safePayload['company_logo'] ?? $safePayload['company_logo_url'] ?? '',
         ];
 
         return match ($type) {
-             'pickup_ready' => [
+            'pickup_ready' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'Uw apparaat staat klaar voor afhalen',
-                    'Uw apparaat staat klaar',
+                    'Uw apparaat ligt gereed bij onze servicebalie',
+                    'Uw apparaat staat klaar voor vertrek',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        sprintf('Goed nieuws! Uw apparaat %s staat voor u klaar in onze servicebalie. Neem uw ophaalcode mee zodat we u snel kunnen helpen.', $safePayload['device'] ?? 'uw apparaat'),
-                        'U bent van harte welkom om een tijdstip te kiezen dat het beste past. Meld u bij aankomst bij onze receptie en wij regelen de rest.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        sprintf('Het team heeft %s gecontroleerd, schoongemaakt en klaargezet zodat u het direct kunt meenemen.', $safePayload['device'] ?? 'uw apparaat'),
+                        'Neem bij uw bezoek de ophaalcode en een geldig legitimatiebewijs mee. Dan ronden we de overdracht binnen enkele minuten af.',
                     ],
                     [
                         'Apparaat' => $safePayload['device'] ?? 'Uw apparaat',
@@ -271,39 +272,39 @@ final class NotificationService
                     ],
                     null,
                     [
-                        'Ons team legt alles graag nog even uit en controleert samen met u de laatste details.',
+                        'Kunt u niet langskomen op het genoemde moment? Laat het ons weten, dan plannen we meteen een alternatief dat beter past.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nUw apparaat (%s) staat klaar om opgehaald te worden. Gebruik ophaalcode %s en plan bij voorkeur uw bezoek op %s.\n\nMet vriendelijke groet,\nDigivriend",
+                    "Hallo %s,\n\nUw apparaat (%s) is door ons team gecontroleerd en staat klaar. Gebruik ophaalcode %s en kom vanaf %s langs. Vergeet uw legitimatie niet; dan is de overdracht zo geregeld.\n\nHartelijke groet,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['device'] ?? 'uw apparaat',
                     $safePayload['pickup_code'] ?? '—',
-                    $safePayload['ready_date'] ?? 'een geschikt moment'
+                    $safePayload['ready_date'] ?? 'direct beschikbaar'
                 ),
             ],
             'pickup_confirmation' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'Wij hebben geregistreerd dat uw apparaat is opgehaald',
-                    'Bedankt voor uw bezoek',
+                    'De overdracht van uw apparaat is afgerond',
+                    'Bedankt voor het ophalen',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        'Wat fijn dat alles gelukt is! We hebben genoteerd dat het apparaat veilig is meegegeven.',
-                        'Mocht u later nog vragen hebben over service of accessoires, dan horen we het graag.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        'We hebben geregistreerd dat uw apparaat met de onderstaande code is opgehaald en veilig met u is meegegaan.',
+                        'Heeft u nog vragen over onderhoud, software of accessoires? Laat het ons weten, dan helpen we u graag verder.',
                     ],
                     [
-                        'Ophaalcode' => $safePayload['pickup_code'] ?? '—',
-                        'Datum van ophalen' => $safePayload['pickup_date'] ?? '—',
+                        'Ophaalreferentie' => $safePayload['pickup_code'] ?? '—',
+                        'Datum overdracht' => $safePayload['pickup_date'] ?? '—',
                     ],
                     null,
                     [
-                        'Bewaar deze bevestiging gerust in uw administratie. Hij bevat alle gegevens over dit bezoek.',
+                        'Bewaar dit bericht als bewijs van overdracht. Zo heeft u alle informatie bij de hand voor uw administratie.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nWij hebben bevestigd dat uw apparaat met code %s op %s is opgehaald. Dank voor uw bezoek en tot een volgende keer!\n\nDigivriend",
+                    "Hallo %s,\n\nWe hebben geregistreerd dat uw apparaat met referentie %s op %s is opgehaald. Heeft u nog vragen of wenst u aanvullende service? Laat het ons weten.\n\nHartelijke groet,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['pickup_code'] ?? '—',
                     $safePayload['pickup_date'] ?? '—'
@@ -311,26 +312,26 @@ final class NotificationService
             ],
             'intake_confirmation' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'Uw intake is succesvol ingepland',
-                    'Bevestiging intake afspraak',
+                    'Uw intake staat bevestigd',
+                    'We staan voor u klaar',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        'Dank voor het inplannen van uw bezoek. We kijken ernaar uit om u persoonlijk te ontvangen en meteen met uw apparaat aan de slag te gaan.',
-                        'Neem dit bericht mee (digitaal of uitgeprint) zodat we uw intake razendsnel kunnen starten.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        'Bedankt dat u een intake bij ons heeft ingepland. We reserveren tijd om samen uw vraag te bespreken en direct de eerste stappen te zetten.',
+                        'Neemt u dit bericht mee op uw telefoon of geprint? Dan kunnen we uw dossier meteen ophalen aan de balie.',
                     ],
                     [
                         'Afspraakmoment' => $safePayload['appointment_at'] ?? 'Het afgesproken tijdstip',
-                        'Referentiecode' => $safePayload['reference_code'] ?? '—',
-                        'Beschrijving' => $safePayload['notes'] ?? '—',
+                        'Referentie' => $safePayload['reference_code'] ?? '—',
+                        'Onderwerp' => $safePayload['notes'] ?? '—',
                     ],
                     null,
                     [
-                        'Komt het toch niet uit? Laat het ons weten, dan plannen we direct een nieuw moment voor u.',
+                        'Kunt u onverhoopt toch niet komen? Laat het ons op tijd weten, dan zoeken we direct een moment dat beter past.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nBedankt voor het plannen van uw intake. Wij verwachten u op %s in onze vestiging. Neem deze bevestiging en uw apparaat mee. Uw referentiecode is %s.\n\nBeschrijving: %s\n\nTot snel,\nDigivriend",
+                    "Hallo %s,\n\nBedankt voor het plannen van uw intake. Wij verwachten u op %s in onze vestiging. Neem deze bevestiging en uw apparaat mee. Uw referentie is %s.\n\nOnderwerp: %s\n\nTot snel,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['appointment_at'] ?? 'het afgesproken tijdstip',
                     $safePayload['reference_code'] ?? '—',
@@ -339,24 +340,25 @@ final class NotificationService
             ],
             'intake_arrival' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'We hebben uw apparaat ontvangen',
-                    'Ontvangstbevestiging service intake',
+                    'Uw toestel is veilig bij ons binnengekomen',
+                    'We zijn gestart met het onderzoek',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        'Uw device is veilig geregistreerd in ons systeem. Onze technici starten direct met het onderzoek en houden u op de hoogte.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        sprintf('We hebben uw apparaat ontvangen en gekoppeld aan case %s. Het staat nu bij onze technici voor de eerste diagnose.', $safePayload['reference_code'] ?? 'uw case'),
+                        'We houden u op de hoogte van elke stap. Zodra er nieuws is ontvangt u direct een update per e-mail of telefoon.',
                     ],
                     [
                         'Case / referentie' => $safePayload['reference_code'] ?? 'Uw case',
-                        'Binnengebracht op' => $safePayload['appointment_at'] ?? 'Het afgesproken moment',
+                        'Ontvangen op' => $safePayload['appointment_at'] ?? 'Het afgesproken moment',
                     ],
                     null,
                     [
-                        'U ontvangt bericht zodra we nieuwe bevindingen hebben of als we aanvullende informatie nodig hebben.',
+                        'Heeft u tussentijds aanvullende informatie of inloggegevens? Deel ze gerust, dan kunnen we doorwerken zonder vertraging.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nWij bevestigen de ontvangst van uw apparaat voor case %s. Het toestel is op %s bij ons binnengebracht en het onderzoek start direct. U ontvangt een update zodra er nieuws is.\n\nMet vriendelijke groet,\nDigivriend",
+                    "Hallo %s,\n\nWij bevestigen de ontvangst van uw apparaat voor case %s. Het toestel is op %s bij ons binnengebracht en onze technici zijn gestart met de diagnose. U hoort van ons zodra er nieuws is.\n\nHartelijke groet,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['reference_code'] ?? 'uw case',
                     $safePayload['appointment_at'] ?? 'het afgesproken moment'
@@ -364,24 +366,25 @@ final class NotificationService
             ],
             'intake_rescheduled' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'Uw intake is verplaatst',
-                    'Nieuwe intake afspraak bevestigd',
+                    'Uw intake heeft een nieuwe datum',
+                    'Nieuwe intakeafspraak bevestigd',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        'Zoals afgestemd hebben wij de intake voor u verplaatst. Alle gegevens zijn bijgewerkt in onze planning.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        'Zoals afgesproken hebben we uw intake verplaatst. De agenda is bijgewerkt en het team rekent op u op het nieuwe moment hieronder.',
+                        'In dit bericht vindt u alle details nog even overzichtelijk bij elkaar.',
                     ],
                     [
-                        'Nieuw afspraakmoment' => $safePayload['appointment_at'] ?? 'Het nieuwe tijdstip',
-                        'Referentiecode' => $safePayload['reference_code'] ?? '—',
+                        'Nieuw tijdstip' => $safePayload['appointment_at'] ?? 'Het nieuwe tijdstip',
+                        'Referentie' => $safePayload['reference_code'] ?? '—',
                     ],
                     null,
                     [
-                        'Mocht u opnieuw willen schuiven, laat het ons gerust weten. We zoeken meteen mee naar het beste moment.',
+                        'Komt er toch iets tussen? Laat het gerust weten; we denken direct met u mee voor een passend alternatief.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nZoals besproken hebben wij uw intake verplaatst naar %s. Uw referentiecode %s blijft ongewijzigd. Laat het ons weten als de planning opnieuw aangepast moet worden.\n\nMet vriendelijke groet,\nDigivriend",
+                    "Hallo %s,\n\nZoals besproken hebben wij uw intake verplaatst naar %s. Uw referentie %s blijft ongewijzigd. Laat het ons weten als het tijdstip alsnog niet uitkomt, dan zoeken we direct mee.\n\nHartelijke groet,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['appointment_at'] ?? 'het nieuwe tijdstip',
                     $safePayload['reference_code'] ?? '—'
@@ -389,24 +392,25 @@ final class NotificationService
             ],
             'intake_cancelled' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'We hebben uw intake geannuleerd',
-                    'Bevestiging annulering intake',
+                    'Uw intake is geannuleerd zoals verzocht',
+                    'Annulering bevestigd',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        'We hebben uw bericht ontvangen en de afspraak volgens afspraak geannuleerd.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        'We hebben uw bericht ontvangen en de intake volgens uw verzoek geannuleerd.',
+                        'Hieronder vindt u nog even de gegevens van de afspraak zoals die stond ingepland.',
                     ],
                     [
-                        'Gepland moment' => $safePayload['appointment_at'] ?? 'Het geplande moment',
-                        'Reden van annulering' => $safePayload['cancellation_reason'] ?? 'Geen reden opgegeven',
+                        'Oorspronkelijk moment' => $safePayload['appointment_at'] ?? 'Het geplande moment',
+                        'Reden annulering' => $safePayload['cancellation_reason'] ?? 'Geen reden opgegeven',
                     ],
                     null,
                     [
-                        'Wanneer het weer uitkomt plannen we graag een nieuw bezoek. Neem gerust contact met ons op.',
+                        'Wanneer u weer klaar bent voor een afspraak plannen we met plezier een nieuw moment. Neem gerust contact met ons op.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nUw intake afspraak van %s is geannuleerd. Reden: %s. Wanneer u later alsnog langskomt helpen we u graag verder. Neem gerust contact met ons op voor een nieuwe afspraak.\n\nMet vriendelijke groet,\nDigivriend",
+                    "Hallo %s,\n\nUw intake van %s is geannuleerd. Reden: %s. Wanneer u weer een afspraak wilt plannen staan we voor u klaar.\n\nHartelijke groet,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['appointment_at'] ?? 'het geplande moment',
                     $safePayload['cancellation_reason'] ?? 'geen reden opgegeven'
@@ -415,18 +419,19 @@ final class NotificationService
             'intake_no_show' => [
                 'html' => $this->emailLayout->renderEmailLayout(
                     'We hebben u gemist bij de intake',
-                    'We hebben u gemist',
+                    'Kunnen we een nieuw moment plannen?',
                     [
-                        sprintf('Beste %s,', $safePayload['customer_name'] ?? 'klant'),
-                        'Jammer dat we elkaar hebben misgelopen. Geen zorgen: we helpen u graag alsnog verder.',
+                        sprintf('Hallo %s,', $safePayload['customer_name'] ?? 'klant'),
+                        sprintf('We stonden op %s voor u klaar, maar hebben u helaas gemist.', $safePayload['appointment_at'] ?? 'het geplande moment'),
+                        'Geen probleem: via de knop hieronder kiest u eenvoudig een nieuw moment. We helpen u graag alsnog verder.',
                     ],
                     [
                         'Gepland moment' => $safePayload['appointment_at'] ?? 'Het geplande moment',
                     ],
                     [
-                        'Plan nieuwe intake',
+                        'Plan direct een nieuw moment',
                         $safePayload['reschedule_url'] ?? '',
-                        'Kies eenvoudig een moment dat beter past.',
+                        'Kies zelf een tijdstip dat wél uitkomt.',
                     ],
                     [
                         'Zodra onze vernieuwde planner klaar is ontvangt u automatisch een nieuwe uitnodiging. Heeft u nu al hulp nodig? Laat het ons weten, dan zoeken we direct mee.',
@@ -434,36 +439,37 @@ final class NotificationService
                     $contact
                 ),
                 'text' => sprintf(
-                    "Beste %s,\n\nWe hadden u graag ontvangen op %s, maar we hebben u helaas gemist. Jammer dat het niet is gelukt. Zodra onze nieuwe planner gereed is ontvangt u een link om eenvoudig een nieuwe intake te boeken. Heeft u nu al hulp nodig? Neem dan contact met ons op.\n\nMet vriendelijke groet,\nDigivriend",
+                    "Hallo %s,\n\nWe stonden op %s voor u klaar maar hebben u gemist. Via onze planner kunt u direct een nieuw moment kiezen dat beter uitkomt. Liever persoonlijk afstemmen? Bel ons dan op 033 - 785 4284 of reageer op deze mail.\n\nHartelijke groet,\nDigivriend",
                     $safePayload['customer_name'] ?? 'klant',
                     $safePayload['appointment_at'] ?? 'het geplande moment'
                 ),
             ],
             'pc_build_release' => [
                 'html' => $this->emailLayout->renderEmailLayout(
-                    'Twój zestaw PC jest gotowy do odbioru',
-                    'Zestaw PC gotowy!',
+                    'Twój komputer czeka na Ciebie w Digivriend',
+                    'Zestaw jest gotowy do drogi',
                     [
-                        sprintf('Dzień dobry %s,', $safePayload['customer_name'] ?? 'klient'),
-                        'Z przyjemnością informujemy, że Twój zestaw został złożony, przetestowany i jest gotowy do wydania.',
+                        sprintf('Cześć %s,', $safePayload['customer_name'] ?? 'klient'),
+                        'Kończymy właśnie ostatnie testy – Twój zestaw jest złożony, sprawdzony i przygotowany do wydania.',
+                        'Poniżej znajdziesz najważniejsze informacje dotyczące przekazania.',
                     ],
                     [
-                        'Zestaw' => $safePayload['build_reference'] ?? 'Twój zestaw',
-                        'Sposób wydania' => $safePayload['delivery_method'] ?? 'Odbiór w salonie',
-                        'Data wydania' => $safePayload['release_date'] ?? date('d-m-Y'),
+                        'Konfiguracja' => $safePayload['build_reference'] ?? 'Twój zestaw',
+                        'Forma wydania' => $safePayload['delivery_method'] ?? 'Odbiór w salonie',
+                        'Data przekazania' => $safePayload['release_date'] ?? date('d-m-Y'),
                     ],
                     [
-                        'Pobierz potwierdzenie',
+                        'Pobierz protokół przekazania',
                         $safePayload['release_document_url'] ?? '',
-                        'Dokument znajdziesz również w załączniku.',
+                        'Kopia dokumentu znajduje się też w załączniku.',
                     ],
                     [
-                        'Jeśli masz dodatkowe pytania dotyczące zestawu lub chcesz omówić konfigurację, skontaktuj się z nami – chętnie pomożemy.',
+                        'Jeśli chcesz, możemy wspólnie przejrzeć pierwsze uruchomienie lub odpowiedzieć na dodatkowe pytania – daj nam znać.',
                     ],
                     $contact
                 ),
                 'text' => sprintf(
-                    "Dzień dobry %s,\n\nZestaw PC %s jest gotowy do przekazania. Sposób wydania: %s dnia %s. W załączniku znajdziesz potwierdzenie wydania. W razie pytań skontaktuj się z nami.\n\nPozdrawiamy,\nZespół Digivriend",
+                    "Cześć %s,\n\nTwój zestaw PC %s jest gotowy. Forma wydania: %s dnia %s. Załączamy potwierdzenie przekazania. Jeśli masz pytania lub chcesz zmienić termin, daj nam znać.\n\nPozdrawiamy,\nZespół Digivriend",
                     $safePayload['customer_name'] ?? 'klient',
                     $safePayload['build_reference'] ?? 'Twój zestaw',
                     $safePayload['delivery_method'] ?? 'odbiór w salonie',
