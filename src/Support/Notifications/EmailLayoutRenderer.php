@@ -18,7 +18,7 @@ namespace App\Support\Notifications;
 final class EmailLayoutRenderer
 {
     // Opcjonalny domyślny URL logo (na samym końcu ścieżki fallbacków).
-    private const DEFAULT_LOGO_URL = '/Logo.png';
+    private const DEFAULT_LOGO_URL = 'https://images.cdn-files-a.com/uploads/6903475/400_filter_nobg_6631d17c44750.png';
 
     // Minimalne logo w DATA-URI jako twardy fallback (zawsze dostępne).
     private const LOGO_DATA_URI =
@@ -43,6 +43,10 @@ final class EmailLayoutRenderer
         ],
         'radius' => '18px',
         'width'  => 640,
+        'logo'   => [
+            'width'     => 220,   // docelowa szerokość logo w px (można nadpisać)
+            'maxHeight' => null,  // opcjonalne ograniczenie wysokości
+        ],
     ];
 
     /**
@@ -53,6 +57,8 @@ final class EmailLayoutRenderer
      * @param array{
      *   brand?:string,
      *   logo?:string,        // URL lub "cid:..."
+     *   logo_width?:int,     // szerokość logo w px (alias: logoWidth)
+     *   logo_height?:int,    // wysokość/maks. wysokość w px (alias: logoHeight)
      *   hero?:string,        // URL obrazka hero (opcjonalny)
      *   email?:string,
      *   phone?:string,
@@ -239,7 +245,37 @@ HTML;
         $alt  = $this->escape($brand . ' — ' . ($this->theme['tagline'] ?? ''));
         $safe = htmlspecialchars($src, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        return '<img src="'.$safe.'" alt="'.$alt.'" style="display:block; max-height:48px; max-width:200px; width:auto; height:auto; border:0; outline:none; text-decoration:none;">';
+        $maxWidth  = $this->resolveLogoDimension($contact, ['logo_width', 'logoWidth'], $this->theme['logo']['width'] ?? null);
+        $maxHeight = $this->resolveLogoDimension($contact, ['logo_height', 'logoHeight'], $this->theme['logo']['maxHeight'] ?? null);
+
+        $style = [
+            'display:block',
+            'border:0',
+            'outline:none',
+            'text-decoration:none',
+            $maxWidth !== null ? 'width:'.$maxWidth.'px' : 'width:auto',
+            'height:auto',
+        ];
+
+        if ($maxHeight !== null) {
+            $style[] = 'max-height:'.$maxHeight.'px';
+        }
+
+        $attributes = [
+            'src="'.$safe.'"',
+            'alt="'.$alt.'"',
+            'style="'.implode('; ', $style).'"',
+        ];
+
+        if ($maxWidth !== null) {
+            $attributes[] = 'width="'.$maxWidth.'"';
+        }
+
+        if ($maxHeight !== null && $this->hasContactKey($contact, ['logo_height', 'logoHeight'])) {
+            $attributes[] = 'height="'.$maxHeight.'"';
+        }
+
+        return '<img '.implode(' ', $attributes).'>';
     }
 
     /** Opcjonalny hero (pełna szerokość karty). */
@@ -502,5 +538,67 @@ HTML;
     private function pregQuote(string $s): string
     {
         return preg_quote($s, '~');
+    }
+
+    /**
+     * Odczytuje szerokość/wysokość logo z kontaktu (obsługa `logo_width`, `logoWidth`, ...).
+     * @param list<string> $keys
+     */
+    private function resolveLogoDimension(array $contact, array $keys, ?int $default): ?int
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $contact)) {
+                continue;
+            }
+
+            $value = $contact[$key];
+
+            if (is_string($value)) {
+                $value = trim($value);
+
+                if ($value === '') {
+                    return null;
+                }
+
+                if (preg_match('/^(\d+)$/', $value, $m) === 1) {
+                    $value = (int) $m[1];
+                } elseif (preg_match('/^(\d+)\s*px$/i', $value, $m) === 1) {
+                    $value = (int) $m[1];
+                } else {
+                    return $default;
+                }
+            }
+
+            if (is_float($value)) {
+                $value = (int) round($value);
+            }
+
+            if (is_int($value)) {
+                if ($value <= 0) {
+                    return null;
+                }
+
+                return min($value, 2000);
+            }
+
+            return $default;
+        }
+
+        return $default;
+    }
+
+    /**
+     * Sprawdza, czy w danych kontaktowych pojawił się któryś z podanych kluczy.
+     * @param list<string> $keys
+     */
+    private function hasContactKey(array $contact, array $keys): bool
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $contact)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
