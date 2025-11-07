@@ -123,10 +123,21 @@ final class EmailLayoutRenderer
 <meta name="format-detection" content="telephone=no,email=no,address=no,date=no,url=no">
 <title>{$this->escape($this->theme['brand'])}</title>
 <style>
+.detail-table{border-collapse:separate; border-spacing:0;}
 @media screen and (max-width:{$this->theme['width']}px){
   .wrap{padding-left:16px !important; padding-right:16px !important;}
   h1{font-size:24px !important; line-height:1.3 !important;}
   p,td{font-size:15px !important;}
+  .detail-row{display:block !important;}
+  .detail-label,
+  .detail-value{display:block !important; width:100% !important; padding:12px 16px !important; box-sizing:border-box !important;}
+  .detail-label{border-left-width:0 !important; border-left-color:transparent !important; border-top:3px solid {$c['accent']} !important; border-radius:12px 12px 0 0 !important; font-size:13px !important; letter-spacing:.25px !important;}
+  .detail-value{border-radius:0 0 12px 12px !important; border-top:1px solid {$c['border']} !important;}
+  .detail-table{border-radius:16px !important; overflow:hidden !important;}
+}
+@media screen and (max-width:480px){
+  .detail-label{font-size:12px !important;}
+  .detail-value{font-size:14px !important;}
 }
 a[x-apple-data-detectors]{color:inherit !important; text-decoration:none !important;}
 a:hover{opacity:.96;}
@@ -334,6 +345,7 @@ HTML;
 
         $c = $this->theme['colors'];
         $body = '';
+        $lastIndex = array_key_last($norm);
         foreach ($norm as $i => $row) {
             $isEven = ($i % 2) === 0;
             $bg = $isEven ? '#fbfcfe' : '#ffffff';
@@ -341,19 +353,25 @@ HTML;
             $label = $this->escape($row['label']);
             $value = nl2br($this->autoLink($row['value']));
 
-            $body .= '<tr>'.
-                        '<td width="34%" style="padding:14px 16px; font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:'.$c['muted'].'; background:'.$bg.'; border-bottom:1px solid '.$c['border'].'; border-left:4px solid '.$c['accent'].';">'.$label.'</td>'.
-                        '<td style="padding:14px 16px; font-size:15px; color:'.$c['text'].'; background:'.$bg.'; border-bottom:1px solid '.$c['border'].';">'.$value.'</td>'.
+            $borderBottom = $i === $lastIndex
+                ? 'border-bottom:none;'
+                : 'border-bottom:1px solid '.$c['border'].';';
+
+            $labelStyle = 'padding:14px 16px; font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; '
+                .'color:'.$c['muted'].'; background:'.$bg.'; '.$borderBottom.' border-left:4px solid '.$c['accent'].';';
+
+            $valueStyle = 'padding:14px 16px; font-size:15px; color:'.$c['text'].'; background:'.$bg.'; '.$borderBottom;
+
+            $body .= '<tr class="detail-row">'.
+                        '<td class="detail-label" width="34%" valign="top" style="'.$labelStyle.'">'.$label.'</td>'.
+                        '<td class="detail-value" valign="top" style="'.$valueStyle.'">'.$value.'</td>'.
                      '</tr>';
         }
-
-        // Usuń border w ostatnim wierszu (oba TD)
-        $body = preg_replace('~border-bottom:1px solid '.$this->pregQuote($c['border']).';(?=">)~', 'border-bottom:none;', $body, 2) ?? $body;
 
         return <<<HTML
 <tr>
   <td class="wrap" style="padding:8px 40px 8px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid rgba(37,99,235,.25); border-radius:12px; overflow:hidden;">
+   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="detail-table" style="border:1px solid rgba(37,99,235,.25); border-radius:12px; overflow:hidden;">
       {$body}
     </table>
   </td>
