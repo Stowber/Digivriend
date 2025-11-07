@@ -258,6 +258,20 @@ return [
             'title' => 'Rejestracja danych klienta',
         ],
         'form' => [
+            'stepper' => [
+                'aria' => 'Kroki rejestracji',
+                'back' => 'Powrót do poprzedniego kroku',
+                'steps' => [
+                    'customer' => [
+                        'title' => 'Dane klienta',
+                        'description' => 'Kontakt i adres',
+                    ],
+                    'visit' => [
+                        'title' => 'Wizyta i urządzenie',
+                        'description' => 'Zaplanuj wizytę i opisz problem',
+                    ],
+                ],
+            ],
             'customer' => [
                 'aria' => 'Dane klienta',
                 'title' => 'Dane kontaktowe klienta',
@@ -276,6 +290,8 @@ return [
                 'title' => 'Wizyta i urządzenie',
                 'fields' => [
                     'appointment_at' => 'Data i godzina wizyty *',
+                    'appointment_date' => 'Wybierz datę *',
+                    'appointment_time' => 'Wybierz godzinę *',
                     'device_type' => 'Typ urządzenia',
                     'device_brand' => 'Marka',
                     'device_model' => 'Model',
@@ -292,6 +308,19 @@ return [
                     'console' => 'Konsola',
                 ],
                 'problem_placeholder' => 'Np. nie włącza się…',
+                'appointment_hint' => 'Wybierz dogodny termin przekazania urządzenia.',
+                'quick_issues' => [
+                    'title' => 'Szybkie opisy',
+                    'hint' => 'Zaznacz najczęstsze problemy – dodamy je automatycznie do opisu.',
+                    'options' => [
+                        'bsod' => 'Niebieski ekran (BSOD)',
+                        'screen' => 'Uszkodzony ekran',
+                        'power' => 'Nie włącza się',
+                        'battery' => 'Bateria się nie ładuje',
+                        'keyboard' => 'Klawiatura nie działa poprawnie',
+                        'data' => 'Wymagane odzyskiwanie danych',
+                    ],
+                ],
                 'back' => 'Wstecz',
                 'submit' => 'Zakończ rejestrację',
             ],

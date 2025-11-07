@@ -258,6 +258,20 @@ return [
             'title' => 'Register customer details',
         ],
         'form' => [
+            'stepper' => [
+                'aria' => 'Intake steps',
+                'back' => 'Back to previous step',
+                'steps' => [
+                    'customer' => [
+                        'title' => 'Customer details',
+                        'description' => 'Contact and address information',
+                    ],
+                    'visit' => [
+                        'title' => 'Appointment & device',
+                        'description' => 'Schedule and describe the issue',
+                    ],
+                ],
+            ],
             'customer' => [
                 'aria' => 'Customer details',
                 'title' => 'Customer contact details',
@@ -276,6 +290,8 @@ return [
                 'title' => 'Appointment and device',
                 'fields' => [
                     'appointment_at' => 'Appointment date & time *',
+                    'appointment_date' => 'Select date *',
+                    'appointment_time' => 'Select time *',
                     'device_type' => 'Device type',
                     'device_brand' => 'Brand',
                     'device_model' => 'Model',
@@ -292,6 +308,19 @@ return [
                     'console' => 'Console',
                 ],
                 'problem_placeholder' => 'e.g. will not start…',
+                'appointment_hint' => 'Pick a convenient time slot for the drop-off appointment.',
+                'quick_issues' => [
+                    'title' => 'Quick descriptions',
+                    'hint' => 'Select one or more common issues to append to the description automatically.',
+                    'options' => [
+                        'bsod' => 'Blue screen (BSOD)',
+                        'screen' => 'Damaged or cracked screen',
+                        'power' => 'Does not power on',
+                        'battery' => 'Battery will not charge',
+                        'keyboard' => 'Keyboard malfunctioning',
+                        'data' => 'Data recovery required',
+                    ],
+                ],
                 'back' => 'Back',
                 'submit' => 'Complete registration',
             ],

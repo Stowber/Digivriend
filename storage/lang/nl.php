@@ -258,6 +258,20 @@ return [
             'title' => 'Klantgegevens registreren',
         ],
         'form' => [
+            'stepper' => [
+                'aria' => 'Registratiestappen',
+                'back' => 'Terug naar vorige stap',
+                'steps' => [
+                    'customer' => [
+                        'title' => 'Klantgegevens',
+                        'description' => 'Contact- en adresinformatie',
+                    ],
+                    'visit' => [
+                        'title' => 'Afspraak & apparaat',
+                        'description' => 'Plan afspraak en noteer de klacht',
+                    ],
+                ],
+            ],
             'customer' => [
                 'aria' => 'Klantgegevens',
                 'title' => 'Contactgegevens klant',
@@ -276,6 +290,8 @@ return [
                 'title' => 'Afspraak en apparaat',
                 'fields' => [
                     'appointment_at' => 'Datum & tijd afspraak *',
+                    'appointment_date' => 'Datum kiezen *',
+                    'appointment_time' => 'Tijd kiezen *',
                     'device_type' => 'Type apparaat',
                     'device_brand' => 'Merk',
                     'device_model' => 'Model',
@@ -292,6 +308,19 @@ return [
                     'console' => 'Console',
                 ],
                 'problem_placeholder' => 'Bijv. start niet meer op…',
+                'appointment_hint' => 'Kies een passend moment voor het inleveren van het apparaat.',
+                'quick_issues' => [
+                    'title' => 'Snelle omschrijvingen',
+                    'hint' => 'Selecteer veelvoorkomende problemen; we voegen ze automatisch toe aan de omschrijving.',
+                    'options' => [
+                        'bsod' => 'Blauw scherm (BSOD)',
+                        'screen' => 'Scherm beschadigd',
+                        'power' => 'Gaat niet aan',
+                        'battery' => 'Batterij laadt niet op',
+                        'keyboard' => 'Toetsenbord werkt niet goed',
+                        'data' => 'Data recovery nodig',
+                    ],
+                ],
                 'back' => 'Terug',
                 'submit' => 'Registratie afronden',
             ],

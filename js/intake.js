@@ -15,6 +15,10 @@
   const openButton = $('[data-intake-open]');
   const closeButtons = $all('[data-intake-close]', modal);
   const form = $('#intakeForm', modal);
+  if (!form) {
+    return;
+  }
+
   const panels = {
     customer: $('[data-step="customer"]', form),
     visit: $('[data-step="visit"]', form)
@@ -29,39 +33,80 @@
     unknown: modal.dataset.unknownValue || 'Unknown'
   };
   const resultPlaceholder = resultSection ? resultSection.getAttribute('data-placeholder') || '-' : '-';
+
+  const stepperList = $('[data-stepper]', form);
+  const stepperItems = stepperList ? $all('[data-stepper-item]', form) : [];
+  const stepperBack = $('[data-stepper-back]', form);
+
+  const appointmentHidden = $('[data-appointment-target]', form);
+  const appointmentDateInput = $('[data-appointment-date]', form);
+  const appointmentTimeInput = $('[data-appointment-time]', form);
+
+  const quickIssueButtons = $all('[data-issue-value]', form);
+  const quickIssuesSelected = new Set();
+
   const stepOrder = ['customer', 'visit'];
-  let activeStep = 'customer';
+  let activeStep = stepOrder[0];
   let isSubmitting = false;
 
-  function openModal() {
-    if (!modal) {
+  function syncAppointment() {
+    if (!appointmentHidden) {
       return;
     }
-    modal.hidden = false;
-    document.body.classList.add('has-open-modal');
-    resetForm();
+    const dateValue = appointmentDateInput ? appointmentDateInput.value : '';
+    const timeValue = appointmentTimeInput ? appointmentTimeInput.value : '';
+    if (dateValue && timeValue) {
+      appointmentHidden.value = dateValue + 'T' + timeValue;
+    } else {
+      appointmentHidden.value = '';
+    }
   }
 
-  function closeModal() {
-    if (!modal) {
+  function updateStepper() {
+    if (!stepperItems || stepperItems.length === 0) {
       return;
     }
-    modal.hidden = true;
-    document.body.classList.remove('has-open-modal');
+    const activeIndex = stepOrder.indexOf(activeStep);
+    stepperItems.forEach(function (item) {
+      const stepKey = item.getAttribute('data-step');
+      const stepIndex = stepOrder.indexOf(stepKey);
+      const bullet = $('.intake-stepper__bullet', item);
+      if (bullet && stepIndex >= 0) {
+        bullet.textContent = String(stepIndex + 1);
+      }
+      item.classList.remove('intake-stepper__item--active', 'intake-stepper__item--complete');
+      item.removeAttribute('aria-current');
+      if (stepIndex === activeIndex) {
+        item.classList.add('intake-stepper__item--active');
+        item.setAttribute('aria-current', 'step');
+      } else if (stepIndex !== -1 && stepIndex < activeIndex) {
+        item.classList.add('intake-stepper__item--complete');
+        item.setAttribute('aria-current', 'false');
+      }
+    });
+    if (stepperBack) {
+      const isFirstStep = activeStep === stepOrder[0];
+      stepperBack.hidden = isFirstStep;
+      stepperBack.disabled = isSubmitting || isFirstStep;
+    }
+  }
+
+  function setStep(stepKey) {
+    if (!panels[stepKey]) {
+      return;
+    }
+    Object.keys(panels).forEach(function (key) {
+      if (panels[key]) {
+        panels[key].hidden = key !== stepKey;
+      }
+    });
+    activeStep = stepKey;
+    updateStepper();
   }
 
   function resetForm() {
-    if (!form) {
-      return;
-    }
     form.reset();
     form.hidden = false;
-    activeStep = 'customer';
-    Object.keys(panels).forEach(function (key) {
-      if (panels[key]) {
-        panels[key].hidden = key !== activeStep;
-      }
-    });
     if (resultSection) {
       resultSection.hidden = true;
     }
@@ -70,9 +115,30 @@
       feedback.textContent = '';
       feedback.classList.remove('intake-feedback--error', 'intake-feedback--success');
     }
+    if (appointmentHidden) {
+      appointmentHidden.value = '';
+    }
+    quickIssuesSelected.clear();
+    quickIssueButtons.forEach(function (button) {
+      button.classList.remove('is-selected');
+    });
+    isSubmitting = false;
+    setStep(stepOrder[0]);
+    syncAppointment();
   }
 
-  function validatePanel(panel) {
+  function openModal() {
+    modal.hidden = false;
+    document.body.classList.add('has-open-modal');
+    resetForm();
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    document.body.classList.remove('has-open-modal');
+  }
+
+  function validatePanel(panel, stepKey) {
     if (!panel) {
       return true;
     }
@@ -81,6 +147,20 @@
       const input = inputs[i];
       if (!input.checkValidity()) {
         input.reportValidity();
+        return false;
+      }
+    }
+    if (stepKey === 'visit') {
+      syncAppointment();
+      if (appointmentHidden && !appointmentHidden.value) {
+        if (appointmentDateInput && !appointmentDateInput.value) {
+          appointmentDateInput.reportValidity();
+          return false;
+        }
+        if (appointmentTimeInput && !appointmentTimeInput.value) {
+          appointmentTimeInput.reportValidity();
+          return false;
+        }
         return false;
       }
     }
@@ -103,24 +183,11 @@
 
   function setSubmitting(state) {
     isSubmitting = state;
-    if (!form) {
-      return;
-    }
     const buttons = $all('button', form);
     buttons.forEach(function (button) {
       button.disabled = state;
     });
-  }
-
-  function advanceStep(nextStep) {
-    if (!panels[nextStep]) {
-      return;
-    }
-    if (panels[activeStep]) {
-      panels[activeStep].hidden = true;
-    }
-    panels[nextStep].hidden = false;
-    activeStep = nextStep;
+    updateStepper();
   }
 
   function handleNextStep(event) {
@@ -129,13 +196,13 @@
       return;
     }
     const currentPanel = panels[activeStep];
-    if (!validatePanel(currentPanel)) {
+    if (!validatePanel(currentPanel, activeStep)) {
       return;
     }
     const currentIndex = stepOrder.indexOf(activeStep);
     const nextStep = stepOrder[currentIndex + 1];
     if (nextStep) {
-      advanceStep(nextStep);
+      setStep(nextStep);
     }
   }
 
@@ -147,7 +214,7 @@
     const currentIndex = stepOrder.indexOf(activeStep);
     const prevStep = stepOrder[currentIndex - 1];
     if (prevStep) {
-      advanceStep(prevStep);
+      setStep(nextStep);
     }
   }
 
@@ -157,12 +224,22 @@
       return;
     }
 
+    syncAppointment();
     const currentPanel = panels[activeStep];
-    if (!validatePanel(currentPanel)) {
+    if (!validatePanel(currentPanel, activeStep)) {
       return;
     }
 
     const formData = new FormData(form);
+    if (quickIssuesSelected.size > 0) {
+      const existingDescription = (formData.get('problem_description') || '').toString().trim();
+      const quickText = Array.from(quickIssuesSelected).join('\n');
+      const combinedDescription = existingDescription ? existingDescription + '\n\n' + quickText : quickText;
+      formData.set('problem_description', combinedDescription);
+    }
+    formData.delete('appointment_date');
+    formData.delete('appointment_time');
+
     const payload = {};
     formData.forEach(function (value, key) {
       payload[key] = value;
@@ -220,9 +297,7 @@
       }
 
       showFeedback(translations.success, 'success');
-      if (form) {
-        form.hidden = true;
-      }
+      form.hidden = true;
     } catch (error) {
       console.error(error);
       showFeedback(translations.exception, 'error');
@@ -260,6 +335,58 @@
   prevButtons.forEach(function (button) {
     button.addEventListener('click', handlePreviousStep);
   });
+
+  if (stepperBack) {
+    stepperBack.addEventListener('click', handlePreviousStep);
+  }
+
+  stepperItems.forEach(function (item) {
+    item.addEventListener('click', function () {
+      if (isSubmitting) {
+        return;
+      }
+      const stepKey = item.getAttribute('data-step');
+      const targetIndex = stepOrder.indexOf(stepKey);
+      const activeIndex = stepOrder.indexOf(activeStep);
+      if (targetIndex !== -1 && targetIndex < activeIndex) {
+        setStep(stepKey);
+      }
+    });
+  });
+
+  if (appointmentDateInput) {
+    appointmentDateInput.addEventListener('input', syncAppointment);
+    appointmentDateInput.addEventListener('change', syncAppointment);
+  }
+
+  if (appointmentTimeInput) {
+    appointmentTimeInput.addEventListener('input', syncAppointment);
+    appointmentTimeInput.addEventListener('change', syncAppointment);
+  }
+
+  quickIssueButtons.forEach(function (button) {
+    button.addEventListener('click', function (event) {
+      event.preventDefault();
+      if (isSubmitting) {
+        return;
+      }
+      const value = button.getAttribute('data-issue-value');
+      if (!value) {
+        return;
+      }
+      if (quickIssuesSelected.has(value)) {
+        quickIssuesSelected.delete(value);
+        button.classList.remove('is-selected');
+      } else {
+        quickIssuesSelected.add(value);
+        button.classList.add('is-selected');
+      }
+    });
+  });
+
+  setStep(activeStep);
+  syncAppointment();
+  updateStepper();
 
   form.addEventListener('submit', handleSubmit);
 })();

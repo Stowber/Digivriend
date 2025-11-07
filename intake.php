@@ -50,6 +50,20 @@ $modalCloseLabel = __('common.close');
 
 $customerPanelAria = __('intake.form.customer.aria');
 $customerPanelTitle = __('intake.form.customer.title');
+$stepperLabel = __('intake.form.stepper.aria');
+$stepperBackLabel = __('intake.form.stepper.back');
+$stepperSteps = [
+    [
+        'key' => 'customer',
+        'title' => __('intake.form.stepper.steps.customer.title'),
+        'description' => __('intake.form.stepper.steps.customer.description'),
+    ],
+    [
+        'key' => 'visit',
+        'title' => __('intake.form.stepper.steps.visit.title'),
+        'description' => __('intake.form.stepper.steps.visit.description'),
+    ],
+];
 $customerFields = [
     ['name' => 'full_name', 'label' => __('intake.form.customer.fields.full_name'), 'type' => 'text', 'attributes' => ['autocomplete' => 'name', 'required' => true, 'maxlength' => 191]],
     ['name' => 'email', 'label' => __('intake.form.customer.fields.email'), 'type' => 'email', 'attributes' => ['autocomplete' => 'email', 'required' => true, 'maxlength' => 191]],
@@ -63,13 +77,16 @@ $customerNextLabel = __('intake.form.customer.next');
 $visitPanelAria = __('intake.form.visit.aria');
 $visitPanelTitle = __('intake.form.visit.title');
 $visitFields = [
-    ['name' => 'appointment_at', 'label' => __('intake.form.visit.fields.appointment_at'), 'type' => 'datetime-local', 'attributes' => ['required' => true]],
+    ['name' => 'appointment_at', 'label' => __('intake.form.visit.fields.appointment_at'), 'type' => 'datetime', 'attributes' => ['required' => true]],
     ['name' => 'device_type', 'label' => __('intake.form.visit.fields.device_type'), 'type' => 'select'],
     ['name' => 'device_brand', 'label' => __('intake.form.visit.fields.device_brand'), 'type' => 'text', 'attributes' => ['maxlength' => 120]],
     ['name' => 'device_model', 'label' => __('intake.form.visit.fields.device_model'), 'type' => 'text', 'attributes' => ['maxlength' => 191]],
     ['name' => 'device_serial', 'label' => __('intake.form.visit.fields.device_serial'), 'type' => 'text', 'attributes' => ['maxlength' => 120]],
     ['name' => 'problem_description', 'label' => __('intake.form.visit.fields.problem_description'), 'type' => 'textarea', 'wide' => true, 'attributes' => ['rows' => 4, 'maxlength' => 500, 'placeholder' => __('intake.form.visit.problem_placeholder')]],
 ];
+$appointmentDateLabel = __('intake.form.visit.fields.appointment_date');
+$appointmentTimeLabel = __('intake.form.visit.fields.appointment_time');
+$appointmentHint = __('intake.form.visit.appointment_hint');
 $deviceTypePlaceholder = __('intake.form.visit.device_type_placeholder');
 $deviceTypeOptions = [
     '' => $deviceTypePlaceholder,
@@ -79,6 +96,16 @@ $deviceTypeOptions = [
     'Phone' => __('intake.form.visit.device_types.phone'),
     'Tablet' => __('intake.form.visit.device_types.tablet'),
     'Console' => __('intake.form.visit.device_types.console'),
+];
+$quickIssuesTitle = __('intake.form.visit.quick_issues.title');
+$quickIssuesHint = __('intake.form.visit.quick_issues.hint');
+$quickIssueOptions = [
+    ['key' => 'bsod', 'label' => __('intake.form.visit.quick_issues.options.bsod')],
+    ['key' => 'screen', 'label' => __('intake.form.visit.quick_issues.options.screen')],
+    ['key' => 'power', 'label' => __('intake.form.visit.quick_issues.options.power')],
+    ['key' => 'battery', 'label' => __('intake.form.visit.quick_issues.options.battery')],
+    ['key' => 'keyboard', 'label' => __('intake.form.visit.quick_issues.options.keyboard')],
+    ['key' => 'data', 'label' => __('intake.form.visit.quick_issues.options.data')],
 ];
 $visitBackLabel = __('intake.form.visit.back');
 $visitSubmitLabel = __('intake.form.visit.submit');
@@ -175,6 +202,31 @@ $feedbackUnknown = __('intake.feedback.unknown');
       </header>
       <div class="intake-modal__body">
         <form class="intake-form" id="intakeForm" novalidate>
+          <nav class="intake-stepper" aria-label="<?= htmlspecialchars($stepperLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <ol class="intake-stepper__list" data-stepper>
+              <?php foreach ($stepperSteps as $step): ?>
+                <li
+                  class="intake-stepper__item"
+                  data-stepper-item
+                  data-step="<?= htmlspecialchars($step['key'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                >
+                  <span class="intake-stepper__bullet" aria-hidden="true"></span>
+                  <div class="intake-stepper__content">
+                    <span class="intake-stepper__title"><?= htmlspecialchars($step['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <span class="intake-stepper__description"><?= htmlspecialchars($step['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  </div>
+                </li>
+              <?php endforeach; ?>
+            </ol>
+            <button
+              type="button"
+              class="intake-stepper__back btn btn--ghost"
+              data-stepper-back
+              hidden
+            >
+              <?= htmlspecialchars($stepperBackLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </button>
+          </nav>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <section class="intake-form__panel" data-step="customer" aria-label="<?= htmlspecialchars($customerPanelAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
             <h3><?= htmlspecialchars($customerPanelTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
@@ -215,6 +267,36 @@ $feedbackUnknown = __('intake.feedback.unknown');
                       <?php endforeach; ?>
                     </select>
                   </label>
+                  <?php elseif ($field['type'] === 'datetime'): ?>
+                  <div class="form-field form-field--wide">
+                    <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <div class="schedule-picker" data-appointment-picker>
+                      <div class="schedule-picker__fields">
+                        <label class="schedule-picker__field">
+                          <span><?= htmlspecialchars($appointmentDateLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          <input
+                            type="date"
+                            name="appointment_date"
+                            data-appointment-date
+                            required
+                          >
+                        </label>
+                        <label class="schedule-picker__field">
+                          <span><?= htmlspecialchars($appointmentTimeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          <input
+                            type="time"
+                            name="appointment_time"
+                            data-appointment-time
+                            required
+                          >
+                        </label>
+                      </div>
+                      <input type="hidden" name="<?= htmlspecialchars($field['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-appointment-target>
+                      <?php if (!empty($appointmentHint)): ?>
+                        <p class="schedule-picker__hint"><?= htmlspecialchars($appointmentHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                      <?php endif; ?>
+                    </div>
+                  </div>
                 <?php elseif ($field['type'] === 'textarea'): ?>
                   <label class="form-field<?= !empty($field['wide']) ? ' form-field--wide' : '' ?>">
                     <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
@@ -224,6 +306,27 @@ $feedbackUnknown = __('intake.feedback.unknown');
                         <?= ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>="<?= htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                       <?php endforeach; ?>
                     ></textarea>
+                    <?php if ($field['name'] === 'problem_description'): ?>
+                      <div class="quick-issues" data-issue-list>
+                        <div class="quick-issues__header">
+                          <span class="quick-issues__title"><?= htmlspecialchars($quickIssuesTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          <?php if (!empty($quickIssuesHint)): ?>
+                            <p class="quick-issues__hint"><?= htmlspecialchars($quickIssuesHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                          <?php endif; ?>
+                        </div>
+                        <div class="quick-issues__chips">
+                          <?php foreach ($quickIssueOptions as $issue): ?>
+                            <button
+                              type="button"
+                              class="quick-issues__chip"
+                              data-issue-value="<?= htmlspecialchars($issue['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            >
+                              <?= htmlspecialchars($issue['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                            </button>
+                          <?php endforeach; ?>
+                        </div>
+                      </div>
+                    <?php endif; ?>
                   </label>
                 <?php else: ?>
                   <label class="form-field<?= !empty($field['wide']) ? ' form-field--wide' : '' ?>">
