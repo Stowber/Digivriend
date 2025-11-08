@@ -19,10 +19,6 @@
     return;
   }
 
-  const panels = {
-    customer: $('[data-step="customer"]', form),
-    visit: $('[data-step="visit"]', form)
-  };
   const resultSection = $('[data-result]', modal);
   const feedback = $('[data-feedback]', modal);
   const translations = {
@@ -42,10 +38,15 @@
   const appointmentDateInput = $('[data-appointment-date]', form);
   const appointmentTimeInput = $('[data-appointment-time]', form);
 
+  const stepOrder = ['customer', 'visit'];
+  const panels = stepOrder.reduce(function (acc, key) {
+    acc[key] = $('.intake-form__panel[data-step="' + key + '"]', form);
+    return acc;
+  }, {});
+
   const quickIssueButtons = $all('[data-issue-value]', form);
   const quickIssuesSelected = new Set();
 
-  const stepOrder = ['customer', 'visit'];
   let activeStep = stepOrder[0];
   let isSubmitting = false;
 
@@ -214,7 +215,7 @@
     const currentIndex = stepOrder.indexOf(activeStep);
     const prevStep = stepOrder[currentIndex - 1];
     if (prevStep) {
-      setStep(nextStep);
+      setStep(prevStep);
     }
   }
 
