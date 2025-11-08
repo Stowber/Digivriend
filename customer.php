@@ -40,6 +40,33 @@ if ($created) {
 $customerCode = isset($customer['customer_code']) && trim((string) $customer['customer_code']) !== ''
     ? (string) $customer['customer_code']
     : __('customers.list.table.no_code');
+  
+$fullName = (string) ($customer['full_name'] ?? '');
+$initials = 'DV';
+$trimmedName = trim($fullName);
+if ($trimmedName !== '') {
+    $nameParts = preg_split('/\s+/u', $trimmedName) ?: [];
+    $nameParts = array_values(array_filter($nameParts, static fn ($part) => $part !== ''));
+
+    if ($nameParts !== []) {
+        $firstPart = (string) ($nameParts[0] ?? '');
+        $lastPart = (string) ($nameParts[count($nameParts) - 1] ?? '');
+
+        $firstInitial = $firstPart !== '' ? mb_substr($firstPart, 0, 1, 'UTF-8') : '';
+        $secondInitial = '';
+
+        if (count($nameParts) > 1 && $lastPart !== '') {
+            $secondInitial = mb_substr($lastPart, 0, 1, 'UTF-8');
+        } elseif (mb_strlen($firstPart, 'UTF-8') > 1) {
+            $secondInitial = mb_substr($firstPart, 1, 1, 'UTF-8');
+        }
+
+        $initialsCandidate = trim($firstInitial . $secondInitial);
+        if ($initialsCandidate !== '') {
+            $initials = mb_strtoupper($initialsCandidate, 'UTF-8');
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
@@ -103,18 +130,42 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
   </header>
 
   <main class="container customers-page">
-    <div class="page-header">
-      <div>
-        <p class="page-eyebrow"><?= htmlspecialchars(__('customers.profile.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-        <h1><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
-        <p class="page-intro"><?= htmlspecialchars(__('customers.profile.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+    <section class="card profile-card profile-hero">
+      <div class="profile-hero__header">
+        <span class="profile-avatar" aria-hidden="true"><?= htmlspecialchars($initials, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        <div class="profile-hero__text">
+          <p class="profile-hero__eyebrow"><?= htmlspecialchars(__('customers.profile.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <h1 class="profile-hero__title"><?= htmlspecialchars($fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+          <p class="profile-hero__intro"><?= htmlspecialchars(__('customers.profile.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </div>
+        <div class="profile-hero__actions">
+          <a href="intake.php" class="btn btn--secondary profile-hero__action"><?= htmlspecialchars(__('customers.profile.actions.intake'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+        </div>
       </div>
-      <div class="page-actions">
-        <a href="intake.php" class="btn btn--secondary"><?= htmlspecialchars(__('customers.profile.actions.intake'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
-      </div>
-    </div>
 
-    <section class="card">
+    <dl class="profile-meta">
+        <div class="profile-meta__item">
+          <dt class="profile-meta__label"><?= htmlspecialchars(__('customers.profile.details.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+          <dd class="profile-meta__value">
+            <span class="profile-meta__pill"><?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </dd>
+        </div>
+        <div class="profile-meta__item">
+          <dt class="profile-meta__label"><?= htmlspecialchars(__('customers.profile.details.registered'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+          <dd class="profile-meta__value">
+            <?= htmlspecialchars(isset($customer['created_at']) ? date('d-m-Y H:i', strtotime((string) $customer['created_at'])) : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </dd>
+        </div>
+        <div class="profile-meta__item">
+          <dt class="profile-meta__label"><?= htmlspecialchars(__('customers.profile.details.last_interaction'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+          <dd class="profile-meta__value">
+            <?= htmlspecialchars(isset($customer['last_interaction_at']) && $customer['last_interaction_at'] !== null ? date('d-m-Y H:i', strtotime((string) $customer['last_interaction_at'])) : __('customers.profile.details.never'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="card profile-card profile-card--form">
       <header class="card__header">
         <h2><?= htmlspecialchars(__('customers.profile.details.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <p><?= htmlspecialchars(__('customers.profile.details.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
@@ -131,27 +182,6 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
           <?= htmlspecialchars((string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </div>
       <?php endif; ?>
-
-      <div class="profile-summary">
-        <div>
-          <span class="profile-summary__label"><?= htmlspecialchars(__('customers.profile.details.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="profile-summary__value">
-            <?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </span>
-        </div>
-        <div>
-          <span class="profile-summary__label"><?= htmlspecialchars(__('customers.profile.details.registered'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="profile-summary__value">
-            <?= htmlspecialchars(isset($customer['created_at']) ? date('d-m-Y H:i', strtotime((string) $customer['created_at'])) : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </span>
-        </div>
-        <div>
-          <span class="profile-summary__label"><?= htmlspecialchars(__('customers.profile.details.last_interaction'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="profile-summary__value">
-            <?= htmlspecialchars(isset($customer['last_interaction_at']) && $customer['last_interaction_at'] !== null ? date('d-m-Y H:i', strtotime((string) $customer['last_interaction_at'])) : __('customers.profile.details.never'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </span>
-        </div>
-      </div>
 
       <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="form-grid">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
@@ -204,7 +234,7 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
       </form>
     </section>
 
-    <section class="card">
+    <section class="card profile-card profile-card--table">
       <header class="card__header">
         <h2><?= htmlspecialchars(__('customers.profile.cases.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <p><?= htmlspecialchars(__('customers.profile.cases.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
@@ -248,7 +278,7 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
       </div>
     </section>
 
-    <section class="card">
+    <section class="card profile-card profile-card--table">
       <header class="card__header">
         <h2><?= htmlspecialchars(__('customers.profile.documents.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <p><?= htmlspecialchars(__('customers.profile.documents.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
@@ -285,7 +315,7 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
       </div>
     </section>
 
-    <section class="card">
+    <section class="card profile-card">
       <header class="card__header">
         <h2><?= htmlspecialchars(__('customers.profile.invoices.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <p><?= htmlspecialchars(__('customers.profile.invoices.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
