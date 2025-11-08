@@ -6,7 +6,8 @@ return [
     ],
     'nav' => [
         'dashboard' => 'Dashboard',
-        'intake' => 'Klantregistratie',
+        'intake' => 'Intake',
+        'customers' => 'Klanten',
         'devices' => 'Klanten & apparaten',
         'archive' => 'Archief',
         'data_recovery' => 'Data recovery',
@@ -233,7 +234,7 @@ return [
             'steps' => [
                 'capture' => [
                     'title' => 'Gegevens vastleggen',
-                    'description' => 'Naam, adres en contactgegevens van de klant.',
+                    'description' => 'Selecteer een bestaande klant op naam of klantnummer.',
                 ],
                 'schedule' => [
                     'title' => 'Afspraak plannen',
@@ -264,7 +265,7 @@ return [
                 'steps' => [
                     'customer' => [
                         'title' => 'Klantgegevens',
-                        'description' => 'Contact- en adresinformatie',
+                        'description' => 'Zoek in de klantenlijst en kies de juiste persoon',
                     ],
                     'visit' => [
                         'title' => 'Afspraak & apparaat',
@@ -274,14 +275,26 @@ return [
             ],
             'customer' => [
                 'aria' => 'Klantgegevens',
-                'title' => 'Contactgegevens klant',
-                'fields' => [
-                    'full_name' => 'Naam *',
-                    'email' => 'E-mailadres *',
-                    'phone' => 'Telefoon *',
-                    'address' => 'Adres *',
-                    'postal_code' => 'Postcode *',
-                    'city' => 'Plaats *',
+                'title' => 'Klant kiezen',
+                'search' => [
+                    'label' => 'Naam of klantnummer',
+                    'placeholder' => 'Typ bijvoorbeeld “Jan Jansen” of “K25110192”…',
+                    'hint' => 'Zoek op naam, e-mail, telefoonnummer of het KYYMMXXXX-klantnummer.',
+                    'empty' => 'Geen resultaten. Controleer of de klant in de sectie Klanten staat.',
+                ],
+                'selected' => [
+                    'title' => 'Geselecteerde klant',
+                    'code' => 'Klantnummer',
+                    'name' => 'Naam',
+                    'email' => 'E-mail',
+                    'phone' => 'Telefoon',
+                    'address' => 'Adres',
+                    'empty' => 'Geen gegevens',
+                    'change' => 'Andere klant kiezen',
+                ],
+                'errors' => [
+                    'required' => 'Selecteer een klant voordat je doorgaat.',
+                    'not_found' => 'Geselecteerde klant bestaat niet.',
                 ],
                 'next' => 'Volgende stap',
             ],
@@ -342,6 +355,111 @@ return [
             'success' => 'Intake is succesvol vastgelegd.',
             'exception' => 'Er is een fout opgetreden tijdens het opslaan. Controleer de gegevens en probeer opnieuw.',
             'unknown' => 'Onbekend',
+        ],
+    ],
+    'customers' => [
+        'meta' => [
+            'title' => 'Klanten - Digivriend',
+        ],
+        'hero' => [
+            'eyebrow' => 'Klantenbestand',
+            'title' => 'Klantenoverzicht',
+            'description' => 'Beheer klantprofielen en bekijk gekoppelde cases en documenten in één overzicht.',
+            'create' => 'Nieuwe klant registreren',
+        ],
+        'messages' => [
+            'created' => 'Nieuwe klant toegevoegd.',
+            'create_failed' => 'Opslaan van de klant is mislukt. Probeer het opnieuw.',
+            'updated' => 'Klantgegevens bijgewerkt.',
+            'update_failed' => 'Bijwerken van de klant is mislukt. Probeer het opnieuw.',
+        ],
+        'search' => [
+            'aria' => 'Zoek klanten',
+            'label' => 'Zoek klanten',
+            'placeholder' => 'Zoek op naam, e-mail, telefoon of klantnummer…',
+            'submit' => 'Zoeken',
+            'reset' => 'Wissen',
+        ],
+        'list' => [
+            'title' => 'Klantenlijst',
+            'subtitle' => 'Blader door alle geregistreerde klanten en open hun profiel.',
+            'table' => [
+                'code' => 'Klantnummer',
+                'name' => 'Klant',
+                'contact' => 'Contact',
+                'location' => 'Adres',
+                'updated' => 'Bijgewerkt',
+                'no_code' => 'Geen nummer',
+            ],
+            'empty' => 'Er zijn nog geen klanten geregistreerd.',
+        ],
+        'create' => [
+            'meta' => [
+                'title' => 'Klant registreren - Digivriend',
+            ],
+            'eyebrow' => 'Nieuwe klant',
+            'title' => 'Klant registreren',
+            'description' => 'Bewaar de contactgegevens zodat je ze direct bij intake kunt gebruiken.',
+        ],
+        'form' => [
+            'full_name' => 'Volledige naam',
+            'email' => 'E-mailadres',
+            'phone' => 'Telefoon',
+            'address' => 'Adres',
+            'postal_code' => 'Postcode',
+            'city' => 'Plaats',
+            'cancel' => 'Annuleren',
+            'submit' => 'Klant opslaan',
+            'save' => 'Wijzigingen opslaan',
+        ],
+        'profile' => [
+            'meta' => [
+                'title' => 'Klant :name - Digivriend',
+            ],
+            'eyebrow' => 'Klantprofiel',
+            'description' => 'Werk de gegevens bij en bekijk gekoppelde cases en documenten.',
+            'actions' => [
+                'intake' => 'Intake starten',
+            ],
+            'details' => [
+                'title' => 'Contactgegevens',
+                'subtitle' => 'Houd de informatie actueel voor een soepel intakeproces.',
+                'code' => 'Klantnummer',
+                'registered' => 'Geregistreerd op',
+                'last_interaction' => 'Laatste contactmoment',
+                'never' => 'Nog nooit',
+            ],
+            'cases' => [
+                'title' => 'Cases',
+                'subtitle' => 'Recente servicecases voor deze klant.',
+                'table' => [
+                    'reference' => 'Referentie',
+                    'type' => 'Type',
+                    'status' => 'Status',
+                    'summary' => 'Samenvatting',
+                    'updated' => 'Bijgewerkt',
+                    'actions' => 'Acties',
+                    'view' => 'Case openen',
+                ],
+                'empty' => 'Nog geen cases voor deze klant.',
+            ],
+            'documents' => [
+                'title' => 'Documenten',
+                'subtitle' => 'Bestanden die voor de klant zijn gegenereerd of gedeeld.',
+                'table' => [
+                    'name' => 'Document',
+                    'case' => 'Case',
+                    'created' => 'Aangemaakt',
+                    'actions' => 'Acties',
+                    'open' => 'Openen',
+                ],
+                'empty' => 'Er zijn nog geen documenten voor deze klant.',
+            ],
+            'invoices' => [
+                'title' => 'Facturen',
+                'subtitle' => 'Facturen die aan deze klant gekoppeld zijn.',
+                'placeholder' => 'Factuuroverzicht verschijnt binnenkort.',
+            ],
         ],
     ],
     'warehouse' => [

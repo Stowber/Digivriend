@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Database;
 
+use App\Support\Customers\CustomerCodeGenerator;
 use App\Support\Env;
 use PDO;
 use PDOException;
@@ -28,6 +29,7 @@ final class SchemaManager
         }
 
         self::ensureCoreCustomerColumns($pdo);
+        self::ensureCustomerCodeColumn($pdo);
         self::ensureOphaalbevestigingenTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
         self::ensureDataRecoveryTable($pdo);
@@ -114,6 +116,55 @@ final class SchemaManager
             'ALTER TABLE notes ADD CONSTRAINT fk_notes_customers FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
             ['duplicate', 'already exists']
         );
+    }
+
+    private static function ensureCustomerCodeColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'customers', 'customer_code', 'TEXT NULL');
+            self::createSqliteIndexIfColumnsExist(
+                $pdo,
+                'customers',
+                ['customer_code'],
+                'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)'
+            );
+        } elseif ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE customers ADD COLUMN customer_code VARCHAR(32) NULL', ['duplicate', 'already exists']);
+            self::executeIgnoringDuplicates($pdo, 'CREATE UNIQUE INDEX idx_customers_code ON customers(customer_code)', ['duplicate', 'already exists']);
+        } else {
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE customers ADD COLUMN customer_code VARCHAR(32) NULL AFTER id', ['duplicate', 'already exists']);
+            self::executeIgnoringDuplicates($pdo, 'ALTER TABLE customers ADD UNIQUE INDEX idx_customers_code (customer_code)', ['duplicate', 'already exists']);
+        }
+
+        $statement = $pdo->query("SELECT id FROM customers WHERE customer_code IS NULL OR customer_code = '' ORDER BY id");
+        if ($statement === false) {
+            return;
+        }
+
+        $ids = $statement->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        if ($ids === []) {
+            return;
+        }
+
+        $update = $pdo->prepare('UPDATE customers SET customer_code = :code WHERE id = :id');
+        foreach ($ids as $id) {
+            $customerId = (int) $id;
+            if ($customerId <= 0) {
+                continue;
+            }
+
+            $code = CustomerCodeGenerator::generate($pdo);
+            if ($code === '') {
+                continue;
+            }
+
+            $update->execute([
+                'id' => $customerId,
+                'code' => $code,
+            ]);
+        }
     }
 
 
@@ -1607,6 +1658,7 @@ final class SchemaManager
             <<<SQL
             CREATE TABLE IF NOT EXISTS customers (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                customer_code VARCHAR(32) NULL,
                 full_name VARCHAR(191) NOT NULL,
                 email VARCHAR(191) NULL,
                 phone VARCHAR(64) NULL,
@@ -1616,6 +1668,7 @@ final class SchemaManager
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 last_interaction_at TIMESTAMP NULL DEFAULT NULL,
+                UNIQUE KEY uniq_customers_code (customer_code),
                 UNIQUE KEY uniq_customers_email (email),
                 INDEX idx_customers_phone (phone)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -1688,6 +1741,7 @@ final class SchemaManager
             <<<SQL
             CREATE TABLE IF NOT EXISTS customers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_code TEXT NULL,
                 full_name TEXT NOT NULL,
                 email TEXT NULL,
                 phone TEXT NULL,
@@ -1762,6 +1816,12 @@ final class SchemaManager
         self::createSqliteIndexIfColumnsExist(
             $pdo,
             'customers',
+            ['customer_code'],
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)'
+        );
+        self::createSqliteIndexIfColumnsExist(
+            $pdo,
+            'customers',
             ['email'],
             'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers(email)'
         );
@@ -1803,6 +1863,7 @@ final class SchemaManager
             <<<SQL
             CREATE TABLE IF NOT EXISTS customers (
                 id SERIAL PRIMARY KEY,
+                customer_code VARCHAR(32) NULL,
                 full_name VARCHAR(191) NOT NULL,
                 email VARCHAR(191) NULL,
                 phone VARCHAR(64) NULL,
@@ -1813,6 +1874,9 @@ final class SchemaManager
                 updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 last_interaction_at TIMESTAMP WITHOUT TIME ZONE NULL
             )
+            SQL,
+            <<<SQL
+            CREATE UNIQUE INDEX IF NOT EXISTS uniq_customers_code ON customers(customer_code)
             SQL,
             <<<SQL
             CREATE UNIQUE INDEX IF NOT EXISTS uniq_customers_email ON customers(email)

@@ -47,6 +47,28 @@
   const quickIssueButtons = $all('[data-issue-value]', form);
   const quickIssuesSelected = new Set();
 
+  const customerSearchInput = $('[data-customer-search]', form);
+  const customerResults = $('[data-customer-results]', form);
+  const customerEmpty = $('[data-customer-empty]', form);
+  const customerSelected = $('[data-customer-selected]', form);
+  const customerIdInput = $('[data-customer-id]', form);
+  const customerSelectedFields = {
+    code: $('[data-selected-code]', form),
+    name: $('[data-selected-name]', form),
+    email: $('[data-selected-email]', form),
+    phone: $('[data-selected-phone]', form),
+    address: $('[data-selected-address]', form)
+  };
+  const customerClearButton = $('[data-customer-clear]', form);
+  const customerSelectedEmptyText = customerSelected
+    ? customerSelected.getAttribute('data-selected-empty') || translations.unknown
+    : translations.unknown;
+  const customerRequiredMessage = customerIdInput
+    ? customerIdInput.getAttribute('data-customer-required-message') || translations.error
+    : translations.error;
+  let customerSearchTimer = null;
+  let customerSearchSequence = 0;
+
   let activeStep = stepOrder[0];
   let isSubmitting = false;
 
@@ -111,14 +133,15 @@
     if (resultSection) {
       resultSection.hidden = true;
     }
-    if (feedback) {
-      feedback.hidden = true;
-      feedback.textContent = '';
-      feedback.classList.remove('intake-feedback--error', 'intake-feedback--success');
-    }
+    clearFeedback();
     if (appointmentHidden) {
       appointmentHidden.value = '';
     }
+    if (customerSearchTimer) {
+      clearTimeout(customerSearchTimer);
+      customerSearchTimer = null;
+    }
+    clearCustomerSelection(true);
     quickIssuesSelected.clear();
     quickIssueButtons.forEach(function (button) {
       button.classList.remove('is-selected');
@@ -151,6 +174,15 @@
         return false;
       }
     }
+    if (stepKey === 'customer') {
+      if (!customerIdInput || !customerIdInput.value) {
+        showFeedback(customerRequiredMessage, 'error');
+        if (customerSearchInput) {
+          customerSearchInput.focus();
+        }
+        return false;
+      }
+    }
     if (stepKey === 'visit') {
       syncAppointment();
       if (appointmentHidden && !appointmentHidden.value) {
@@ -168,6 +200,15 @@
     return true;
   }
 
+  function clearFeedback() {
+    if (!feedback) {
+      return;
+    }
+    feedback.hidden = true;
+    feedback.textContent = '';
+    feedback.classList.remove('intake-feedback--error', 'intake-feedback--success');
+  }
+
   function showFeedback(message, type) {
     if (!feedback) {
       return;
@@ -182,6 +223,164 @@
     }
   }
 
+  function clearCustomerSelection(silent) {
+    if (customerIdInput) {
+      customerIdInput.value = '';
+    }
+    if (customerSearchInput) {
+      customerSearchInput.value = '';
+      customerSearchInput.setAttribute('aria-expanded', 'false');
+    }
+    if (customerResults) {
+      customerResults.innerHTML = '';
+    }
+    if (customerEmpty) {
+      customerEmpty.hidden = true;
+    }
+    if (customerSelected) {
+      customerSelected.hidden = true;
+    }
+    Object.keys(customerSelectedFields).forEach(function (key) {
+      const field = customerSelectedFields[key];
+      if (field) {
+        field.textContent = customerSelectedEmptyText;
+      }
+    });
+    if (!silent) {
+      clearFeedback();
+    }
+  }
+
+  function renderCustomerResults(results) {
+    if (!customerResults || !customerSearchInput) {
+      return;
+    }
+    customerResults.innerHTML = '';
+    if (customerEmpty) {
+      customerEmpty.hidden = results.length !== 0;
+    }
+    if (results.length === 0) {
+      customerSearchInput.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    customerSearchInput.setAttribute('aria-expanded', 'true');
+    results.forEach(function (entry) {
+      if (!entry || !entry.id) {
+        return;
+      }
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'customer-picker__result';
+      button.setAttribute('role', 'option');
+      const name = document.createElement('strong');
+      name.textContent = entry.name || translations.unknown;
+      const meta = document.createElement('span');
+      const metaParts = [];
+      if (entry.code) {
+        metaParts.push(entry.code);
+      }
+      if (entry.email) {
+        metaParts.push(entry.email);
+      } else if (entry.phone) {
+        metaParts.push(entry.phone);
+      }
+      meta.textContent = metaParts.join(' • ');
+      button.appendChild(name);
+      button.appendChild(meta);
+      button.addEventListener('click', function () {
+        selectCustomer(entry);
+      });
+      customerResults.appendChild(button);
+    });
+  }
+
+  function selectCustomer(entry) {
+    if (!customerIdInput) {
+      return;
+    }
+    customerIdInput.value = entry && entry.id ? String(entry.id) : '';
+    if (customerSearchInput) {
+      customerSearchInput.value = entry.name || '';
+      customerSearchInput.setAttribute('aria-expanded', 'false');
+    }
+    if (customerResults) {
+      customerResults.innerHTML = '';
+    }
+    if (customerEmpty) {
+      customerEmpty.hidden = true;
+    }
+    if (customerSelected) {
+      customerSelected.hidden = false;
+    }
+    const addressParts = [];
+    if (entry.address) {
+      addressParts.push(entry.address);
+    }
+    const cityParts = [];
+    if (entry.postal_code) {
+      cityParts.push(entry.postal_code);
+    }
+    if (entry.city) {
+      cityParts.push(entry.city);
+    }
+    if (cityParts.length > 0) {
+      addressParts.push(cityParts.join(' '));
+    }
+    if (customerSelectedFields.code) {
+      customerSelectedFields.code.textContent = entry.code || customerSelectedEmptyText;
+    }
+    if (customerSelectedFields.name) {
+      customerSelectedFields.name.textContent = entry.name || customerSelectedEmptyText;
+    }
+    if (customerSelectedFields.email) {
+      customerSelectedFields.email.textContent = entry.email || customerSelectedEmptyText;
+    }
+    if (customerSelectedFields.phone) {
+      customerSelectedFields.phone.textContent = entry.phone || customerSelectedEmptyText;
+    }
+    if (customerSelectedFields.address) {
+      customerSelectedFields.address.textContent = addressParts.join(' • ') || customerSelectedEmptyText;
+    }
+    clearFeedback();
+  }
+
+  function requestCustomerSearch(query) {
+    if (!customerSearchInput) {
+      return;
+    }
+    if (customerResults) {
+      customerResults.innerHTML = '';
+    }
+    if (customerEmpty) {
+      customerEmpty.hidden = true;
+    }
+    if (!query || query.length < 2) {
+      customerSearchInput.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    const sequence = ++customerSearchSequence;
+    fetch('customer-search.php?q=' + encodeURIComponent(query))
+      .then(function (response) {
+        if (!response.ok) {
+          return { data: [] };
+        }
+        return response.json();
+      })
+      .then(function (payload) {
+        if (sequence !== customerSearchSequence) {
+          return;
+        }
+        const results = payload && Array.isArray(payload.data) ? payload.data : [];
+        renderCustomerResults(results);
+      })
+      .catch(function () {
+        if (sequence !== customerSearchSequence) {
+          return;
+        }
+        renderCustomerResults([]);
+      });
+  }
+
   function setSubmitting(state) {
     isSubmitting = state;
     const buttons = $all('button', form);
@@ -191,11 +390,51 @@
     updateStepper();
   }
 
+  if (customerSearchInput) {
+    customerSearchInput.addEventListener('input', function () {
+      if (customerSearchTimer) {
+        clearTimeout(customerSearchTimer);
+      }
+      const query = customerSearchInput.value.trim();
+      clearFeedback();
+      customerSearchTimer = setTimeout(function () {
+        requestCustomerSearch(query);
+      }, 250);
+    });
+    customerSearchInput.addEventListener('focus', function () {
+      const query = customerSearchInput.value.trim();
+      if (query.length >= 2) {
+        requestCustomerSearch(query);
+      }
+    });
+    customerSearchInput.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        if (customerResults) {
+          customerResults.innerHTML = '';
+        }
+        if (customerEmpty) {
+          customerEmpty.hidden = true;
+        }
+        customerSearchInput.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  if (customerClearButton) {
+    customerClearButton.addEventListener('click', function () {
+      clearCustomerSelection(false);
+      if (customerSearchInput) {
+        customerSearchInput.focus();
+      }
+    });
+  }
+
   function handleNextStep(event) {
     event.preventDefault();
     if (isSubmitting) {
       return;
     }
+    clearFeedback();
     const currentPanel = panels[activeStep];
     if (!validatePanel(currentPanel, activeStep)) {
       return;
@@ -240,6 +479,7 @@
     }
     formData.delete('appointment_date');
     formData.delete('appointment_time');
+    formData.delete('customer_search');
 
     const payload = {};
     formData.forEach(function (value, key) {

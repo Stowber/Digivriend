@@ -102,6 +102,26 @@ final class CaseRepository
     /**
      * @return array<int, array<string, mixed>>
      */
+    public function forCustomer(int $customerId, int $limit = 25): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT c.*, dev.brand AS device_brand, dev.model AS device_model, dev.serial_number AS device_serial
+             FROM cases c
+             LEFT JOIN devices dev ON dev.id = c.device_id
+             WHERE c.customer_id = :customer_id
+             ORDER BY c.created_at DESC
+             LIMIT :limit'
+        );
+        $statement->bindValue('customer_id', $customerId, PDO::PARAM_INT);
+        $statement->bindValue('limit', max(1, $limit), PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function findOpenPickups(): array
     {
         $statement = $this->pdo->prepare('SELECT * FROM cases WHERE type = :type AND status = :status ORDER BY updated_at DESC');
@@ -110,7 +130,7 @@ final class CaseRepository
             'status' => 'klaar',
         ]);
 
-        return $statement->fetchAll() ?: [];
+        $case = $statement->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -144,7 +164,7 @@ final class CaseRepository
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        return $statement->fetchAll() ?: [];
+        $case = $statement->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -172,7 +192,7 @@ final class CaseRepository
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        return $statement->fetchAll() ?: [];
+        $case = $statement->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -189,7 +209,7 @@ final class CaseRepository
         );
         $statement->execute(['case_id' => $caseId]);
 
-        return $statement->fetchAll() ?: [];
+        $case = $statement->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -346,6 +366,6 @@ final class CaseRepository
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        return $statement->fetchAll() ?: [];
+        $case = $statement->fetch(PDO::FETCH_ASSOC);
     }
 }

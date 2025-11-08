@@ -12,6 +12,7 @@ if (!function_exists('render_main_nav')) {
         $items = [
             'dashboard' => ['label' => __('nav.dashboard'), 'href' => 'index.php'],
             'intake' => ['label' => __('nav.intake'), 'href' => 'intake.php'],
+            'customers' => ['label' => __('nav.customers'), 'href' => 'customers.php'],
             'devices' => ['label' => __('nav.devices'), 'href' => 'devices.php'],
             'archive' => ['label' => __('nav.archive'), 'href' => 'archive.php'],
             'data_recovery' => ['label' => __('nav.data_recovery'), 'href' => 'data-recovery.php'],

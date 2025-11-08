@@ -6,7 +6,8 @@ return [
     ],
     'nav' => [
         'dashboard' => 'Dashboard',
-        'intake' => 'Customer intake',
+        'intake' => 'Intake',
+        'customers' => 'Customers',
         'devices' => 'Customers & devices',
         'archive' => 'Archive',
         'data_recovery' => 'Data recovery',
@@ -233,7 +234,7 @@ return [
             'steps' => [
                 'capture' => [
                     'title' => 'Capture details',
-                    'description' => 'Name, address, and contact information.',
+                    'description' => 'Select an existing customer by name or client number.',
                 ],
                 'schedule' => [
                     'title' => 'Schedule appointment',
@@ -264,7 +265,7 @@ return [
                 'steps' => [
                     'customer' => [
                         'title' => 'Customer details',
-                        'description' => 'Contact and address information',
+                        'description' => 'Search the customer database and pick the right person',
                     ],
                     'visit' => [
                         'title' => 'Appointment & device',
@@ -274,14 +275,26 @@ return [
             ],
             'customer' => [
                 'aria' => 'Customer details',
-                'title' => 'Customer contact details',
-                'fields' => [
-                    'full_name' => 'Name *',
-                    'email' => 'Email address *',
-                    'phone' => 'Phone *',
-                    'address' => 'Address *',
-                    'postal_code' => 'Postal code *',
-                    'city' => 'City *',
+                'title' => 'Choose a customer',
+                'search' => [
+                    'label' => 'Name or client number',
+                    'placeholder' => 'Start typing, e.g. “Jane Smith” or “K25110192”…',
+                    'hint' => 'Search by name, email, phone number or the KYYMMXXXX client number.',
+                    'empty' => 'No results. Make sure the customer is registered in the Customers section.',
+                ],
+                'selected' => [
+                    'title' => 'Selected customer',
+                    'code' => 'Client number',
+                    'name' => 'Name',
+                    'email' => 'Email',
+                    'phone' => 'Phone',
+                    'address' => 'Address',
+                    'empty' => 'No data',
+                    'change' => 'Change customer',
+                ],
+                'errors' => [
+                    'required' => 'Select a customer before continuing.',
+                    'not_found' => 'Selected customer could not be found.',
                 ],
                 'next' => 'Next step',
             ],
@@ -342,6 +355,111 @@ return [
             'success' => 'Intake saved successfully.',
             'exception' => 'An error occurred while saving. Check the details and try again.',
             'unknown' => 'Unknown',
+        ],
+    ],
+    'customers' => [
+        'meta' => [
+            'title' => 'Customers - Digivriend',
+        ],
+        'hero' => [
+            'eyebrow' => 'Customer records',
+            'title' => 'Customer directory',
+            'description' => 'Manage client profiles, view their cases and documents from a single overview.',
+            'create' => 'Register new customer',
+        ],
+        'messages' => [
+            'created' => 'Customer registered successfully.',
+            'create_failed' => 'Customer registration failed. Please try again.',
+            'updated' => 'Customer details updated.',
+            'update_failed' => 'Updating the customer failed. Please try again.',
+        ],
+        'search' => [
+            'aria' => 'Customer search',
+            'label' => 'Search customers',
+            'placeholder' => 'Search by name, email, phone or client number…',
+            'submit' => 'Search',
+            'reset' => 'Clear',
+        ],
+        'list' => [
+            'title' => 'Customer list',
+            'subtitle' => 'Browse all registered customers and open their profile.',
+            'table' => [
+                'code' => 'Client number',
+                'name' => 'Customer',
+                'contact' => 'Contact',
+                'location' => 'Location',
+                'updated' => 'Last update',
+                'no_code' => 'No code',
+            ],
+            'empty' => 'No customers registered yet.',
+        ],
+        'create' => [
+            'meta' => [
+                'title' => 'Register customer - Digivriend',
+            ],
+            'eyebrow' => 'New customer',
+            'title' => 'Register customer',
+            'description' => 'Store the customer details once and reuse them during the intake.',
+        ],
+        'form' => [
+            'full_name' => 'Full name',
+            'email' => 'Email address',
+            'phone' => 'Phone',
+            'address' => 'Address',
+            'postal_code' => 'Postal code',
+            'city' => 'City',
+            'cancel' => 'Cancel',
+            'submit' => 'Save customer',
+            'save' => 'Save changes',
+        ],
+        'profile' => [
+            'meta' => [
+                'title' => 'Customer :name - Digivriend',
+            ],
+            'eyebrow' => 'Customer profile',
+            'description' => 'Update the contact details and review related cases, documents and activity.',
+            'actions' => [
+                'intake' => 'Start intake',
+            ],
+            'details' => [
+                'title' => 'Contact details',
+                'subtitle' => 'Keep the information up to date for a smooth intake process.',
+                'code' => 'Client number',
+                'registered' => 'Registered on',
+                'last_interaction' => 'Last interaction',
+                'never' => 'Never',
+            ],
+            'cases' => [
+                'title' => 'Cases',
+                'subtitle' => 'Recent service cases linked to this customer.',
+                'table' => [
+                    'reference' => 'Reference',
+                    'type' => 'Type',
+                    'status' => 'Status',
+                    'summary' => 'Summary',
+                    'updated' => 'Updated',
+                    'actions' => 'Actions',
+                    'view' => 'Open case',
+                ],
+                'empty' => 'No cases recorded yet.',
+            ],
+            'documents' => [
+                'title' => 'Documents',
+                'subtitle' => 'Files generated for the customer or shared from cases.',
+                'table' => [
+                    'name' => 'Document',
+                    'case' => 'Case',
+                    'created' => 'Created',
+                    'actions' => 'Actions',
+                    'open' => 'Open',
+                ],
+                'empty' => 'No documents available for this customer yet.',
+            ],
+            'invoices' => [
+                'title' => 'Invoices',
+                'subtitle' => 'Invoices linked to this customer will appear here.',
+                'placeholder' => 'Invoice history will be available soon.',
+            ],
         ],
     ],
     'warehouse' => [

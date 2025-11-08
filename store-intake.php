@@ -45,12 +45,10 @@ if (!Csrf::validate((string) ($payload['csrf_token'] ?? ''))) {
 }
 
 try {
-    $fullName = InputValidator::requireString($payload, 'full_name', 191);
-    $email = InputValidator::requireEmail($payload, 'email', 191);
-    $phone = InputValidator::requirePhone($payload, 'phone', 32);
-    $address = InputValidator::requireString($payload, 'address', 255);
-    $postalCode = InputValidator::requireString($payload, 'postal_code', 16);
-    $city = InputValidator::requireString($payload, 'city', 120);
+    $customerId = (int) filter_var($payload['customer_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($customerId <= 0) {
+        throw new ValidationException(['customer_id' => __('intake.form.customer.errors.required')]);
+    }
     $appointmentRaw = InputValidator::requireString($payload, 'appointment_at', 32);
     $deviceType = InputValidator::optionalString($payload, 'device_type', 120);
     $deviceBrand = InputValidator::optionalString($payload, 'device_brand', 120);
@@ -92,17 +90,22 @@ $appointmentRepository = new AppointmentRepository($pdo);
 $notificationService = new NotificationService($pdo);
 $documentRepository = new DocumentRepository($pdo);
 
+$customer = $customerRepository->findById($customerId ?? 0);
+if ($customer === null) {
+    Response::error(['customer_id' => __('intake.form.customer.errors.not_found')], 404);
+}
+
+$customerName = (string) ($customer['full_name'] ?? 'Onbekende klant');
+$customerEmail = (string) ($customer['email'] ?? '');
+$customerPhone = (string) ($customer['phone'] ?? '');
+$customerAddress = (string) ($customer['address'] ?? '');
+$customerPostalCode = (string) ($customer['postal_code'] ?? '');
+$customerCity = (string) ($customer['city'] ?? '');
+
 try {
     $pdo->beginTransaction();
 
-    $customer = $customerRepository->upsert(
-        $fullName,
-        $email,
-        $phone,
-        $address,
-        $postalCode,
-        $city
-    );
+    $customerRepository->touch((int) $customer['id']);
 
     $deviceId = null;
     $hasDeviceDetails = $deviceBrand !== '' || $deviceModel !== '' || $deviceSerial !== '' || $deviceType !== '';
@@ -124,7 +127,7 @@ try {
     $barcodeValue  = $referenceCode;
 
     $appointmentEnd = $appointmentAt->add(new DateInterval('PT30M'));
-    $summary = $problemDescription !== '' ? $problemDescription : 'Intake bezoek voor ' . $fullName;
+    $summary = $problemDescription !== '' ? $problemDescription : 'Intake bezoek voor ' . $customerName;
 
     $caseDetails = [
         'appointment_at'       => $appointmentAt->format('Y-m-d H:i:s'),
@@ -177,7 +180,7 @@ try {
     }
 
     $appointmentRepository->create(
-        'Intake bezoek ' . $fullName,
+        'Intake bezoek ' . $customerName,
         'intake_visit',
         'scheduled',
         $appointmentAt->format('Y-m-d H:i:s'),
@@ -211,7 +214,15 @@ try {
     $appointmentDateNl = $fmt->format($appointmentAt);
 
     $formattedAppointment = $appointmentAt->format('d-m-Y H:i');
-    $formattedAddress = htmlspecialchars($address . ', ' . $postalCode . ' ' . $city, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $addressSegments = [];
+    if ($customerAddress !== '') {
+        $addressSegments[] = $customerAddress;
+    }
+    $cityParts = array_filter([$customerPostalCode, $customerCity], static fn ($value) => $value !== '');
+    if ($cityParts !== []) {
+        $addressSegments[] = implode(' ', $cityParts);
+    }
+    $formattedAddress = htmlspecialchars(implode(', ', $addressSegments), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
     // UWAGA (naprawa dublowania typu): w "Details" pokazujemy tylko marka + model.
     $deviceDetails = trim(implode(' ', array_filter([$deviceBrand, $deviceModel])));
@@ -235,10 +246,10 @@ try {
         return rtrim(mb_substr($value, 0, $limit - 1)) . '…';
     };
 
-    $displayFullName     = $truncate($fullName, 90);
+    $displayFullName     = $truncate($customerName, 90);
     $displayAddress      = $truncate(htmlspecialchars_decode($formattedAddress, ENT_QUOTES), 160);
-    $displayEmail        = $truncate($email, 120);
-    $displayPhone        = $truncate($phone, 40);
+    $displayEmail        = $truncate($customerEmail !== '' ? $customerEmail : '—', 120);
+    $displayPhone        = $truncate($customerPhone !== '' ? $customerPhone : '—', 40);
     $displayDeviceInfo   = $truncate($deviceDetails !== '' ? $deviceDetails : 'Onbekend apparaat', 140);
     $displayDeviceSerial = $truncate($deviceSerial !== '' ? $deviceSerial : 'Niet beschikbaar', 60);
 
@@ -771,9 +782,9 @@ try {
     $notificationService->sendIntakeConfirmation(
         (int) $case['id'],
         (int) $customer['id'],
-        $email,
+        $customerEmail,
         [
-            'customer_name'  => $fullName,
+            'customer_name'  => $customerName,
             'appointment_at' => $appointmentAt,
             'location'       => $company['branch'],
             'reference_code' => $referenceCode,

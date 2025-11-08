@@ -37,7 +37,7 @@ final class DocumentRepository
         $statement->bindValue('limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        return $statement->fetchAll() ?: [];
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
@@ -48,6 +48,25 @@ final class DocumentRepository
         $statement = $this->pdo->prepare('SELECT * FROM documents WHERE case_id = :case_id ORDER BY created_at DESC');
         $statement->execute(['case_id' => $caseId]);
 
-        return $statement->fetchAll() ?: [];
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function forCustomer(int $customerId, int $limit = 25): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT d.*, c.reference_code
+             FROM documents d
+             INNER JOIN cases c ON c.id = d.case_id
+             WHERE c.customer_id = :customer_id
+             ORDER BY d.created_at DESC
+             LIMIT :limit'
+        );
+        $statement->bindValue('customer_id', $customerId, PDO::PARAM_INT);
+        $statement->bindValue('limit', max(1, $limit), PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 }

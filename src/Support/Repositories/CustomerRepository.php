@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Repositories;
 
 use App\Support\Clock;
+use App\Support\Customers\CustomerCodeGenerator;
 use PDO;
 
 final class CustomerRepository
@@ -20,13 +21,13 @@ final class CustomerRepository
     {
         $limit = max(1, min(500, $limit));
 
-        $sql = 'SELECT id, full_name, email, phone, last_interaction_at, updated_at FROM customers';
+        $sql = 'SELECT id, customer_code, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
         $conditions = [];
         $params = [];
 
         if ($search !== null && trim($search) !== '') {
             $like = '%' . trim($search) . '%';
-            $conditions[] = '(full_name LIKE :search OR email LIKE :search OR phone LIKE :search)';
+            $conditions[] = '(full_name LIKE :search OR email LIKE :search OR phone LIKE :search OR customer_code LIKE :search)';
             $params['search'] = $like;
         }
 
@@ -45,7 +46,7 @@ final class CustomerRepository
         $statement->bindValue('limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        return $statement->fetchAll() ?: [];
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function upsert(
@@ -59,14 +60,30 @@ final class CustomerRepository
         $customer = $this->findExisting($email, $phone, $fullName);
 
         if ($customer === null) {
-            $this->insert($fullName, $email, $phone, $address, $postalCode, $city);
-            $customer = $this->findExisting($email, $phone, $fullName);
+            $customerId = $this->insert($fullName, $email, $phone, $address, $postalCode, $city, CustomerCodeGenerator::generate($this->pdo));
+            $customer = $this->findById($customerId);
         } else {
             $this->update($customer['id'], $fullName, $email, $phone, $address, $postalCode, $city);
+            if (!isset($customer['customer_code']) || trim((string) $customer['customer_code']) === '') {
+                $this->assignCode((int) $customer['id']);
+            }
             $customer = $this->findById((int) $customer['id']);
         }
 
         return $customer ?? [];
+    }
+
+    public function create(
+        string $fullName,
+        ?string $email,
+        ?string $phone,
+        ?string $address = null,
+        ?string $postalCode = null,
+        ?string $city = null
+    ): array {
+        $customerId = $this->insert($fullName, $email, $phone, $address, $postalCode, $city, CustomerCodeGenerator::generate($this->pdo));
+
+        return $this->findById($customerId) ?? [];
     }
 
     public function touch(int $customerId): void
@@ -78,12 +95,55 @@ final class CustomerRepository
         ]);
     }
 
+    public function updateProfile(
+        int $customerId,
+        string $fullName,
+        ?string $email,
+        ?string $phone,
+        ?string $address,
+        ?string $postalCode,
+        ?string $city
+    ): void {
+        $statement = $this->pdo->prepare(
+            'UPDATE customers
+             SET full_name = :full_name,
+                 email = :email,
+                 phone = :phone,
+                 address = :address,
+                 postal_code = :postal_code,
+                 city = :city,
+                 updated_at = :updated_at
+             WHERE id = :id'
+        );
+
+        $statement->execute([
+            'id' => $customerId,
+            'full_name' => $fullName,
+            'email' => $email ?: null,
+            'phone' => $phone ?: null,
+            'address' => $address ?: null,
+            'postal_code' => $postalCode ?: null,
+            'city' => $city ?: null,
+            'updated_at' => Clock::nowFormatted(),
+        ]);
+    }
+
     public function findById(int $customerId): ?array
     {
         $statement = $this->pdo->prepare('SELECT * FROM customers WHERE id = :id');
         $statement->execute(['id' => $customerId]);
 
-        $customer = $statement->fetch();
+        $customer = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return $customer !== false ? $customer : null;
+    }
+
+    public function findByCode(string $customerCode): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM customers WHERE customer_code = :customer_code LIMIT 1');
+        $statement->execute(['customer_code' => $customerCode]);
+
+        $customer = $statement->fetch(PDO::FETCH_ASSOC);
 
         return $customer !== false ? $customer : null;
     }
@@ -94,14 +154,16 @@ final class CustomerRepository
         ?string $phone,
         ?string $address,
         ?string $postalCode,
-        ?string $city
-    ): void {
+        ?string $city,
+        ?string $customerCode
+    ): int {
         $statement = $this->pdo->prepare(
-            'INSERT INTO customers (full_name, email, phone, address, postal_code, city, last_interaction_at)
-             VALUES (:full_name, :email, :phone, :address, :postal_code, :city, :last_interaction_at)'
+            'INSERT INTO customers (customer_code, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at)
+             VALUES (:customer_code, :full_name, :email, :phone, :address, :postal_code, :city, :last_interaction_at, :updated_at)'
         );
 
         $statement->execute([
+            'customer_code' => $customerCode,
             'full_name' => $fullName,
             'email' => $email ?: null,
             'phone' => $phone ?: null,
@@ -109,7 +171,10 @@ final class CustomerRepository
             'postal_code' => $postalCode ?: null,
             'city' => $city ?: null,
             'last_interaction_at' => Clock::nowFormatted(),
+            'updated_at' => Clock::nowFormatted(),
         ]);
+
+        return (int) $this->pdo->lastInsertId();
     }
 
     private function update(
@@ -129,7 +194,8 @@ final class CustomerRepository
                  address = COALESCE(:address, address),
                  postal_code = COALESCE(:postal_code, postal_code),
                  city = COALESCE(:city, city),
-                 last_interaction_at = :last_interaction_at
+                 last_interaction_at = :last_interaction_at,
+                 updated_at = :updated_at
              WHERE id = :id'
         );
 
@@ -142,6 +208,18 @@ final class CustomerRepository
             'postal_code' => $postalCode ?: null,
             'city' => $city ?: null,
             'last_interaction_at' => Clock::nowFormatted(),
+            'updated_at' => Clock::nowFormatted(),
+        ]);
+    }
+
+    private function assignCode(int $customerId): void
+    {
+        $code = CustomerCodeGenerator::generate($this->pdo);
+        $statement = $this->pdo->prepare('UPDATE customers SET customer_code = :code, updated_at = :updated_at WHERE id = :id');
+        $statement->execute([
+            'id' => $customerId,
+            'code' => $code,
+            'updated_at' => Clock::nowFormatted(),
         ]);
     }
 
@@ -150,7 +228,7 @@ final class CustomerRepository
         if ($email) {
             $statement = $this->pdo->prepare('SELECT * FROM customers WHERE email = :email LIMIT 1');
             $statement->execute(['email' => $email]);
-            $customer = $statement->fetch();
+            $customer = $statement->fetch(PDO::FETCH_ASSOC);
             if ($customer !== false) {
                 return $customer;
             }
@@ -159,7 +237,7 @@ final class CustomerRepository
         if ($phone) {
             $statement = $this->pdo->prepare('SELECT * FROM customers WHERE phone = :phone LIMIT 1');
             $statement->execute(['phone' => $phone]);
-            $customer = $statement->fetch();
+            $customer = $statement->fetch(PDO::FETCH_ASSOC);
             if ($customer !== false) {
                 return $customer;
             }
@@ -167,7 +245,7 @@ final class CustomerRepository
 
         $statement = $this->pdo->prepare('SELECT * FROM customers WHERE full_name = :name ORDER BY updated_at DESC LIMIT 1');
         $statement->execute(['name' => $fullName]);
-        $customer = $statement->fetch();
+        $customer = $statement->fetch(PDO::FETCH_ASSOC);
 
         return $customer !== false ? $customer : null;
     }

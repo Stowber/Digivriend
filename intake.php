@@ -64,14 +64,20 @@ $stepperSteps = [
         'description' => __('intake.form.stepper.steps.visit.description'),
     ],
 ];
-$customerFields = [
-    ['name' => 'full_name', 'label' => __('intake.form.customer.fields.full_name'), 'type' => 'text', 'attributes' => ['autocomplete' => 'name', 'required' => true, 'maxlength' => 191]],
-    ['name' => 'email', 'label' => __('intake.form.customer.fields.email'), 'type' => 'email', 'attributes' => ['autocomplete' => 'email', 'required' => true, 'maxlength' => 191]],
-    ['name' => 'phone', 'label' => __('intake.form.customer.fields.phone'), 'type' => 'tel', 'attributes' => ['autocomplete' => 'tel', 'required' => true, 'maxlength' => 32]],
-    ['name' => 'address', 'label' => __('intake.form.customer.fields.address'), 'type' => 'text', 'wide' => true, 'attributes' => ['autocomplete' => 'street-address', 'required' => true, 'maxlength' => 255]],
-    ['name' => 'postal_code', 'label' => __('intake.form.customer.fields.postal_code'), 'type' => 'text', 'attributes' => ['autocomplete' => 'postal-code', 'required' => true, 'maxlength' => 16]],
-    ['name' => 'city', 'label' => __('intake.form.customer.fields.city'), 'type' => 'text', 'attributes' => ['autocomplete' => 'address-level2', 'required' => true, 'maxlength' => 120]],
+$customerSearchLabel = __('intake.form.customer.search.label');
+$customerSearchPlaceholder = __('intake.form.customer.search.placeholder');
+$customerSearchHint = __('intake.form.customer.search.hint');
+$customerSearchEmpty = __('intake.form.customer.search.empty');
+$customerSelectedTitle = __('intake.form.customer.selected.title');
+$customerSelectedFields = [
+    'code' => __('intake.form.customer.selected.code'),
+    'name' => __('intake.form.customer.selected.name'),
+    'email' => __('intake.form.customer.selected.email'),
+    'phone' => __('intake.form.customer.selected.phone'),
+    'address' => __('intake.form.customer.selected.address'),
 ];
+$customerSelectedEmpty = __('intake.form.customer.selected.empty');
+$customerChangeLabel = __('intake.form.customer.selected.change');
 $customerNextLabel = __('intake.form.customer.next');
 
 $visitPanelAria = __('intake.form.visit.aria');
@@ -230,23 +236,51 @@ $feedbackUnknown = __('intake.feedback.unknown');
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <section class="intake-form__panel" data-step="customer" aria-label="<?= htmlspecialchars($customerPanelAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
             <h3><?= htmlspecialchars($customerPanelTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-            <div class="form-grid">
-              <?php foreach ($customerFields as $field): ?>
-                <label class="form-field<?= !empty($field['wide']) ? ' form-field--wide' : '' ?>">
-                  <span><?= htmlspecialchars($field['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                  <input
-                    type="<?= htmlspecialchars($field['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                    name="<?= htmlspecialchars($field['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                    <?php foreach ($field['attributes'] as $attr => $value): ?>
-                      <?php if (is_bool($value)): ?>
-                        <?= $value ? ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : '' ?>
-                      <?php else: ?>
-                        <?= ' ' . htmlspecialchars((string) $attr, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>="<?= htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                      <?php endif; ?>
-                    <?php endforeach; ?>
-                  >
-                </label>
-              <?php endforeach; ?>
+            <input type="hidden" name="customer_id" value="" data-customer-id data-customer-required-message="<?= htmlspecialchars(__('intake.form.customer.errors.required'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <div class="customer-picker">
+              <label class="form-field form-field--wide">
+                <span><?= htmlspecialchars($customerSearchLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <input
+                  type="search"
+                  name="customer_search"
+                  autocomplete="off"
+                  placeholder="<?= htmlspecialchars($customerSearchPlaceholder, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                  data-customer-search
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                >
+              </label>
+              <p class="customer-picker__hint"><?= htmlspecialchars($customerSearchHint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <div class="customer-picker__results" data-customer-results role="listbox" aria-live="polite"></div>
+              <p class="customer-picker__empty" data-customer-empty hidden><?= htmlspecialchars($customerSearchEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <section class="customer-picker__selected" data-customer-selected hidden aria-live="polite" data-selected-empty="<?= htmlspecialchars($customerSelectedEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <div class="customer-picker__selected-header">
+                  <h4><?= htmlspecialchars($customerSelectedTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+                  <button type="button" class="btn btn--ghost btn--small" data-customer-clear><?= htmlspecialchars($customerChangeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+                </div>
+                <dl class="customer-picker__details">
+                  <div>
+                    <dt><?= htmlspecialchars($customerSelectedFields['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                    <dd data-selected-code><?= htmlspecialchars($customerSelectedEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  </div>
+                  <div>
+                    <dt><?= htmlspecialchars($customerSelectedFields['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                    <dd data-selected-name><?= htmlspecialchars($customerSelectedEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  </div>
+                  <div>
+                    <dt><?= htmlspecialchars($customerSelectedFields['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                    <dd data-selected-email><?= htmlspecialchars($customerSelectedEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  </div>
+                  <div>
+                    <dt><?= htmlspecialchars($customerSelectedFields['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                    <dd data-selected-phone><?= htmlspecialchars($customerSelectedEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  </div>
+                  <div>
+                    <dt><?= htmlspecialchars($customerSelectedFields['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                    <dd data-selected-address><?= htmlspecialchars($customerSelectedEmpty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                  </div>
+                </dl>
+              </section>
             </div>
             <footer class="intake-form__actions">
               <button type="button" class="btn btn--primary" data-next-step><?= htmlspecialchars($customerNextLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>

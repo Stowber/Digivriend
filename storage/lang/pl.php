@@ -6,7 +6,8 @@ return [
     ],
     'nav' => [
         'dashboard' => 'Pulpit',
-        'intake' => 'Rejestracja klienta',
+        'intake' => 'Intake',
+        'customers' => 'Klienci',
         'devices' => 'Klienci i urządzenia',
         'archive' => 'Archiwum',
         'data_recovery' => 'Odzyskiwanie danych',
@@ -233,7 +234,7 @@ return [
             'steps' => [
                 'capture' => [
                     'title' => 'Zbieranie danych',
-                    'description' => 'Imię i nazwisko, adres oraz dane kontaktowe.',
+                    'description' => 'Wybór istniejącego klienta po nazwisku lub numerze klienta.',
                 ],
                 'schedule' => [
                     'title' => 'Planowanie wizyty',
@@ -264,7 +265,7 @@ return [
                 'steps' => [
                     'customer' => [
                         'title' => 'Dane klienta',
-                        'description' => 'Kontakt i adres',
+                        'description' => 'Wyszukaj klienta z bazy i wybierz go do intake',
                     ],
                     'visit' => [
                         'title' => 'Wizyta i urządzenie',
@@ -274,14 +275,26 @@ return [
             ],
             'customer' => [
                 'aria' => 'Dane klienta',
-                'title' => 'Dane kontaktowe klienta',
-                'fields' => [
-                    'full_name' => 'Imię i nazwisko *',
-                    'email' => 'Adres e-mail *',
-                    'phone' => 'Telefon *',
-                    'address' => 'Adres *',
-                    'postal_code' => 'Kod pocztowy *',
-                    'city' => 'Miejscowość *',
+                'title' => 'Wybierz klienta',
+                'search' => [
+                    'label' => 'Imię, nazwisko lub numer klienta',
+                    'placeholder' => 'Zacznij wpisywać, np. “Jan Kowalski” lub “K25110192”…',
+                    'hint' => 'System wyszuka klienta po nazwisku, e-mailu, telefonie lub numerze KYYMMXXXX.',
+                    'empty' => 'Brak wyników. Upewnij się, że klient jest zarejestrowany w sekcji Klienci.',
+                ],
+                'selected' => [
+                    'title' => 'Wybrany klient',
+                    'code' => 'Numer klienta',
+                    'name' => 'Imię i nazwisko',
+                    'email' => 'E-mail',
+                    'phone' => 'Telefon',
+                    'address' => 'Adres',
+                    'empty' => 'Brak danych',
+                    'change' => 'Zmień klienta',
+                ],
+                'errors' => [
+                    'required' => 'Wybierz klienta z listy, aby kontynuować.',
+                    'not_found' => 'Wybrany klient nie istnieje.',
                 ],
                 'next' => 'Następny krok',
             ],
@@ -342,6 +355,111 @@ return [
             'success' => 'Intake zapisano pomyślnie.',
             'exception' => 'Wystąpił błąd podczas zapisu. Sprawdź dane i spróbuj ponownie.',
             'unknown' => 'Nieznane',
+        ],
+    ],
+    'customers' => [
+        'meta' => [
+            'title' => 'Klienci - Digivriend',
+        ],
+        'hero' => [
+            'eyebrow' => 'Baza klientów',
+            'title' => 'Panel klientów',
+            'description' => 'Zarządzaj profilami klientów, sprawami i dokumentami w jednym miejscu.',
+            'create' => 'Dodaj klienta',
+        ],
+        'messages' => [
+            'created' => 'Dodano nowego klienta.',
+            'create_failed' => 'Nie udało się zapisać klienta. Spróbuj ponownie.',
+            'updated' => 'Zaktualizowano dane klienta.',
+            'update_failed' => 'Aktualizacja danych klienta nie powiodła się. Spróbuj ponownie.',
+        ],
+        'search' => [
+            'aria' => 'Wyszukiwanie klientów',
+            'label' => 'Wyszukaj klientów',
+            'placeholder' => 'Szukaj po imieniu, e-mailu, telefonie lub numerze klienta…',
+            'submit' => 'Szukaj',
+            'reset' => 'Wyczyść',
+        ],
+        'list' => [
+            'title' => 'Lista klientów',
+            'subtitle' => 'Przeglądaj wszystkich klientów i otwieraj ich profile.',
+            'table' => [
+                'code' => 'Numer klienta',
+                'name' => 'Klient',
+                'contact' => 'Kontakt',
+                'location' => 'Adres',
+                'updated' => 'Aktualizacja',
+                'no_code' => 'Brak numeru',
+            ],
+            'empty' => 'Nie zarejestrowano jeszcze żadnych klientów.',
+        ],
+        'create' => [
+            'meta' => [
+                'title' => 'Rejestracja klienta - Digivriend',
+            ],
+            'eyebrow' => 'Nowy klient',
+            'title' => 'Rejestracja klienta',
+            'description' => 'Zapisz dane kontaktowe, aby szybko wykorzystać je podczas intake.',
+        ],
+        'form' => [
+            'full_name' => 'Imię i nazwisko',
+            'email' => 'Adres e-mail',
+            'phone' => 'Telefon',
+            'address' => 'Adres',
+            'postal_code' => 'Kod pocztowy',
+            'city' => 'Miejscowość',
+            'cancel' => 'Anuluj',
+            'submit' => 'Zapisz klienta',
+            'save' => 'Zapisz zmiany',
+        ],
+        'profile' => [
+            'meta' => [
+                'title' => 'Klient :name - Digivriend',
+            ],
+            'eyebrow' => 'Profil klienta',
+            'description' => 'Edytuj dane klienta i sprawdzaj powiązane sprawy oraz dokumenty.',
+            'actions' => [
+                'intake' => 'Rozpocznij intake',
+            ],
+            'details' => [
+                'title' => 'Dane kontaktowe',
+                'subtitle' => 'Dbaj o aktualność danych, aby intake przebiegał bez problemów.',
+                'code' => 'Numer klienta',
+                'registered' => 'Zarejestrowano',
+                'last_interaction' => 'Ostatnia interakcja',
+                'never' => 'Brak',
+            ],
+            'cases' => [
+                'title' => 'Sprawy',
+                'subtitle' => 'Ostatnie sprawy powiązane z klientem.',
+                'table' => [
+                    'reference' => 'Referencja',
+                    'type' => 'Typ',
+                    'status' => 'Status',
+                    'summary' => 'Podsumowanie',
+                    'updated' => 'Aktualizacja',
+                    'actions' => 'Akcje',
+                    'view' => 'Otwórz sprawę',
+                ],
+                'empty' => 'Brak spraw dla tego klienta.',
+            ],
+            'documents' => [
+                'title' => 'Dokumenty',
+                'subtitle' => 'Pliki wygenerowane lub udostępnione klientowi.',
+                'table' => [
+                    'name' => 'Dokument',
+                    'case' => 'Sprawa',
+                    'created' => 'Utworzono',
+                    'actions' => 'Akcje',
+                    'open' => 'Otwórz',
+                ],
+                'empty' => 'Brak dokumentów dla tego klienta.',
+            ],
+            'invoices' => [
+                'title' => 'Faktury',
+                'subtitle' => 'Historia faktur powiązanych z klientem.',
+                'placeholder' => 'Historia faktur będzie dostępna wkrótce.',
+            ],
         ],
     ],
     'warehouse' => [
