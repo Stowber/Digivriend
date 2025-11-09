@@ -17,11 +17,11 @@ final class CustomerRepository
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function listCustomers(?string $search = null, int $limit = 200): array
+    public function listCustomers(?string $search = null, int $limit = 200, ?string $type = null): array
     {
         $limit = max(1, min(500, $limit));
 
-        $sql = 'SELECT id, customer_code, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
+        $sql = 'SELECT id, customer_code, customer_type, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
         $conditions = [];
         $params = [];
 
@@ -29,6 +29,12 @@ final class CustomerRepository
             $like = '%' . trim($search) . '%';
             $conditions[] = '(full_name LIKE :search OR email LIKE :search OR phone LIKE :search OR customer_code LIKE :search)';
             $params['search'] = $like;
+        }
+
+        if ($type !== null && $type !== '') {
+            $normalizedType = $this->normalizeType($type);
+            $conditions[] = 'customer_type = :customer_type';
+            $params['customer_type'] = $normalizedType;
         }
 
         if ($conditions !== []) {
@@ -55,12 +61,23 @@ final class CustomerRepository
         ?string $phone,
         ?string $address = null,
         ?string $postalCode = null,
-        ?string $city = null
+        ?string $city = null,
+        string $type = 'private'
     ): array {
         $customer = $this->findExisting($email, $phone, $fullName);
+        $normalizedType = $this->normalizeType($type);
 
         if ($customer === null) {
-            $customerId = $this->insert($fullName, $email, $phone, $address, $postalCode, $city, CustomerCodeGenerator::generate($this->pdo));
+            $customerId = $this->insert(
+                $fullName,
+                $email,
+                $phone,
+                $address,
+                $postalCode,
+                $city,
+                $normalizedType,
+                CustomerCodeGenerator::generate($this->pdo, $normalizedType)
+            );
             $customer = $this->findById($customerId);
         } else {
             $this->update($customer['id'], $fullName, $email, $phone, $address, $postalCode, $city);
@@ -79,9 +96,20 @@ final class CustomerRepository
         ?string $phone,
         ?string $address = null,
         ?string $postalCode = null,
-        ?string $city = null
+        ?string $city = null,
+        string $type = 'private'
     ): array {
-        $customerId = $this->insert($fullName, $email, $phone, $address, $postalCode, $city, CustomerCodeGenerator::generate($this->pdo));
+        $normalizedType = $this->normalizeType($type);
+        $customerId = $this->insert(
+            $fullName,
+            $email,
+            $phone,
+            $address,
+            $postalCode,
+            $city,
+            $normalizedType,
+            CustomerCodeGenerator::generate($this->pdo, $normalizedType)
+        );
 
         return $this->findById($customerId) ?? [];
     }
@@ -92,6 +120,19 @@ final class CustomerRepository
         $statement->execute([
             'id' => $customerId,
             'last_interaction_at' => Clock::nowFormatted(),
+        ]);
+    }
+
+    public function updateType(int $customerId, string $type): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE customers SET customer_type = :customer_type, updated_at = :updated_at WHERE id = :id'
+        );
+
+        $statement->execute([
+            'id' => $customerId,
+            'customer_type' => $this->normalizeType($type),
+            'updated_at' => Clock::nowFormatted(),
         ]);
     }
 
@@ -155,15 +196,17 @@ final class CustomerRepository
         ?string $address,
         ?string $postalCode,
         ?string $city,
+        string $type,
         ?string $customerCode
     ): int {
         $statement = $this->pdo->prepare(
-            'INSERT INTO customers (customer_code, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at)
-             VALUES (:customer_code, :full_name, :email, :phone, :address, :postal_code, :city, :last_interaction_at, :updated_at)'
+            'INSERT INTO customers (customer_code, customer_type, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at)
+             VALUES (:customer_code, :customer_type, :full_name, :email, :phone, :address, :postal_code, :city, :last_interaction_at, :updated_at)'
         );
 
         $statement->execute([
             'customer_code' => $customerCode,
+            'customer_type' => $type,
             'full_name' => $fullName,
             'email' => $email ?: null,
             'phone' => $phone ?: null,
@@ -214,13 +257,27 @@ final class CustomerRepository
 
     private function assignCode(int $customerId): void
     {
-        $code = CustomerCodeGenerator::generate($this->pdo);
+        $customer = $this->findById($customerId);
+        $typeValue = 'private';
+        if (is_array($customer) && array_key_exists('customer_type', $customer)) {
+            $typeValue = (string) $customer['customer_type'];
+        }
+        $type = $this->normalizeType($typeValue);
+
+        $code = CustomerCodeGenerator::generate($this->pdo, $type);
         $statement = $this->pdo->prepare('UPDATE customers SET customer_code = :code, updated_at = :updated_at WHERE id = :id');
         $statement->execute([
             'id' => $customerId,
             'code' => $code,
             'updated_at' => Clock::nowFormatted(),
         ]);
+    }
+
+    private function normalizeType(?string $type): string
+    {
+        $normalized = strtolower((string) $type);
+
+        return $normalized === 'business' ? 'business' : 'private';
     }
 
     private function findExisting(?string $email, ?string $phone, string $fullName): ?array

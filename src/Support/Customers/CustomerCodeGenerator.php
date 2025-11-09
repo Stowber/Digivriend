@@ -10,12 +10,16 @@ use RuntimeException;
 
 final class CustomerCodeGenerator
 {
-    private const PREFIX = 'K';
+    private const PRIVATE_PREFIX = 'K';
+    private const BUSINESS_PREFIX = 'B';
 
-    public static function generate(PDO $pdo): string
+    public static function generate(PDO $pdo, string $type = 'private'): string
     {
+        $normalizedType = $type === 'business' ? 'business' : 'private';
+
         $date = Clock::now();
-        $prefix = self::PREFIX . $date->format('ym');
+        $prefixLetter = $normalizedType === 'business' ? self::BUSINESS_PREFIX : self::PRIVATE_PREFIX;
+        $prefix = $prefixLetter . $date->format('ym');
 
         $statement = $pdo->prepare(<<<SQL
             SELECT customer_code
@@ -55,8 +59,10 @@ final class CustomerCodeGenerator
         }
 
         $nextSequence = max(0, $maxSequence + 1);
-        $suffix = $nextSequence < 10000
-            ? str_pad((string) $nextSequence, 4, '0', STR_PAD_LEFT)
+        $maxDigits = $normalizedType === 'business' ? 3 : 4;
+        $threshold = 10 ** $maxDigits;
+        $suffix = $nextSequence < $threshold
+            ? str_pad((string) $nextSequence, $maxDigits, '0', STR_PAD_LEFT)
             : (string) $nextSequence;
 
         $code = $prefix . $suffix;

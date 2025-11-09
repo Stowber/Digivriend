@@ -392,6 +392,14 @@ return [
                 'label' => 'Registered customers',
                 'hint' => 'Count of customers in the current overview.',
             ],
+            'private' => [
+                'label' => 'Private customers',
+                'hint' => 'Individual customers registered in the workspace.',
+            ],
+            'business' => [
+                'label' => 'Business customers',
+                'hint' => 'Customers that are linked to a company profile.',
+            ],
             'search' => [
                 'label' => 'Active search',
                 'value' => 'Search term ":term"',
@@ -405,7 +413,11 @@ return [
         ],
         'list' => [
             'title' => 'Customer list',
-            'subtitle' => 'Browse all registered customers and open their profile.',
+            'subtitle' => 'Browse private and business customers from a single overview.',
+            'private_title' => 'Private customers',
+            'private_description' => 'Individuals and households registered with Digivriend.',
+            'business_title' => 'Business customers',
+            'business_description' => 'Companies and organisations with linked contact details.',
             'table' => [
                 'code' => 'Client number',
                 'name' => 'Customer',
@@ -415,6 +427,8 @@ return [
                 'no_code' => 'No code',
             ],
             'empty' => 'No customers registered yet.',
+            'empty_private' => 'No private customers found.',
+            'empty_business' => 'No business customers found.',
         ],
         'create' => [
             'meta' => [
@@ -423,6 +437,34 @@ return [
             'eyebrow' => 'New customer',
             'title' => 'Register customer',
             'description' => 'Store the customer details once and reuse them during the intake.',
+            'type' => [
+                'label' => 'Customer type',
+                'change' => 'Change type',
+                'dialog_title' => 'Select customer type',
+                'dialog_description' => 'Choose which type of customer you want to register.',
+                'private' => [
+                    'title' => 'Private customer',
+                    'description' => 'Individuals using their personal contact details.',
+                    'label' => 'Private',
+                ],
+                'business' => [
+                    'title' => 'Business customer',
+                    'description' => 'Companies that require linked invoicing information.',
+                    'label' => 'Business',
+                ],
+            ],
+            'sections' => [
+                'personal' => [
+                    'eyebrow' => 'Contact details',
+                    'title' => 'Personal contact',
+                    'description' => 'Capture the main contact information before the intake starts.',
+                    'help' => 'Fill in the personal contact details used for communication and service updates.',
+                ],
+                'company' => [
+                    'title' => 'Company information',
+                    'help' => 'Provide the business details for invoices, agreements and planning.',
+                ],
+            ],
         ],
         'form' => [
             'full_name' => 'Full name',

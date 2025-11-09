@@ -392,6 +392,14 @@ return [
                 'label' => 'Geregistreerde klanten',
                 'hint' => 'Aantal klanten binnen dit overzicht.',
             ],
+            'private' => [
+                'label' => 'Particuliere klanten',
+                'hint' => 'Alle klanten die als particulier geregistreerd staan.',
+            ],
+            'business' => [
+                'label' => 'Zakelijke klanten',
+                'hint' => 'Klanten met gekoppelde bedrijfsgegevens.',
+            ],
             'search' => [
                 'label' => 'Actieve zoekopdracht',
                 'value' => 'Zoekterm ":term"',
@@ -405,7 +413,11 @@ return [
         ],
         'list' => [
             'title' => 'Klantenlijst',
-            'subtitle' => 'Blader door alle geregistreerde klanten en open hun profiel.',
+            'subtitle' => 'Bekijk particuliere en zakelijke klanten in één overzicht.',
+            'private_title' => 'Particuliere klanten',
+            'private_description' => 'Huishoudens en particulieren die bij Digivriend zijn aangemeld.',
+            'business_title' => 'Zakelijke klanten',
+            'business_description' => 'Bedrijven en organisaties met gekoppelde contactpersonen.',
             'table' => [
                 'code' => 'Klantnummer',
                 'name' => 'Klant',
@@ -415,6 +427,8 @@ return [
                 'no_code' => 'Geen nummer',
             ],
             'empty' => 'Er zijn nog geen klanten geregistreerd.',
+            'empty_private' => 'Geen particuliere klanten gevonden.',
+            'empty_business' => 'Geen zakelijke klanten gevonden.',
         ],
         'create' => [
             'meta' => [
@@ -423,6 +437,34 @@ return [
             'eyebrow' => 'Nieuwe klant',
             'title' => 'Klant registreren',
             'description' => 'Bewaar de contactgegevens zodat je ze direct bij intake kunt gebruiken.',
+            'type' => [
+                'label' => 'Klanttype',
+                'change' => 'Type wijzigen',
+                'dialog_title' => 'Klanttype kiezen',
+                'dialog_description' => 'Kies welk type klant je wilt registreren.',
+                'private' => [
+                    'title' => 'Particuliere klant',
+                    'description' => 'Particulieren met hun eigen contactgegevens.',
+                    'label' => 'Particulier',
+                ],
+                'business' => [
+                    'title' => 'Zakelijke klant',
+                    'description' => 'Bedrijven waarbij factuurgegevens nodig zijn.',
+                    'label' => 'Zakelijk',
+                ],
+            ],
+            'sections' => [
+                'personal' => [
+                    'eyebrow' => 'Contactgegevens',
+                    'title' => 'Persoonlijke gegevens',
+                    'description' => 'Leg eerst de belangrijkste contactinformatie vast.',
+                    'help' => 'Vul de persoonlijke gegevens in voor communicatie en statusupdates.',
+                ],
+                'company' => [
+                    'title' => 'Bedrijfsgegevens',
+                    'help' => 'Vul de bedrijfsinformatie in voor facturatie en afspraken.',
+                ],
+            ],
         ],
         'form' => [
             'full_name' => 'Volledige naam',

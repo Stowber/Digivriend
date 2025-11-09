@@ -392,6 +392,14 @@ return [
                 'label' => 'Zarejestrowani klienci',
                 'hint' => 'Liczba klientów w bieżącym widoku.',
             ],
+            'private' => [
+                'label' => 'Klienci prywatni',
+                'hint' => 'Wszyscy klienci oznaczeni jako prywatni.',
+            ],
+            'business' => [
+                'label' => 'Klienci firmowi',
+                'hint' => 'Klienci powiązani z profilem firmy.',
+            ],
             'search' => [
                 'label' => 'Aktywne wyszukiwanie',
                 'value' => 'Szukana fraza ":term"',
@@ -405,7 +413,11 @@ return [
         ],
         'list' => [
             'title' => 'Lista klientów',
-            'subtitle' => 'Przeglądaj wszystkich klientów i otwieraj ich profile.',
+            'subtitle' => 'Przeglądaj oddzielnie klientów prywatnych i firmowych.',
+            'private_title' => 'Klienci prywatni',
+            'private_description' => 'Osoby i gospodarstwa domowe obsługiwane przez Digivriend.',
+            'business_title' => 'Klienci firmowi',
+            'business_description' => 'Firmy i organizacje z przypisanymi osobami kontaktowymi.',
             'table' => [
                 'code' => 'Numer klienta',
                 'name' => 'Klient',
@@ -415,6 +427,8 @@ return [
                 'no_code' => 'Brak numeru',
             ],
             'empty' => 'Nie zarejestrowano jeszcze żadnych klientów.',
+            'empty_private' => 'Nie znaleziono klientów prywatnych.',
+            'empty_business' => 'Nie znaleziono klientów firmowych.',
         ],
         'create' => [
             'meta' => [
@@ -423,6 +437,34 @@ return [
             'eyebrow' => 'Nowy klient',
             'title' => 'Rejestracja klienta',
             'description' => 'Zapisz dane kontaktowe, aby szybko wykorzystać je podczas intake.',
+            'type' => [
+                'label' => 'Typ klienta',
+                'change' => 'Zmień typ',
+                'dialog_title' => 'Wybierz typ klienta',
+                'dialog_description' => 'Wybierz, jaki typ klienta chcesz zarejestrować.',
+                'private' => [
+                    'title' => 'Klient prywatny',
+                    'description' => 'Osoby korzystające z prywatnych danych kontaktowych.',
+                    'label' => 'Prywatny',
+                ],
+                'business' => [
+                    'title' => 'Klient firmowy',
+                    'description' => 'Firmy wymagające danych do fakturowania.',
+                    'label' => 'Firmowy',
+                ],
+            ],
+            'sections' => [
+                'personal' => [
+                    'eyebrow' => 'Dane kontaktowe',
+                    'title' => 'Dane osobowe',
+                    'description' => 'Zapisz najważniejsze informacje kontaktowe przed przyjęciem.',
+                    'help' => 'Uzupełnij dane osobowe potrzebne do komunikacji i powiadomień serwisowych.',
+                ],
+                'company' => [
+                    'title' => 'Dane firmy',
+                    'help' => 'Podaj informacje firmowe potrzebne do faktur i umów.',
+                ],
+            ],
         ],
         'form' => [
             'full_name' => 'Imię i nazwisko',

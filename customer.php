@@ -132,6 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $companyFormData['company_city'] !== '' ? $companyFormData['company_city'] : null
                 );
 
+                $customerRepository->updateType((int) $customer['id'], 'business');
+                $customer = $customerRepository->findById((int) $customer['id']);
+
                 $successMessage = __('customers.messages.company_saved');
             } catch (ValidationException $exception) {
                 $companyErrors = $exception->errors();
@@ -140,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $companyGeneralError = __('customers.messages.company_failed');
                 $companyModalShouldOpen = true;
             }
-            } elseif ($formType === 'company_delete') {
+        } elseif ($formType === 'company_delete') {
             try {
                 $deleted = $customerCompanyRepository->deleteByCustomerId((int) $customer['id']);
 
@@ -157,6 +160,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'company_postal_code' => '',
                         'company_city' => '',
                     ];
+
+                    $customerRepository->updateType((int) $customer['id'], 'private');
+                    $customer = $customerRepository->findById((int) $customer['id']);
 
                     $successMessage = __('customers.messages.company_deleted');
                 } else {

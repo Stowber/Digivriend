@@ -13,8 +13,11 @@ $customerRepository = new CustomerRepository($pdo);
 
 $searchTerm = filter_input(INPUT_GET, 'q', FILTER_SANITIZE_SPECIAL_CHARS) ?: '';
 $limit = 200;
-$customers = $customerRepository->listCustomers($searchTerm !== '' ? $searchTerm : null, $limit);
-$totalCustomers = count($customers);
+$privateCustomers = $customerRepository->listCustomers($searchTerm !== '' ? $searchTerm : null, $limit, 'private');
+$businessCustomers = $customerRepository->listCustomers($searchTerm !== '' ? $searchTerm : null, $limit, 'business');
+$privateCount = count($privateCustomers);
+$businessCount = count($businessCustomers);
+$totalCustomers = $privateCount + $businessCount;
 $locale = Translator::locale();
 $decimalSeparator = '.';
 $thousandsSeparator = ',';
@@ -34,6 +37,25 @@ $createdMessage = '';
 if (isset($_GET['created']) && $_GET['created'] === '1') {
     $createdMessage = __('customers.messages.created');
 }
+
+$customerGroups = [
+    [
+        'type' => 'private',
+        'title' => __('customers.list.private_title'),
+        'description' => __('customers.list.private_description'),
+        'customers' => $privateCustomers,
+        'count' => $privateCount,
+        'empty' => __('customers.list.empty_private'),
+    ],
+    [
+        'type' => 'business',
+        'title' => __('customers.list.business_title'),
+        'description' => __('customers.list.business_description'),
+        'customers' => $businessCustomers,
+        'count' => $businessCount,
+        'empty' => __('customers.list.empty_business'),
+    ],
+];
 
 ?>
 <!DOCTYPE html>
@@ -95,6 +117,16 @@ if (isset($_GET['created']) && $_GET['created'] === '1') {
           <p class="customers-insights__hint"><?= htmlspecialchars(__('customers.insights.total.hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         </article>
         <article class="customers-insights__item" role="listitem">
+          <span class="customers-insights__label"><?= htmlspecialchars(__('customers.insights.private.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="customers-insights__value"><?= htmlspecialchars($formatNumber($privateCount), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <p class="customers-insights__hint"><?= htmlspecialchars(__('customers.insights.private.hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </article>
+        <article class="customers-insights__item" role="listitem">
+          <span class="customers-insights__label"><?= htmlspecialchars(__('customers.insights.business.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="customers-insights__value"><?= htmlspecialchars($formatNumber($businessCount), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <p class="customers-insights__hint"><?= htmlspecialchars(__('customers.insights.business.hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </article>
+        <article class="customers-insights__item" role="listitem">
           <span class="customers-insights__label"><?= htmlspecialchars(__('customers.insights.search.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
           <span class="customers-insights__value customers-insights__value--small">
             <?= htmlspecialchars($searchTerm !== ''
@@ -138,56 +170,71 @@ if (isset($_GET['created']) && $_GET['created'] === '1') {
         <h2><?= htmlspecialchars(__('customers.list.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <p><?= htmlspecialchars(__('customers.list.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </header>
-      <div class="table-wrapper">
-        <table class="table customers-table">
-          <thead>
-            <tr>
-              <th><?= htmlspecialchars(__('customers.list.table.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('customers.list.table.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('customers.list.table.contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('customers.list.table.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('customers.list.table.updated'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php if ($customers === []): ?>
-              <tr>
-                <td colspan="5">
-                  <?= htmlspecialchars(__('customers.list.empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                </td>
-              </tr>
-            <?php else: ?>
-              <?php foreach ($customers as $customer): ?>
-                <?php
-                  $customerCode = isset($customer['customer_code']) && trim((string) $customer['customer_code']) !== ''
-                    ? (string) $customer['customer_code']
-                    : __('customers.list.table.no_code');
-                ?>
-                <tr class="customers-row" data-href="customer.php?id=<?= (int) $customer['id'] ?>">
-                  <td>
-                    <span class="code-badge">
-                      <?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                    </span>
-                  </td>
-                  <td>
-                    <strong><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                  </td>
-                  <td>
-                    <div><?= htmlspecialchars((string) ($customer['email'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                    <div><?= htmlspecialchars((string) ($customer['phone'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                  </td>
-                  <td>
-                    <div><?= htmlspecialchars((string) ($customer['city'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                    <div><?= htmlspecialchars((string) ($customer['address'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                  </td>
-                  <td>
-                    <?= htmlspecialchars(isset($customer['updated_at']) && $customer['updated_at'] !== null ? date('d-m-Y H:i', strtotime((string) $customer['updated_at'])) : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                  </td>
-                </tr>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          </tbody>
-        </table>
+      <div class="customers-table-groups">
+        <?php foreach ($customerGroups as $group): ?>
+          <section class="customers-table-section" data-customer-group="<?= htmlspecialchars((string) $group['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <header class="customers-table-section__header">
+              <div>
+                <h3><?= htmlspecialchars((string) $group['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <p><?= htmlspecialchars((string) $group['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              </div>
+              <span class="customers-table-section__badge">
+                <?= htmlspecialchars($formatNumber((int) $group['count']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </span>
+            </header>
+            <div class="table-wrapper">
+              <table class="table customers-table">
+                <thead>
+                  <tr>
+                    <th><?= htmlspecialchars(__('customers.list.table.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                    <th><?= htmlspecialchars(__('customers.list.table.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                    <th><?= htmlspecialchars(__('customers.list.table.contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                    <th><?= htmlspecialchars(__('customers.list.table.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                    <th><?= htmlspecialchars(__('customers.list.table.updated'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php if ($group['customers'] === []): ?>
+                    <tr>
+                      <td colspan="5">
+                        <?= htmlspecialchars((string) $group['empty'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      </td>
+                    </tr>
+                  <?php else: ?>
+                    <?php foreach ($group['customers'] as $customer): ?>
+                      <?php
+                        $customerCode = isset($customer['customer_code']) && trim((string) $customer['customer_code']) !== ''
+                          ? (string) $customer['customer_code']
+                          : __('customers.list.table.no_code');
+                      ?>
+                      <tr class="customers-row" data-href="customer.php?id=<?= (int) $customer['id'] ?>">
+                        <td>
+                          <span class="code-badge">
+                            <?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                          </span>
+                        </td>
+                        <td>
+                          <strong><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                        </td>
+                        <td>
+                          <div><?= htmlspecialchars((string) ($customer['email'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                          <div><?= htmlspecialchars((string) ($customer['phone'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                        </td>
+                        <td>
+                          <div><?= htmlspecialchars((string) ($customer['city'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                          <div><?= htmlspecialchars((string) ($customer['address'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                        </td>
+                        <td>
+                          <?= htmlspecialchars(isset($customer['updated_at']) && $customer['updated_at'] !== null ? date('d-m-Y H:i', strtotime((string) $customer['updated_at'])) : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        <?php endforeach; ?>
       </div>
     </section>
   </main>

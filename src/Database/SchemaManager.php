@@ -29,9 +29,10 @@ final class SchemaManager
         }
 
         self::ensureCoreCustomerColumns($pdo);
+        self::ensureCustomerCompanyTable($pdo);
+        self::ensureCustomerTypeColumn($pdo);
         self::ensureCustomerCodeColumn($pdo);
         self::ensureOphaalbevestigingenTable($pdo);
-        self::ensureCustomerCompanyTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
         self::ensureDataRecoveryTable($pdo);
         self::ensureNotificationTable($pdo);
@@ -150,13 +151,18 @@ final class SchemaManager
         }
 
         $update = $pdo->prepare('UPDATE customers SET customer_code = :code WHERE id = :id');
+        $typeStatement = $pdo->prepare('SELECT customer_type FROM customers WHERE id = :id');
         foreach ($ids as $id) {
             $customerId = (int) $id;
             if ($customerId <= 0) {
                 continue;
             }
 
-            $code = CustomerCodeGenerator::generate($pdo);
+            $typeStatement->execute(['id' => $customerId]);
+            $type = (string) $typeStatement->fetchColumn();
+            $type = $type !== '' ? $type : 'private';
+
+            $code = CustomerCodeGenerator::generate($pdo, $type);
             if ($code === '') {
                 continue;
             }
@@ -165,6 +171,48 @@ final class SchemaManager
                 'id' => $customerId,
                 'code' => $code,
             ]);
+        }
+    }
+
+    private static function ensureCustomerTypeColumn(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+        $defaultType = 'private';
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'customers', 'customer_type', "TEXT NOT NULL DEFAULT '$defaultType'");
+
+            $pdo->exec(
+                "UPDATE customers SET customer_type = '$defaultType' WHERE customer_type IS NULL OR customer_type = ''"
+            );
+        } else {
+            $columnDefinition = "customer_type VARCHAR(16) NOT NULL DEFAULT '$defaultType'";
+            if ($driver === 'pgsql') {
+                self::executeIgnoringDuplicates(
+                    $pdo,
+                    'ALTER TABLE customers ADD COLUMN ' . $columnDefinition,
+                    ['duplicate', 'already exists']
+                );
+            } else {
+                self::executeIgnoringDuplicates(
+                    $pdo,
+                    'ALTER TABLE customers ADD COLUMN ' . $columnDefinition . ' AFTER customer_code',
+                    ['duplicate', 'already exists']
+                );
+            }
+
+            $statement = $pdo->prepare(
+                "UPDATE customers SET customer_type = :default WHERE customer_type IS NULL OR customer_type = ''"
+            );
+            $statement->execute(['default' => $defaultType]);
+        }
+
+        try {
+            $pdo->exec(
+                "UPDATE customers SET customer_type = 'business' WHERE customer_type = 'private' AND id IN (SELECT customer_id FROM customer_companies)"
+            );
+        } catch (PDOException) {
+            // Ignore if the relation does not exist yet.
         }
     }
 
@@ -1753,6 +1801,7 @@ final class SchemaManager
             CREATE TABLE IF NOT EXISTS customers (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 customer_code VARCHAR(32) NULL,
+                customer_type VARCHAR(16) NOT NULL DEFAULT 'private',
                 full_name VARCHAR(191) NOT NULL,
                 email VARCHAR(191) NULL,
                 phone VARCHAR(64) NULL,
@@ -1836,6 +1885,7 @@ final class SchemaManager
             CREATE TABLE IF NOT EXISTS customers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_code TEXT NULL,
+                customer_type TEXT NOT NULL DEFAULT 'private',
                 full_name TEXT NOT NULL,
                 email TEXT NULL,
                 phone TEXT NULL,
@@ -1958,6 +2008,7 @@ final class SchemaManager
             CREATE TABLE IF NOT EXISTS customers (
                 id SERIAL PRIMARY KEY,
                 customer_code VARCHAR(32) NULL,
+                customer_type VARCHAR(16) NOT NULL DEFAULT 'private',
                 full_name VARCHAR(191) NOT NULL,
                 email VARCHAR(191) NULL,
                 phone VARCHAR(64) NULL,
