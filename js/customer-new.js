@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeButtons = Array.from(form.querySelectorAll('[data-customer-type-option]'));
   const dialog = document.querySelector('[data-customer-type-dialog]');
   const dialogChoices = dialog ? Array.from(dialog.querySelectorAll('[data-customer-type-choice]')) : [];
+  const dialogCloseButtons = dialog ? Array.from(dialog.querySelectorAll('[data-customer-type-close]')) : [];
   const openDialogButton = document.querySelector('[data-customer-type-open]');
   const typeLabel = document.querySelector('[data-customer-type-label]');
   const fullNameInput = form.querySelector('#customerFullName');
@@ -110,6 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
     choice.addEventListener('click', () => {
       const choiceType = choice.getAttribute('data-customer-type-choice');
       updateType(choiceType, { focusCompany: true });
+    });
+  });
+
+  dialogCloseButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      hideDialog();
     });
   });
 

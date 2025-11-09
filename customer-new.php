@@ -354,13 +354,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </main>
   <div class="customer-type-dialog<?= $showTypeDialog ? ' is-visible' : '' ?>" data-customer-type-dialog aria-hidden="<?= $showTypeDialog ? 'false' : 'true' ?>">
     <div class="customer-type-dialog__content" role="dialog" aria-modal="true" aria-labelledby="customer-type-dialog-title" aria-describedby="customer-type-dialog-description">
-      <h2 id="customer-type-dialog-title"><?= htmlspecialchars(__('customers.create.type.dialog_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
-      <p id="customer-type-dialog-description"><?= htmlspecialchars(__('customers.create.type.dialog_description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      <button type="button" class="customer-type-dialog__close" data-customer-type-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+        <span aria-hidden="true">&times;</span>
+      </button>
+      <div class="customer-type-dialog__header">
+        <span class="customer-type-dialog__eyebrow"><?= htmlspecialchars(__('customers.create.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        <h2 id="customer-type-dialog-title"><?= htmlspecialchars(__('customers.create.type.dialog_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <p id="customer-type-dialog-description"><?= htmlspecialchars(__('customers.create.type.dialog_description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      </div>
       <div class="customer-type-dialog__options">
         <button type="button" class="customer-type-dialog__option customer-type-dialog__option--private" data-customer-type-choice="private">
+          <span class="customer-type-dialog__halo" aria-hidden="true"></span>
           <span class="customer-type-dialog__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="img" focusable="false" aria-hidden="true">
               <path d="M12 3.5a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Zm0 9c-3.728 0-6.75 2.065-6.75 4.875v1.875c0 .414.336.75.75.75h12a.75.75 0 0 0 .75-.75V17.375C18.75 14.565 15.728 12.5 12 12.5Z" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="customer-type-dialog__arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" focusable="false" aria-hidden="true">
+              <path d="M9.47 5.47a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06-1.06L13.69 12 9.47 7.78a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
             </svg>
           </span>
           <span class="customer-type-dialog__body">
@@ -369,6 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </span>
         </button>
         <button type="button" class="customer-type-dialog__option customer-type-dialog__option--business" data-customer-type-choice="business">
+          <span class="customer-type-dialog__halo" aria-hidden="true"></span>
           <span class="customer-type-dialog__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="img" focusable="false" aria-hidden="true">
               <path d="M4.75 20.5c0 .414.336.75.75.75h13a.75.75 0 0 0 .75-.75V8.044a.75.75 0 0 0-.41-.664l-6.5-3.25a.75.75 0 0 0-.68 0l-6.5 3.25a.75.75 0 0 0-.41.664V20.5Zm1.5-.75V8.622L12 6.03l5.75 2.592V19.75H6.25Zm2-6.25h2v2h-2v-2Zm0-3h2v2h-2v-2Zm5 3h2v2h-2v-2Zm0-3h2v2h-2v-2Z" fill="currentColor"/>
@@ -377,6 +390,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <span class="customer-type-dialog__body">
             <span class="customer-type-dialog__label"><?= htmlspecialchars(__('customers.create.type.business.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             <span class="customer-type-dialog__hint"><?= htmlspecialchars(__('customers.create.type.business.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </span>
+          <span class="customer-type-dialog__arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" focusable="false" aria-hidden="true">
+              <path d="M9.47 5.47a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06-1.06L13.69 12 9.47 7.78a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
+            </svg>
           </span>
         </button>
       </div>
