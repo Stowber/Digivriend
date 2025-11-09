@@ -14,6 +14,22 @@ $customerRepository = new CustomerRepository($pdo);
 $searchTerm = filter_input(INPUT_GET, 'q', FILTER_SANITIZE_SPECIAL_CHARS) ?: '';
 $limit = 200;
 $customers = $customerRepository->listCustomers($searchTerm !== '' ? $searchTerm : null, $limit);
+$totalCustomers = count($customers);
+$locale = Translator::locale();
+$decimalSeparator = '.';
+$thousandsSeparator = ',';
+
+if ($locale === 'nl') {
+    $decimalSeparator = ',';
+    $thousandsSeparator = '.';
+} elseif ($locale === 'pl') {
+    $decimalSeparator = ',';
+    $thousandsSeparator = ' ';
+}
+
+$formatNumber = static function (int $value) use ($decimalSeparator, $thousandsSeparator): string {
+    return number_format($value, 0, $decimalSeparator, $thousandsSeparator);
+};
 $createdMessage = '';
 if (isset($_GET['created']) && $_GET['created'] === '1') {
     $createdMessage = __('customers.messages.created');
@@ -64,30 +80,66 @@ if (isset($_GET['created']) && $_GET['created'] === '1') {
       </div>
     <?php endif; ?>
 
-    <section class="card">
+    <section class="card customers-insights" aria-labelledby="customers-insights-title">
+      <header class="customers-insights__header">
+        <div>
+          <p class="customers-eyebrow"><?= htmlspecialchars(__('customers.insights.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <h2 id="customers-insights-title"><?= htmlspecialchars(__('customers.insights.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+          <p class="customers-insights__intro"><?= htmlspecialchars(__('customers.insights.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </div>
+      </header>
+      <div class="customers-insights__grid" role="list">
+        <article class="customers-insights__item" role="listitem">
+          <span class="customers-insights__label"><?= htmlspecialchars(__('customers.insights.total.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="customers-insights__value"><?= htmlspecialchars($formatNumber($totalCustomers), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <p class="customers-insights__hint"><?= htmlspecialchars(__('customers.insights.total.hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </article>
+        <article class="customers-insights__item" role="listitem">
+          <span class="customers-insights__label"><?= htmlspecialchars(__('customers.insights.search.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="customers-insights__value customers-insights__value--small">
+            <?= htmlspecialchars($searchTerm !== ''
+              ? __('customers.insights.search.value', ['term' => $searchTerm])
+              : __('customers.insights.search.empty'),
+              ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </span>
+          <p class="customers-insights__hint"><?= htmlspecialchars(__('customers.insights.search.hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </article>
+        <article class="customers-insights__item" role="listitem">
+          <span class="customers-insights__label"><?= htmlspecialchars(__('customers.insights.limit.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="customers-insights__value"><?= htmlspecialchars($formatNumber($limit), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <p class="customers-insights__hint"><?= htmlspecialchars(__('customers.insights.limit.hint', ['limit' => $formatNumber($limit)]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card customers-search-card">
       <form action="customers.php" method="get" class="customers-search" role="search" aria-label="<?= htmlspecialchars(__('customers.search.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-        <label class="customers-search__label">
-          <span><?= htmlspecialchars(__('customers.search.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <input type="search" name="q" value="<?= htmlspecialchars($searchTerm, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('customers.search.placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-        </label>
-        <button type="submit" class="btn btn--secondary">
+        <div class="customers-search__field">
+          <label class="customers-search__label" for="customer-search-input">
+            <span><?= htmlspecialchars(__('customers.search.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </label>
+          <div class="customers-search__control">
+            <input id="customer-search-input" type="search" name="q" value="<?= htmlspecialchars($searchTerm, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(__('customers.search.placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <?php if ($searchTerm !== ''): ?>
+              <a href="customers.php" class="customers-search__reset" aria-label="<?= htmlspecialchars(__('customers.search.reset'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?= htmlspecialchars(__('customers.search.reset'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </a>
+            <?php endif; ?>
+          </div>
+        </div>
+        <button type="submit" class="btn btn--secondary customers-search__submit">
           <?= htmlspecialchars(__('customers.search.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </button>
-        <?php if ($searchTerm !== ''): ?>
-          <a href="customers.php" class="btn btn--ghost customers-search__reset">
-            <?= htmlspecialchars(__('customers.search.reset'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </a>
-        <?php endif; ?>
       </form>
     </section>
 
-    <section class="card">
+    <section class="card customers-table-card">
       <header class="card__header">
         <h2><?= htmlspecialchars(__('customers.list.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <p><?= htmlspecialchars(__('customers.list.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </header>
       <div class="table-wrapper">
-        <table class="table">
+        <table class="table customers-table">
           <thead>
             <tr>
               <th><?= htmlspecialchars(__('customers.list.table.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>

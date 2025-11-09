@@ -380,6 +380,25 @@ return [
             'submit' => 'Szukaj',
             'reset' => 'Wyczyść',
         ],
+        'insights' => [
+            'eyebrow' => 'Podsumowanie',
+            'title' => 'Szybki podgląd klientów',
+            'description' => 'Krótki przegląd klientów widocznych w tym zestawieniu.',
+            'total' => [
+                'label' => 'Zarejestrowani klienci',
+                'hint' => 'Liczba klientów w bieżącym widoku.',
+            ],
+            'search' => [
+                'label' => 'Aktywne wyszukiwanie',
+                'value' => 'Szukana fraza ":term"',
+                'empty' => 'Brak aktywnych filtrów',
+                'hint' => 'Zmień pole wyszukiwania, aby zawęzić listę.',
+            ],
+            'limit' => [
+                'label' => 'Limit wyników',
+                'hint' => 'Wyświetlanych jest maksymalnie :limit klientów.',
+            ],
+        ],
         'list' => [
             'title' => 'Lista klientów',
             'subtitle' => 'Przeglądaj wszystkich klientów i otwieraj ich profile.',

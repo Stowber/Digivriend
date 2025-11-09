@@ -380,6 +380,25 @@ return [
             'submit' => 'Search',
             'reset' => 'Clear',
         ],
+        'insights' => [
+            'eyebrow' => 'Overview',
+            'title' => 'Customer snapshot',
+            'description' => 'A quick summary of the customers currently visible in this list.',
+            'total' => [
+                'label' => 'Registered customers',
+                'hint' => 'Count of customers in the current overview.',
+            ],
+            'search' => [
+                'label' => 'Active search',
+                'value' => 'Search term ":term"',
+                'empty' => 'No filters active',
+                'hint' => 'Adjust the search field to refine the list.',
+            ],
+            'limit' => [
+                'label' => 'Result limit',
+                'hint' => 'Showing up to :limit customers at once.',
+            ],
+        ],
         'list' => [
             'title' => 'Customer list',
             'subtitle' => 'Browse all registered customers and open their profile.',

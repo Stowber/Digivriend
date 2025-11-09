@@ -8,6 +8,9 @@
   --color-text: #1f2933;
   --color-muted: #667085;
   --color-border: rgba(15, 23, 42, 0.1);
+  --color-border-subtle: rgba(15, 23, 42, 0.08);
+  --color-border-strong: rgba(15, 23, 42, 0.14);
+  --color-surface-subtle: rgba(15, 23, 42, 0.05);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;

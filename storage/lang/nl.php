@@ -380,6 +380,25 @@ return [
             'submit' => 'Zoeken',
             'reset' => 'Wissen',
         ],
+        'insights' => [
+            'eyebrow' => 'Overzicht',
+            'title' => 'Statusoverzicht',
+            'description' => 'Krijg in één oogopslag inzicht in de klanten die nu zichtbaar zijn.',
+            'total' => [
+                'label' => 'Geregistreerde klanten',
+                'hint' => 'Aantal klanten binnen dit overzicht.',
+            ],
+            'search' => [
+                'label' => 'Actieve zoekopdracht',
+                'value' => 'Zoekterm ":term"',
+                'empty' => 'Geen filters actief',
+                'hint' => 'Pas het zoekveld aan om de lijst te verfijnen.',
+            ],
+            'limit' => [
+                'label' => 'Resultaatlimiet',
+                'hint' => 'Maximaal :limit klanten worden getoond.',
+            ],
+        ],
         'list' => [
             'title' => 'Klantenlijst',
             'subtitle' => 'Blader door alle geregistreerde klanten en open hun profiel.',
