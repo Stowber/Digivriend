@@ -632,7 +632,66 @@
 .profile-company__actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-top: 0.5rem;
+}
+
+.profile-company__delete {
+  margin: 0;
+}
+
+.profile-personal {
+  margin-top: 2.5rem;
+  padding: clamp(1.25rem, 1vw + 1rem, 1.75rem);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(247, 249, 252, 0.78);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-personal__header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.profile-personal__header p {
+  margin: 0.35rem 0 0;
+  color: rgba(102, 112, 133, 0.95);
+}
+
+.profile-personal__details {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-personal__row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.profile-personal__row dt {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(102, 112, 133, 0.95);
+}
+
+.profile-personal__row dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.profile-personal__row--split {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.profile-personal__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .profile-company__empty {

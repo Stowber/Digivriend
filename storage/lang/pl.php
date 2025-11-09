@@ -374,6 +374,8 @@ return [
             'update_failed' => 'Aktualizacja danych klienta nie powiodła się. Spróbuj ponownie.',
             'company_saved' => 'Dane firmy zostały zapisane.',
             'company_failed' => 'Nie udało się zapisać danych firmy. Spróbuj ponownie.',
+            'company_deleted' => 'Firma została usunięta z profilu klienta.',
+            'company_delete_failed' => 'Usunięcie firmy nie powiodło się. Spróbuj ponownie.',
         ],
         'search' => [
             'aria' => 'Wyszukiwanie klientów',
@@ -468,6 +470,8 @@ return [
                 'subtitle' => 'Dodaj firmę klienta, aby szybciej przygotować faktury i kontakt.',
                 'add_button' => 'Dodaj firmę',
                 'edit_button' => 'Zaktualizuj firmę',
+                'delete_button' => 'Usuń firmę',
+                'delete_confirm' => 'Czy na pewno chcesz usunąć tę firmę z profilu klienta?',
                 'linked' => 'Firma powiązana',
                 'unlinked' => 'Brak firmy',
                 'empty' => 'Do tego klienta nie przypisano jeszcze firmy.',
@@ -496,6 +500,10 @@ return [
                 'add_address' => 'Dodaj adres firmowy',
                 'hide_address' => 'Ukryj adres firmowy',
                 'submit' => 'Zapisz firmę',
+            ],
+            'personal_modal' => [
+                'title' => 'Edytuj dane prywatne',
+                'description' => 'Zaktualizuj prywatne dane kontaktowe używane do komunikacji i faktur.',
             ],
             'cases' => [
                 'title' => 'Sprawy',

@@ -374,6 +374,8 @@ return [
             'update_failed' => 'Updating the customer failed. Please try again.',
             'company_saved' => 'Company details saved.',
             'company_failed' => 'Unable to save the company details. Please try again.',
+            'company_deleted' => 'Company removed from the customer.',
+            'company_delete_failed' => 'Removing the company failed. Please try again.',
         ],
         'search' => [
             'aria' => 'Customer search',
@@ -468,6 +470,8 @@ return [
                 'subtitle' => 'Link business information so invoicing and communication are ready to go.',
                 'add_button' => 'Add company',
                 'edit_button' => 'Update company',
+                'delete_button' => 'Remove company',
+                'delete_confirm' => 'Are you sure you want to remove this company from the customer?',
                 'linked' => 'Company linked',
                 'unlinked' => 'No company yet',
                 'empty' => 'No company is linked to this customer yet.',
@@ -496,6 +500,10 @@ return [
                 'add_address' => 'Add company address',
                 'hide_address' => 'Hide company address',
                 'submit' => 'Save company',
+            ],
+            'personal_modal' => [
+                'title' => 'Edit personal details',
+                'description' => 'Update the private contact information used for communication and invoices.',
             ],
             'cases' => [
                 'title' => 'Cases',

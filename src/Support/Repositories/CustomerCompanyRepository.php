@@ -119,4 +119,11 @@ final class CustomerCompanyRepository
 
         return $this->findByCustomerId($customerId) ?? [];
     }
+    public function deleteByCustomerId(int $customerId): bool
+    {
+        $statement = $this->pdo->prepare('DELETE FROM customer_companies WHERE customer_id = :customer_id');
+        $statement->execute(['customer_id' => $customerId]);
+
+        return $statement->rowCount() > 0;
+    }
 }

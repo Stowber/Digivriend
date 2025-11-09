@@ -608,6 +608,18 @@ input[type="submit"]:focus,
   color: var(--color-primary-dark);
 }
 
+.btn--danger {
+  background: rgba(220, 53, 69, 0.14);
+  color: #b42318;
+  box-shadow: none;
+}
+
+.btn--danger:hover,
+.btn--danger:focus {
+  background: rgba(220, 53, 69, 0.2);
+  color: #932018;
+}
+
 .card,
 .surface {
   background: var(--color-surface);

@@ -37,6 +37,7 @@ $companyErrors = [];
 $generalError = '';
 $companyGeneralError = '';
 $companyModalShouldOpen = false;
+$personalModalShouldOpen = false;
 $successMessage = '';
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 if ($created) {
@@ -139,6 +140,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $companyGeneralError = __('customers.messages.company_failed');
                 $companyModalShouldOpen = true;
             }
+            } elseif ($formType === 'company_delete') {
+            try {
+                $deleted = $customerCompanyRepository->deleteByCustomerId((int) $customer['id']);
+
+                if ($deleted) {
+                    $company = null;
+                    $companyFormData = [
+                        'company_name' => '',
+                        'company_kvk' => '',
+                        'company_btw' => '',
+                        'company_contact_person' => $fullName,
+                        'company_email' => (string) ($customer['email'] ?? ''),
+                        'company_phone' => (string) ($customer['phone'] ?? ''),
+                        'company_address' => '',
+                        'company_postal_code' => '',
+                        'company_city' => '',
+                    ];
+
+                    $successMessage = __('customers.messages.company_deleted');
+                } else {
+                    $companyGeneralError = __('customers.messages.company_delete_failed');
+                }
+            } catch (Throwable $exception) {
+                $companyGeneralError = __('customers.messages.company_delete_failed');
+            }
         } else {
             try {
                 $fullName = InputValidator::requireString($_POST, 'full_name', 191);
@@ -164,8 +190,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $successMessage = __('customers.messages.updated');
             } catch (ValidationException $exception) {
                 $profileErrors = $exception->errors();
+                $personalModalShouldOpen = true;
             } catch (Throwable $exception) {
                 $generalError = __('customers.messages.update_failed');
+                $personalModalShouldOpen = true;
             }
         }
     }
@@ -268,7 +296,7 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
           <button type="button" class="btn btn--ghost" data-modal-target="customer-company-modal">
             <?= htmlspecialchars($company !== null ? __('customers.profile.company.edit_button') : __('customers.profile.company.add_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
-          <button type="button" class="btn btn--secondary" data-modal-target="customer-edit-modal" data-customer-edit-trigger>
+          <button type="button" class="btn btn--ghost" data-modal-target="customer-personal-modal">
             <?= htmlspecialchars(__('customers.profile.edit.button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
         </div>
@@ -292,69 +320,49 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
         </div>
         <?php endif; ?>
 
-      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="profile-contact-form" data-customer-profile-form>
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-        <input type="hidden" name="form_type" value="profile">
-
-        <div class="profile-contact-form__section">
-          <div class="profile-contact-form__header">
+      <div class="profile-personal">
+        <div class="profile-personal__header">
+          <div>
             <h3><?= htmlspecialchars(__('customers.profile.personal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
             <p><?= htmlspecialchars(__('customers.profile.personal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </div>
-          <div class="profile-contact-form__fields form-grid">
-            <div class="form-field form-field--wide">
-              <label for="customerFullName"><?= htmlspecialchars(__('customers.form.full_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="customerFullName" type="text" name="full_name" value="<?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="name" data-customer-editable disabled>
-              <?php if (!empty($profileErrors['full_name'])): ?>
-                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
+          </div>
+        <dl class="profile-personal__details">
+          <div class="profile-personal__row">
+            <dt><?= htmlspecialchars(__('customers.form.full_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="profile-personal__row profile-personal__row--split">
+            <div>
+              <dt><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd><?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
-            <div class="form-field">
-              <label for="customerEmail"><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="customerEmail" type="email" name="email" value="<?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="email" data-customer-editable disabled>
-              <?php if (!empty($profileErrors['email'])): ?>
-                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
+            <div>
+              <dt><?= htmlspecialchars(__('customers.form.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd><?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
-            <div class="form-field">
-              <label for="customerPhone"><?= htmlspecialchars(__('customers.form.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="customerPhone" type="tel" name="phone" value="<?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32" autocomplete="tel" data-customer-editable disabled>
-              <?php if (!empty($profileErrors['phone'])): ?>
-                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
             </div>
-            <div class="form-field form-field--wide">
-              <label for="customerAddress"><?= htmlspecialchars(__('customers.form.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="customerAddress" type="text" name="address" value="<?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="255" autocomplete="street-address" data-customer-editable disabled>
-              <?php if (!empty($profileErrors['address'])): ?>
-                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
+          <div class="profile-personal__row">
+            <dt><?= htmlspecialchars(__('customers.form.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd><?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="profile-personal__row profile-personal__row--split">
+            <div>
+              <dt><?= htmlspecialchars(__('customers.form.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd><?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
-            <div class="form-field">
-              <label for="customerPostal"><?= htmlspecialchars(__('customers.form.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="customerPostal" type="text" name="postal_code" value="<?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="16" autocomplete="postal-code" data-customer-editable disabled>
-              <?php if (!empty($profileErrors['postal_code'])): ?>
-                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
-            </div>
-            <div class="form-field">
-              <label for="customerCity"><?= htmlspecialchars(__('customers.form.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="customerCity" type="text" name="city" value="<?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="120" autocomplete="address-level2" data-customer-editable disabled>
-              <?php if (!empty($profileErrors['city'])): ?>
-                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              <?php endif; ?>
+            <div>
+              <dt><?= htmlspecialchars(__('customers.form.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd><?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
           </div>
-        </div>
-        <div class="form-actions" data-customer-edit-actions hidden>
-          <button type="button" class="btn btn--ghost" data-customer-edit-cancel disabled>
-            <?= htmlspecialchars(__('customers.profile.edit.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </button>
-          <button type="submit" class="btn btn--primary" data-customer-edit-save disabled>
-            <?= htmlspecialchars(__('customers.form.save'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+        </dl>
+        <div class="profile-personal__actions">
+          <button type="button" class="btn btn--secondary" data-modal-target="customer-personal-modal">
+            <?= htmlspecialchars(__('customers.profile.edit.button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
         </div>
-      </form>
+      </div>
 
       <div class="profile-company" data-company-panel>
         <div class="profile-company__header">
@@ -415,6 +423,13 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
               <button type="button" class="btn btn--secondary" data-modal-target="customer-company-modal">
                 <?= htmlspecialchars(__('customers.profile.company.edit_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
               </button>
+              <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="profile-company__delete" onsubmit="return confirm('<?= addslashes(__('customers.profile.company.delete_confirm')) ?>');">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <input type="hidden" name="form_type" value="company_delete">
+                <button type="submit" class="btn btn--danger">
+                  <?= htmlspecialchars(__('customers.profile.company.delete_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                </button>
+              </form>
             </div>
           </dl>
         <?php else: ?>
@@ -627,19 +642,67 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
       </form>
     </div>
   </div>
-  <div class="modal" id="customer-edit-modal" role="dialog" aria-modal="true" aria-labelledby="customer-edit-modal-title">
+  <div class="modal" id="customer-personal-modal" role="dialog" aria-modal="true" aria-labelledby="customer-personal-modal-title">
     <div class="modal__panel">
-      <div class="modal__header">
-        <h2 id="customer-edit-modal-title"><?= htmlspecialchars(__('customers.profile.edit.modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
-        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
-      </div>
-      <div class="modal__body">
-        <p><?= htmlspecialchars(__('customers.profile.edit.modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-      </div>
-      <div class="modal__footer">
-        <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('customers.form.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
-        <button type="button" class="btn btn--primary" data-customer-edit-confirm><?= htmlspecialchars(__('customers.profile.edit.modal.confirm'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
-      </div>
+      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post">
+        <div class="modal__header">
+          <h2 id="customer-personal-modal-title"><?= htmlspecialchars(__('customers.profile.personal_modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+          <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
+        </div>
+        <div class="modal__body">
+          <p><?= htmlspecialchars(__('customers.profile.personal_modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="form_type" value="profile">
+          <div class="form-grid">
+            <div class="form-field form-field--wide">
+              <label for="customerModalFullName"><?= htmlspecialchars(__('customers.form.full_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerModalFullName" type="text" name="full_name" value="<?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="name">
+              <?php if (!empty($profileErrors['full_name'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerModalEmail"><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerModalEmail" type="email" name="email" value="<?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="email">
+              <?php if (!empty($profileErrors['email'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerModalPhone"><?= htmlspecialchars(__('customers.form.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerModalPhone" type="tel" name="phone" value="<?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32" autocomplete="tel">
+              <?php if (!empty($profileErrors['phone'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field form-field--wide">
+              <label for="customerModalAddress"><?= htmlspecialchars(__('customers.form.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerModalAddress" type="text" name="address" value="<?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="255" autocomplete="street-address">
+              <?php if (!empty($profileErrors['address'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerModalPostal"><?= htmlspecialchars(__('customers.form.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerModalPostal" type="text" name="postal_code" value="<?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="16" autocomplete="postal-code">
+              <?php if (!empty($profileErrors['postal_code'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerModalCity"><?= htmlspecialchars(__('customers.form.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerModalCity" type="text" name="city" value="<?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="120" autocomplete="address-level2">
+              <?php if (!empty($profileErrors['city'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('customers.profile.edit.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+          <button type="submit" class="btn btn--primary"><?= htmlspecialchars(__('customers.form.save'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -649,6 +712,22 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
     <script>
       (function () {
         const modal = document.getElementById('customer-company-modal');
+        if (!modal) {
+          return;
+        }
+        modal.classList.add('is-visible');
+        document.body.classList.add('modal-open');
+        const firstField = modal.querySelector('input, select, textarea, button:not([data-modal-close])');
+        if (firstField) {
+          firstField.focus({ preventScroll: true });
+        }
+      })();
+    </script>
+  <?php endif; ?>
+  <?php if ($personalModalShouldOpen): ?>
+    <script>
+      (function () {
+        const modal = document.getElementById('customer-personal-modal');
         if (!modal) {
           return;
         }

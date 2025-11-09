@@ -374,6 +374,8 @@ return [
             'update_failed' => 'Bijwerken van de klant is mislukt. Probeer het opnieuw.',
             'company_saved' => 'Bedrijfsgegevens gekoppeld.',
             'company_failed' => 'Opslaan van de bedrijfsgegevens is mislukt. Probeer het opnieuw.',
+            'company_deleted' => 'Bedrijf verwijderd bij deze klant.',
+            'company_delete_failed' => 'Verwijderen van het bedrijf is mislukt. Probeer het opnieuw.',
         ],
         'search' => [
             'aria' => 'Zoek klanten',
@@ -470,6 +472,8 @@ return [
                 'edit_button' => 'Bedrijf bijwerken',
                 'linked' => 'Bedrijf gekoppeld',
                 'unlinked' => 'Nog geen bedrijf',
+                'delete_button' => 'Bedrijf verwijderen',
+                'delete_confirm' => 'Weet je zeker dat je dit bedrijf van de klant wilt verwijderen?',
                 'empty' => 'Er is nog geen bedrijf aan deze klant gekoppeld.',
                 'company_name' => 'Bedrijfsnaam',
                 'contact_person' => 'Contactpersoon',
@@ -496,6 +500,10 @@ return [
                 'add_address' => 'Bedrijfsadres toevoegen',
                 'hide_address' => 'Bedrijfsadres verbergen',
                 'submit' => 'Bedrijf opslaan',
+            ],
+            'personal_modal' => [
+                'title' => 'Privégegevens bewerken',
+                'description' => 'Werk de persoonlijke contactgegevens bij voor communicatie en facturatie.',
             ],
             'cases' => [
                 'title' => 'Cases',
