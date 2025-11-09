@@ -664,6 +664,29 @@
   color: var(--color-muted);
 }
 
+.card__header--with-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.card__header-content {
+  flex: 1 1 auto;
+}
+
+.card__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.card__header-actions .btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 768px) {
   .page-header {
     flex-direction: column;
@@ -686,5 +709,110 @@
   .form-actions .btn {
     width: 100%;
     justify-content: center;
+  }
+  }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
+  z-index: 130;
+}
+
+.modal.is-visible {
+  display: flex;
+}
+
+.modal__panel {
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.3);
+  width: min(480px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  gap: 12px;
+}
+
+.modal__header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.modal__close {
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.modal__close:hover,
+.modal__close:focus {
+  color: #f05a28;
+  transform: scale(1.05);
+  outline: none;
+}
+
+.modal__body {
+  padding: 22px 24px;
+  display: grid;
+  gap: 18px;
+  overflow-y: auto;
+  max-height: 70vh;
+  color: #475569;
+}
+
+.modal__body p {
+  margin: 0;
+}
+
+.modal__footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .card__header--with-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card__header-actions {
+    justify-content: flex-start;
+  }
+
+  .modal {
+    padding: 16px;
+  }
+
+  .modal__panel {
+    width: 100%;
+    border-radius: 18px;
   }
 }

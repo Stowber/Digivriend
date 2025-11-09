@@ -448,6 +448,15 @@ return [
                 'last_interaction' => 'Laatste contactmoment',
                 'never' => 'Nog nooit',
             ],
+            'edit' => [
+                'button' => 'Gegevens bewerken',
+                'cancel' => 'Bewerken annuleren',
+                'modal' => [
+                    'title' => 'Bewerken inschakelen',
+                    'description' => 'Bewerken is standaard vergrendeld om onbedoelde wijzigingen te voorkomen. Wil je de velden ontgrendelen?',
+                    'confirm' => 'Bewerken inschakelen',
+                ],
+            ],
             'cases' => [
                 'title' => 'Cases',
                 'subtitle' => 'Recente servicecases voor deze klant.',

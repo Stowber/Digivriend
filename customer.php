@@ -166,9 +166,16 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
     </section>
 
     <section class="card profile-card profile-card--form">
-      <header class="card__header">
-        <h2><?= htmlspecialchars(__('customers.profile.details.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
-        <p><?= htmlspecialchars(__('customers.profile.details.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      <header class="card__header card__header--with-actions">
+        <div class="card__header-content">
+          <h2><?= htmlspecialchars(__('customers.profile.details.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+          <p><?= htmlspecialchars(__('customers.profile.details.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </div>
+        <div class="card__header-actions">
+          <button type="button" class="btn btn--secondary" data-modal-target="customer-edit-modal" data-customer-edit-trigger>
+            <?= htmlspecialchars(__('customers.profile.edit.button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </button>
+        </div>
       </header>
 
       <?php if (!empty($successMessage)): ?>
@@ -183,53 +190,58 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
         </div>
       <?php endif; ?>
 
-      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="form-grid">
+      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="form-grid" data-customer-profile-form>
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <div class="form-field form-field--wide">
           <label for="customerFullName"><?= htmlspecialchars(__('customers.form.full_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerFullName" type="text" name="full_name" value="<?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="name">
+          <input id="customerFullName" type="text" name="full_name" value="<?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="name" data-customer-editable disabled>
           <?php if (!empty($errors['full_name'])): ?>
             <p class="form-error"><?= htmlspecialchars((string) $errors['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
         <div class="form-field">
           <label for="customerEmail"><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerEmail" type="email" name="email" value="<?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="email">
+          <input id="customerEmail" type="email" name="email" value="<?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="email" data-customer-editable disabled>>
           <?php if (!empty($errors['email'])): ?>
             <p class="form-error"><?= htmlspecialchars((string) $errors['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
         <div class="form-field">
           <label for="customerPhone"><?= htmlspecialchars(__('customers.form.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerPhone" type="tel" name="phone" value="<?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32" autocomplete="tel">
+          <input id="customerPhone" type="tel" name="phone" value="<?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32" autocomplete="tel" data-customer-editable disabled>>
           <?php if (!empty($errors['phone'])): ?>
             <p class="form-error"><?= htmlspecialchars((string) $errors['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
         <div class="form-field form-field--wide">
           <label for="customerAddress"><?= htmlspecialchars(__('customers.form.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerAddress" type="text" name="address" value="<?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="255" autocomplete="street-address">
+          <input id="customerAddress" type="text" name="address" value="<?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="255" autocomplete="street-address" data-customer-editable disabled>>
           <?php if (!empty($errors['address'])): ?>
             <p class="form-error"><?= htmlspecialchars((string) $errors['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
         <div class="form-field">
           <label for="customerPostal"><?= htmlspecialchars(__('customers.form.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerPostal" type="text" name="postal_code" value="<?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="16" autocomplete="postal-code">
+          <input id="customerPostal" type="text" name="postal_code" value="<?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="16" autocomplete="postal-code" data-customer-editable disabled>>
           <?php if (!empty($errors['postal_code'])): ?>
             <p class="form-error"><?= htmlspecialchars((string) $errors['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
         <div class="form-field">
           <label for="customerCity"><?= htmlspecialchars(__('customers.form.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerCity" type="text" name="city" value="<?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="120" autocomplete="address-level2">
+          <input id="customerCity" type="text" name="city" value="<?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="120" autocomplete="address-level2" data-customer-editable disabled>>
           <?php if (!empty($errors['city'])): ?>
             <p class="form-error"><?= htmlspecialchars((string) $errors['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
         <div class="form-actions">
+          <button type="button" class="btn btn--ghost" data-customer-edit-cancel hidden disabled>
+            <?= htmlspecialchars(__('customers.profile.edit.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </button>
           <a href="customers.php" class="btn btn--ghost"><?= htmlspecialchars(__('customers.form.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
-          <button type="submit" class="btn btn--primary"><?= htmlspecialchars(__('customers.form.save'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+          <button type="submit" class="btn btn--primary" data-customer-edit-save disabled>
+            <?= htmlspecialchars(__('customers.form.save'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </button>
         </div>
       </form>
     </section>
@@ -323,5 +335,23 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
       <p><?= htmlspecialchars(__('customers.profile.invoices.placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
     </section>
   </main>
+  <div class="modal" id="customer-edit-modal" role="dialog" aria-modal="true" aria-labelledby="customer-edit-modal-title">
+    <div class="modal__panel">
+      <div class="modal__header">
+        <h2 id="customer-edit-modal-title"><?= htmlspecialchars(__('customers.profile.edit.modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p><?= htmlspecialchars(__('customers.profile.edit.modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('customers.form.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+        <button type="button" class="btn btn--primary" data-customer-edit-confirm><?= htmlspecialchars(__('customers.profile.edit.modal.confirm'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/modals.js"></script>
+  <script src="js/customer-profile.js"></script>
 </body>
 </html>

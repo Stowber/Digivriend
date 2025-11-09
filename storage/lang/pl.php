@@ -448,6 +448,15 @@ return [
                 'last_interaction' => 'Ostatnia interakcja',
                 'never' => 'Brak',
             ],
+            'edit' => [
+                'button' => 'Edytuj dane',
+                'cancel' => 'Anuluj edycję',
+                'modal' => [
+                    'title' => 'Włącz edycję',
+                    'description' => 'Edycja jest domyślnie zablokowana, aby zapobiec przypadkowym zmianom. Czy chcesz odblokować pola?',
+                    'confirm' => 'Włącz edycję',
+                ],
+            ],
             'cases' => [
                 'title' => 'Sprawy',
                 'subtitle' => 'Ostatnie sprawy powiązane z klientem.',

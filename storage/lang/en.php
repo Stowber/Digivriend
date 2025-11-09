@@ -448,6 +448,15 @@ return [
                 'last_interaction' => 'Last interaction',
                 'never' => 'Never',
             ],
+            'edit' => [
+                'button' => 'Edit details',
+                'cancel' => 'Cancel editing',
+                'modal' => [
+                    'title' => 'Enable editing',
+                    'description' => 'Editing is locked by default to prevent accidental changes. Do you want to unlock the fields?',
+                    'confirm' => 'Enable editing',
+                ],
+            ],
             'cases' => [
                 'title' => 'Cases',
                 'subtitle' => 'Recent service cases linked to this customer.',
