@@ -57,6 +57,8 @@ $customerGroups = [
     ],
 ];
 
+$defaultGroup = $privateCount > 0 ? 'private' : ($businessCount > 0 ? 'business' : 'private');
+
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
@@ -165,73 +167,115 @@ $customerGroups = [
       </form>
     </section>
 
-    <section class="card customers-table-card">
-      <header class="card__header">
-        <h2><?= htmlspecialchars(__('customers.list.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
-        <p><?= htmlspecialchars(__('customers.list.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+    <section class="card customers-list-card">
+      <header class="customers-list-header">
+        <div>
+          <h2><?= htmlspecialchars(__('customers.list.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+          <p><?= htmlspecialchars(__('customers.list.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </div>
+        <div
+          class="customer-toggle"
+          role="radiogroup"
+          aria-label="<?= htmlspecialchars(__('customers.list.filter_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          data-active="<?= htmlspecialchars($defaultGroup, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+        >
+          <span class="visually-hidden"><?= htmlspecialchars(__('customers.list.filter_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <input
+            type="radio"
+            id="customer-toggle-private"
+            name="customer-type"
+            value="private"
+            <?= $defaultGroup === 'private' ? 'checked' : '' ?>
+          >
+          <label for="customer-toggle-private">
+            <?= htmlspecialchars(__('customers.list.filter_private'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </label>
+          <input
+            type="radio"
+            id="customer-toggle-business"
+            name="customer-type"
+            value="business"
+            <?= $defaultGroup === 'business' ? 'checked' : '' ?>
+          >
+          <label for="customer-toggle-business">
+            <?= htmlspecialchars(__('customers.list.filter_business'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </label>
+          <span class="customer-toggle__indicator" aria-hidden="true"></span>
+        </div>
       </header>
-      <div class="customers-table-groups">
+      <div class="customers-list-sections">
         <?php foreach ($customerGroups as $group): ?>
-          <section class="customers-table-section" data-customer-group="<?= htmlspecialchars((string) $group['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <header class="customers-table-section__header">
-              <div>
-                <h3><?= htmlspecialchars((string) $group['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-                <p><?= htmlspecialchars((string) $group['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-              </div>
-              <span class="customers-table-section__badge">
+          <section
+            class="customers-list-section"
+            data-customer-group="<?= htmlspecialchars((string) $group['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            <?= $group['type'] === $defaultGroup ? '' : 'hidden' ?>
+          >
+            <h3 class="visually-hidden">
+              <?= htmlspecialchars((string) $group['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </h3>
+            <div class="customers-list-section__summary">
+              <p class="customers-list-section__description">
+                <?= htmlspecialchars((string) $group['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </p>
+              <span class="customers-list-section__count">
                 <?= htmlspecialchars($formatNumber((int) $group['count']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
               </span>
-            </header>
-            <div class="table-wrapper">
-              <table class="table customers-table">
-                <thead>
-                  <tr>
-                    <th><?= htmlspecialchars(__('customers.list.table.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-                    <th><?= htmlspecialchars(__('customers.list.table.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-                    <th><?= htmlspecialchars(__('customers.list.table.contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-                    <th><?= htmlspecialchars(__('customers.list.table.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-                    <th><?= htmlspecialchars(__('customers.list.table.updated'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php if ($group['customers'] === []): ?>
-                    <tr>
-                      <td colspan="5">
-                        <?= htmlspecialchars((string) $group['empty'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                      </td>
-                    </tr>
-                  <?php else: ?>
-                    <?php foreach ($group['customers'] as $customer): ?>
-                      <?php
-                        $customerCode = isset($customer['customer_code']) && trim((string) $customer['customer_code']) !== ''
-                          ? (string) $customer['customer_code']
-                          : __('customers.list.table.no_code');
-                      ?>
-                      <tr class="customers-row" data-href="customer.php?id=<?= (int) $customer['id'] ?>">
-                        <td>
-                          <span class="code-badge">
-                            <?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                          </span>
-                        </td>
-                        <td>
-                          <strong><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                        </td>
-                        <td>
-                          <div><?= htmlspecialchars((string) ($customer['email'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                          <div><?= htmlspecialchars((string) ($customer['phone'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                        </td>
-                        <td>
-                          <div><?= htmlspecialchars((string) ($customer['city'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                          <div><?= htmlspecialchars((string) ($customer['address'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                        </td>
-                        <td>
-                          <?= htmlspecialchars(isset($customer['updated_at']) && $customer['updated_at'] !== null ? date('d-m-Y H:i', strtotime((string) $customer['updated_at'])) : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                </tbody>
-              </table>
+            <?php if ($group['customers'] === []): ?>
+              <p class="customers-list__empty">
+                <?= htmlspecialchars((string) $group['empty'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </p>
+            <?php else: ?>
+              <ul class="customers-list">
+                <?php foreach ($group['customers'] as $customer): ?>
+                  <?php
+                    $customerCode = isset($customer['customer_code']) && trim((string) $customer['customer_code']) !== ''
+                      ? (string) $customer['customer_code']
+                      : __('customers.list.table.no_code');
+                    $email = isset($customer['email']) && $customer['email'] !== null && $customer['email'] !== ''
+                      ? (string) $customer['email']
+                      : '—';
+                    $phone = isset($customer['phone']) && $customer['phone'] !== null && $customer['phone'] !== ''
+                      ? (string) $customer['phone']
+                      : '—';
+                    $city = isset($customer['city']) && $customer['city'] !== null && $customer['city'] !== ''
+                      ? (string) $customer['city']
+                      : '—';
+                    $address = isset($customer['address']) && $customer['address'] !== null && $customer['address'] !== ''
+                      ? (string) $customer['address']
+                      : '—';
+                    $updatedAt = isset($customer['updated_at']) && $customer['updated_at'] !== null
+                      ? date('d-m-Y H:i', strtotime((string) $customer['updated_at']))
+                      : '—';
+                  ?>
+                  <li class="customers-list__item" data-href="customer.php?id=<?= (int) $customer['id'] ?>" role="link" tabindex="0">
+                    <div class="customers-list__identity">
+                      <span class="code-badge">
+                        <?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      </span>
+                      <div>
+                        <strong><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                      </div>
+                    </div>
+                    <div class="customers-list__details">
+                      <div class="customers-list__group">
+                        <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.table.contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <span><?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <span><?= htmlspecialchars($phone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      </div>
+                      <div class="customers-list__group">
+                        <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.table.location'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <span><?= htmlspecialchars($city, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <span><?= htmlspecialchars($address, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      </div>
+                      <div class="customers-list__group customers-list__group--updated">
+                        <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.table.updated'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <span><?= htmlspecialchars($updatedAt, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      </div>
+                    </div>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
             </div>
           </section>
         <?php endforeach; ?>
@@ -239,14 +283,58 @@ $customerGroups = [
     </section>
   </main>
   <script>
-    document.querySelectorAll('.customers-row').forEach(function (row) {
-      row.addEventListener('click', function () {
-        const href = row.getAttribute('data-href');
-        if (href) {
-          window.location.href = href;
-        }
+    (function () {
+      const items = document.querySelectorAll('.customers-list__item');
+      items.forEach(function (item) {
+        item.addEventListener('click', function () {
+          const href = item.getAttribute('data-href');
+          if (href) {
+            window.location.href = href;
+          }
+        });
+
+        item.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const href = item.getAttribute('data-href');
+            if (href) {
+              window.location.href = href;
+            }
+          }
+        });
       });
-    });
+    const toggle = document.querySelector('.customer-toggle');
+      if (!toggle) {
+        return;
+      }
+
+      const sections = document.querySelectorAll('.customers-list-section');
+      const inputs = toggle.querySelectorAll('input[name="customer-type"]');
+
+      const setActiveGroup = function (type) {
+        toggle.dataset.active = type;
+        sections.forEach(function (section) {
+          if (section.getAttribute('data-customer-group') === type) {
+            section.removeAttribute('hidden');
+          } else {
+            section.setAttribute('hidden', 'hidden');
+          }
+        });
+      };
+
+      inputs.forEach(function (input) {
+        input.addEventListener('change', function () {
+          if (input.checked) {
+            setActiveGroup(input.value);
+          }
+        });
+      });
+
+      const defaultInput = toggle.querySelector('input[name="customer-type"]:checked') || inputs[0];
+      if (defaultInput) {
+        setActiveGroup(defaultInput.value);
+      }
+    })();
   </script>
 </body>
 </html>

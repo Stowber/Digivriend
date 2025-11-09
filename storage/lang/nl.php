@@ -417,6 +417,9 @@ return [
         'list' => [
             'title' => 'Klantenlijst',
             'subtitle' => 'Bekijk particuliere en zakelijke klanten in één overzicht.',
+            'filter_label' => 'Filter klanttype',
+            'filter_private' => 'Particulier',
+            'filter_business' => 'Zakelijk',
             'private_title' => 'Particuliere klanten',
             'private_description' => 'Huishoudens en particulieren die bij Digivriend zijn aangemeld.',
             'business_title' => 'Zakelijke klanten',

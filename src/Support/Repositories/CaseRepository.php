@@ -130,7 +130,7 @@ final class CaseRepository
             'status' => 'klaar',
         ]);
 
-        $case = $statement->fetch(PDO::FETCH_ASSOC);
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
@@ -164,7 +164,7 @@ final class CaseRepository
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        $case = $statement->fetch(PDO::FETCH_ASSOC);
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
@@ -192,7 +192,7 @@ final class CaseRepository
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        $case = $statement->fetch(PDO::FETCH_ASSOC);
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
@@ -209,7 +209,7 @@ final class CaseRepository
         );
         $statement->execute(['case_id' => $caseId]);
 
-        $case = $statement->fetch(PDO::FETCH_ASSOC);
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
@@ -366,6 +366,6 @@ final class CaseRepository
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
         $statement->execute();
 
-        $case = $statement->fetch(PDO::FETCH_ASSOC);
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 }

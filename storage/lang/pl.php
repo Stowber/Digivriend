@@ -417,6 +417,9 @@ return [
         'list' => [
             'title' => 'Lista klientów',
             'subtitle' => 'Przeglądaj oddzielnie klientów prywatnych i firmowych.',
+            'filter_label' => 'Filtruj typ klienta',
+            'filter_private' => 'Prywatni',
+            'filter_business' => 'Firmowi',
             'private_title' => 'Klienci prywatni',
             'private_description' => 'Osoby i gospodarstwa domowe obsługiwane przez Digivriend.',
             'business_title' => 'Klienci firmowi',

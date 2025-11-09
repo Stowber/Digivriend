@@ -417,6 +417,9 @@ return [
         'list' => [
             'title' => 'Customer list',
             'subtitle' => 'Browse private and business customers from a single overview.',
+            'filter_label' => 'Filter customer type',
+            'filter_private' => 'Private',
+            'filter_business' => 'Business',
             'private_title' => 'Private customers',
             'private_description' => 'Individuals and households registered with Digivriend.',
             'business_title' => 'Business customers',
