@@ -36,6 +36,7 @@ $formData = [
     'address' => '',
     'postal_code' => '',
     'city' => '',
+    'company_billing_different' => false,
     'company_name' => '',
     'company_kvk' => '',
     'company_btw' => '',
@@ -67,16 +68,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $formData['city'] = InputValidator::requireString($_POST, 'city', 120);
 
             if ($formData['customer_type'] === 'business') {
+              $formData['company_billing_different'] = isset($_POST['company_billing_different']) && (string) $_POST['company_billing_different'] === '1';
+                $companyDataSource = $_POST;
+                if (!$formData['company_billing_different']) {
+                    $companyDataSource['company_contact_person'] = $formData['full_name'];
+                }
+
                 $formData['company_name'] = InputValidator::requireString($_POST, 'company_name', 191);
                 $formData['company_kvk'] = InputValidator::requireString($_POST, 'company_kvk', 32);
                 $formData['company_btw'] = InputValidator::optionalString($_POST, 'company_btw', 32);
-                $formData['company_contact_person'] = InputValidator::requireString($_POST, 'company_contact_person', 191);
+                $formData['company_contact_person'] = InputValidator::requireString($companyDataSource, 'company_contact_person', 191);
                 $formData['company_email'] = InputValidator::optionalEmail($_POST, 'company_email', 191);
                 $formData['company_phone'] = InputValidator::optionalPhone($_POST, 'company_phone', 32);
                 $formData['company_address'] = InputValidator::optionalString($_POST, 'company_address', 255);
                 $formData['company_postal_code'] = InputValidator::optionalString($_POST, 'company_postal_code', 16);
                 $formData['company_city'] = InputValidator::optionalString($_POST, 'company_city', 120);
+
+                if (!$formData['company_billing_different']) {
+                    $formData['company_contact_person'] = $formData['full_name'];
+                    $formData['company_email'] = $formData['email'];
+                    $formData['company_phone'] = $formData['phone'];
+                    $formData['company_address'] = $formData['address'];
+                    $formData['company_postal_code'] = $formData['postal_code'];
+                    $formData['company_city'] = $formData['city'];
+                }
             } else {
+                $formData['company_billing_different'] = false;
                 $formData['company_name'] = '';
                 $formData['company_kvk'] = '';
                 $formData['company_btw'] = '';
@@ -123,11 +140,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             Response::redirect('customer.php?id=' . (int) $customer['id'] . '&created=1');
         } catch (ValidationException $exception) {
-          if ($pdo->inTransaction()) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
 
             $errors = $exception->errors();
+          } catch (PDOException $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            $message = strtolower($exception->getMessage());
+            if (str_contains($message, 'uniq_customers_email') || str_contains($message, 'customers.email')) {
+                $errors['email'] = __('customers.validation.duplicate_email');
+            } else {
+                $errors['general'] = __('customers.messages.create_failed');
+            }
         } catch (Throwable $exception) {
           if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -214,6 +242,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <?php if (!empty($errors['full_name'])): ?>
                 <p class="form-error"><?= htmlspecialchars((string) $errors['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <?php endif; ?>
+              <div class="customer-suggestions" data-customer-suggestions hidden>
+                <p class="customer-suggestions__title"><?= htmlspecialchars(__('customers.create.existing_suggestions.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <p class="customer-suggestions__description"><?= htmlspecialchars(__('customers.create.existing_suggestions.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <ul class="customer-suggestions__list" data-customer-suggestions-list></ul>
+              </div>
             </div>
             <div class="form-field">
               <label for="customerEmail"><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
@@ -253,11 +286,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </section>
 
-        <section class="form-section form-section--company" data-company-fields>
+        <section class="form-section form-section--company<?= !$formData['company_billing_different'] && $formData['customer_type'] === 'business' ? ' is-locked' : '' ?>" data-company-fields>
           <header class="form-section__header">
             <h3><?= htmlspecialchars(__('customers.create.sections.company.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
             <p><?= htmlspecialchars(__('customers.create.sections.company.help'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           </header>
+          <div class="company-billing-toggle">
+            <label class="company-billing-toggle__label">
+              <input type="checkbox" name="company_billing_different" value="1" data-company-billing-toggle <?= $formData['company_billing_different'] ? 'checked' : '' ?><?= $formData['customer_type'] === 'business' ? '' : ' disabled' ?>>
+              <span><?= htmlspecialchars(__('customers.create.billing_toggle.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            </label>
+            <p class="company-billing-toggle__hint"><?= htmlspecialchars(__('customers.create.billing_toggle.hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
           <div class="form-grid form-grid--balanced">
             <div class="form-field form-field--wide">
               <label for="companyName"><?= htmlspecialchars(__('customers.profile.company_modal.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
@@ -282,14 +322,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-field">
               <label for="companyContactPerson"><?= htmlspecialchars(__('customers.profile.company_modal.contact_person'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="companyContactPerson" type="text" name="company_contact_person" maxlength="191" value="<?= htmlspecialchars($formData['company_contact_person'] !== '' ? $formData['company_contact_person'] : $formData['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input id="companyContactPerson" type="text" name="company_contact_person" maxlength="191" value="<?= htmlspecialchars($formData['company_contact_person'] !== '' ? $formData['company_contact_person'] : $formData['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-company-lockable<?= !$formData['company_billing_different'] && $formData['customer_type'] === 'business' ? ' readonly' : '' ?>>
               <?php if (!empty($errors['company_contact_person'])): ?>
                 <p class="form-error"><?= htmlspecialchars((string) $errors['company_contact_person'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <?php endif; ?>
             </div>
             <div class="form-field">
               <label for="companyEmail"><?= htmlspecialchars(__('customers.profile.company_modal.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="companyEmail" type="email" name="company_email" maxlength="191" value="<?= htmlspecialchars($formData['company_email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input id="companyEmail" type="email" name="company_email" maxlength="191" value="<?= htmlspecialchars($formData['company_email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-company-lockable<?= !$formData['company_billing_different'] && $formData['customer_type'] === 'business' ? ' readonly' : '' ?>>
               <?php if (!empty($errors['company_email'])): ?>
                 <p class="form-error"><?= htmlspecialchars((string) $errors['company_email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <?php endif; ?>
@@ -303,21 +343,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-field form-field--wide">
               <label for="companyAddress"><?= htmlspecialchars(__('customers.profile.company_modal.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="companyAddress" type="text" name="company_address" maxlength="255" value="<?= htmlspecialchars($formData['company_address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input id="companyAddress" type="text" name="company_address" maxlength="255" value="<?= htmlspecialchars($formData['company_address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-company-lockable<?= !$formData['company_billing_different'] && $formData['customer_type'] === 'business' ? ' readonly' : '' ?>>
               <?php if (!empty($errors['company_address'])): ?>
                 <p class="form-error"><?= htmlspecialchars((string) $errors['company_address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <?php endif; ?>
             </div>
             <div class="form-field">
               <label for="companyPostalCode"><?= htmlspecialchars(__('customers.profile.company_modal.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="companyPostalCode" type="text" name="company_postal_code" maxlength="16" value="<?= htmlspecialchars($formData['company_postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input id="companyPostalCode" type="text" name="company_postal_code" maxlength="16" value="<?= htmlspecialchars($formData['company_postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-company-lockable<?= !$formData['company_billing_different'] && $formData['customer_type'] === 'business' ? ' readonly' : '' ?>>
               <?php if (!empty($errors['company_postal_code'])): ?>
                 <p class="form-error"><?= htmlspecialchars((string) $errors['company_postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <?php endif; ?>
             </div>
             <div class="form-field">
               <label for="companyCity"><?= htmlspecialchars(__('customers.profile.company_modal.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-              <input id="companyCity" type="text" name="company_city" maxlength="120" value="<?= htmlspecialchars($formData['company_city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input id="companyCity" type="text" name="company_city" maxlength="120" value="<?= htmlspecialchars($formData['company_city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-company-lockable<?= !$formData['company_billing_different'] && $formData['customer_type'] === 'business' ? ' readonly' : '' ?>>
               <?php if (!empty($errors['company_city'])): ?>
                 <p class="form-error"><?= htmlspecialchars((string) $errors['company_city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
               <?php endif; ?>
@@ -331,5 +371,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
     </section>
   </main>
+  <div class="modal" id="existing-customer-modal" role="dialog" aria-modal="true" aria-labelledby="existingCustomerModalTitle" aria-hidden="true">
+    <div class="modal__panel">
+      <header class="modal__header">
+        <h2 id="existingCustomerModalTitle"><?= htmlspecialchars(__('customers.create.existing_modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
+      </header>
+      <div class="modal__body">
+        <p><?= htmlspecialchars(__('customers.create.existing_modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <dl class="customer-match-details">
+          <div class="customer-match-details__row">
+            <dt><?= htmlspecialchars(__('customers.create.existing_modal.labels.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd data-existing-customer-code data-empty-value="<?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="customer-match-details__row">
+            <dt><?= htmlspecialchars(__('customers.create.existing_modal.labels.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd data-existing-customer-name data-empty-value="<?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="customer-match-details__row">
+            <dt><?= htmlspecialchars(__('customers.create.existing_modal.labels.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd data-existing-customer-email data-empty-value="<?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="customer-match-details__row">
+            <dt><?= htmlspecialchars(__('customers.create.existing_modal.labels.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd data-existing-customer-phone data-empty-value="<?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="customer-match-details__row">
+            <dt><?= htmlspecialchars(__('customers.create.existing_modal.labels.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+            <dd data-existing-customer-address data-empty-value="<?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('customers.create.existing_modal.empty_value'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+        </dl>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="btn btn--ghost" data-modal-close data-existing-customer-decline><?= htmlspecialchars(__('customers.create.existing_modal.decline'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+        <button type="button" class="btn btn--primary" data-existing-customer-confirm><?= htmlspecialchars(__('customers.create.existing_modal.confirm'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+      </div>
+    </div>
+  </div>
+  <button type="button" data-modal-target="existing-customer-modal" data-existing-modal-trigger hidden></button>
+  <script src="js/modals.js"></script>
 </body>
 </html>

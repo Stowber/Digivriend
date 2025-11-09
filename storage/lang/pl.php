@@ -377,6 +377,9 @@ return [
             'company_deleted' => 'Firma została usunięta z profilu klienta.',
             'company_delete_failed' => 'Usunięcie firmy nie powiodło się. Spróbuj ponownie.',
         ],
+        'validation' => [
+            'duplicate_email' => 'Klient z tym adresem e-mail już istnieje. Wybierz go z listy albo użyj innego adresu.',
+        ],
         'search' => [
             'aria' => 'Wyszukiwanie klientów',
             'label' => 'Wyszukaj klientów',
@@ -466,6 +469,28 @@ return [
                     'title' => 'Dane firmy',
                     'help' => 'Podaj informacje firmowe potrzebne do faktur i umów.',
                 ],
+            ],
+            'existing_suggestions' => [
+                'title' => 'Możliwy istniejący klient',
+                'description' => 'Znaleźliśmy klientów o podobnych danych. Potwierdź, czy chodzi o jednego z nich.',
+            ],
+            'billing_toggle' => [
+                'label' => 'Adres rozliczeniowy jest różny',
+                'hint' => 'Pozostaw niezaznaczone, aby automatycznie uzupełniać pola firmowe danymi prywatnymi.',
+            ],
+            'existing_modal' => [
+                'title' => 'Znaleziono istniejącego klienta',
+                'description' => 'Wybierz istniejącego klienta, aby uniknąć podwójnej rejestracji.',
+                'labels' => [
+                    'code' => 'Kod klienta',
+                    'name' => 'Imię i nazwisko',
+                    'email' => 'Adres e-mail',
+                    'phone' => 'Telefon',
+                    'address' => 'Adres',
+                ],
+                'confirm' => 'Użyj istniejącego klienta',
+                'decline' => 'Kontynuuj rejestrację nowego klienta',
+                'empty_value' => 'Brak danych',
             ],
         ],
         'form' => [

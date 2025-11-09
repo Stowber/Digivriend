@@ -377,6 +377,9 @@ return [
             'company_deleted' => 'Company removed from the customer.',
             'company_delete_failed' => 'Removing the company failed. Please try again.',
         ],
+        'validation' => [
+            'duplicate_email' => 'A customer with this email address already exists. Select the existing customer or use a different email address.',
+        ],
         'search' => [
             'aria' => 'Customer search',
             'label' => 'Search customers',
@@ -466,6 +469,28 @@ return [
                     'title' => 'Company information',
                     'help' => 'Provide the business details for invoices, agreements and planning.',
                 ],
+            ],
+            'existing_suggestions' => [
+                'title' => 'Possible existing customer',
+                'description' => 'We found customers with similar details. Confirm if you meant to use one of them.',
+            ],
+            'billing_toggle' => [
+                'label' => 'Billing address is different',
+                'hint' => 'Leave unchecked to automatically reuse the personal details in the company fields.',
+            ],
+            'existing_modal' => [
+                'title' => 'Existing customer found',
+                'description' => 'Use the existing customer to avoid duplicate registrations.',
+                'labels' => [
+                    'code' => 'Customer code',
+                    'name' => 'Name',
+                    'email' => 'Email address',
+                    'phone' => 'Phone',
+                    'address' => 'Address',
+                ],
+                'confirm' => 'Use existing customer',
+                'decline' => 'Continue with new customer',
+                'empty_value' => 'Not available',
             ],
         ],
         'form' => [

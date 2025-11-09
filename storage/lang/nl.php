@@ -377,6 +377,9 @@ return [
             'company_deleted' => 'Bedrijf verwijderd bij deze klant.',
             'company_delete_failed' => 'Verwijderen van het bedrijf is mislukt. Probeer het opnieuw.',
         ],
+        'validation' => [
+            'duplicate_email' => 'Er bestaat al een klant met dit e-mailadres. Kies de bestaande klant of gebruik een ander e-mailadres.',
+        ],
         'search' => [
             'aria' => 'Zoek klanten',
             'label' => 'Zoek klanten',
@@ -466,6 +469,28 @@ return [
                     'title' => 'Bedrijfsgegevens',
                     'help' => 'Vul de bedrijfsinformatie in voor facturatie en afspraken.',
                 ],
+            ],
+            'existing_suggestions' => [
+                'title' => 'Mogelijk bestaande klant',
+                'description' => 'We hebben klanten gevonden met vergelijkbare gegevens. Controleer of je een bestaande klant bedoelt.',
+            ],
+            'billing_toggle' => [
+                'label' => 'Factuuradres is verschillend',
+                'hint' => 'Laat uit om de persoonlijke gegevens automatisch in de bedrijfsvelden te gebruiken.',
+            ],
+            'existing_modal' => [
+                'title' => 'Bestaande klant gevonden',
+                'description' => 'Gebruik de bestaande klant om dubbele registraties te voorkomen.',
+                'labels' => [
+                    'code' => 'Klantnummer',
+                    'name' => 'Naam',
+                    'email' => 'E-mailadres',
+                    'phone' => 'Telefoon',
+                    'address' => 'Adres',
+                ],
+                'confirm' => 'Gebruik bestaande klant',
+                'decline' => 'Ga door met nieuwe klant',
+                'empty_value' => 'Niet beschikbaar',
             ],
         ],
         'form' => [
