@@ -446,11 +446,13 @@ return [
                     'title' => 'Particuliere klant',
                     'description' => 'Particulieren met hun eigen contactgegevens.',
                     'label' => 'Particulier',
+                    'short' => 'Particulier',
                 ],
                 'business' => [
                     'title' => 'Zakelijke klant',
                     'description' => 'Bedrijven waarbij factuurgegevens nodig zijn.',
                     'label' => 'Zakelijk',
+                    'short' => 'Zakelijk',
                 ],
             ],
             'sections' => [

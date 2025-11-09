@@ -5,68 +5,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const typeInput = form.querySelector('[data-customer-type-input]');
-  const typeButtons = Array.from(form.querySelectorAll('[data-customer-type-option]'));
-  const dialog = document.querySelector('[data-customer-type-dialog]');
-  const dialogChoices = dialog ? Array.from(dialog.querySelectorAll('[data-customer-type-choice]')) : [];
-  const dialogCloseButtons = dialog ? Array.from(dialog.querySelectorAll('[data-customer-type-close]')) : [];
-  const openDialogButton = document.querySelector('[data-customer-type-open]');
-  const typeLabel = document.querySelector('[data-customer-type-label]');
+  const typeButtons = Array.from(document.querySelectorAll('[data-customer-type-option]'));
+  const switchContainer = document.querySelector('[data-customer-type-switch]');
+  const switchIndicator = switchContainer ? switchContainer.querySelector('[data-customer-type-indicator]') : null;
+  const switchButtons = switchContainer ? Array.from(switchContainer.querySelectorAll('[data-customer-type-option]')) : [];
   const fullNameInput = form.querySelector('#customerFullName');
   const companyContactInput = form.querySelector('input[name="company_contact_person"]');
   const companyNameInput = form.querySelector('input[name="company_name"]');
-  const body = document.body;
-
-  const PRIVATE_LABEL = typeLabel ? typeLabel.getAttribute('data-private-label') || '' : '';
-  const BUSINESS_LABEL = typeLabel ? typeLabel.getAttribute('data-business-label') || '' : '';
-
-  const LOCK_CLASS = 'is-dialog-open';
 
   const normalizeType = (value) => (value === 'business' ? 'business' : 'private');
-
-  const setBodyLock = (locked) => {
-    if (locked) {
-      body.classList.add(LOCK_CLASS);
-      body.style.overflow = 'hidden';
-    } else {
-      body.classList.remove(LOCK_CLASS);
-      body.style.overflow = '';
-    }
-  };
-
-  const hideDialog = () => {
-    if (!dialog) {
-      return;
-    }
-
-    dialog.classList.remove('is-visible');
-    dialog.setAttribute('aria-hidden', 'true');
-    setBodyLock(false);
-  };
-
-  const showDialog = () => {
-    if (!dialog) {
-      return;
-    }
-
-    dialog.classList.add('is-visible');
-    dialog.setAttribute('aria-hidden', 'false');
-    setBodyLock(true);
-  };
-
-  const updateLabel = (type) => {
-    if (!typeLabel) {
-      return;
-    }
-
-    const text = type === 'business' && BUSINESS_LABEL !== '' ? BUSINESS_LABEL : PRIVATE_LABEL;
-    if (text !== '') {
-      typeLabel.textContent = text;
-    }
-  };
 
   const focusCompanySection = () => {
     if (companyNameInput) {
       companyNameInput.focus();
+    }
+  };
+
+  const updateIndicator = (type) => {
+    if (!switchContainer || !switchIndicator) {
+      return;
+    }
+
+    const options = Array.from(switchContainer.querySelectorAll('[data-customer-type-option]'));
+    const index = options.findIndex((option) => normalizeType(option.getAttribute('data-customer-type-option')) === type);
+
+  if (index >= 0) {
+      switchIndicator.style.transform = `translateX(${index * 100}%)`;
     }
   };
 
@@ -83,16 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const buttonType = normalizeType(button.getAttribute('data-customer-type-option'));
       const isActive = buttonType === normalizedType;
       button.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      button.classList.toggle('is-active', isActive);
+      button.tabIndex = isActive ? 0 : -1;
     });
 
-    updateLabel(normalizedType);
+    updateIndicator(normalizedType);
 
     if (normalizedType === 'business' && companyContactInput && companyContactInput.value.trim() === '' && fullNameInput) {
       companyContactInput.value = fullNameInput.value;
-    }
-
-    if (options.closeDialog !== false) {
-      hideDialog();
     }
 
     if (options.focusCompany && normalizedType === 'business') {
@@ -103,49 +65,36 @@ document.addEventListener('DOMContentLoaded', () => {
   typeButtons.forEach((button) => {
     button.addEventListener('click', () => {
       const buttonType = button.getAttribute('data-customer-type-option');
-      updateType(buttonType, { closeDialog: false, focusCompany: true });
+      updateType(buttonType, { focusCompany: true });
     });
   });
 
-  dialogChoices.forEach((choice) => {
-    choice.addEventListener('click', () => {
-      const choiceType = choice.getAttribute('data-customer-type-choice');
-      updateType(choiceType, { focusCompany: true });
-    });
-  });
+  if (switchContainer) {
+    switchContainer.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+        return;
+      }
 
-  dialogCloseButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      hideDialog();
-    });
-  });
+  event.preventDefault();
 
-  if (dialog) {
-    dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) {
-        hideDialog();
+  const buttons = switchButtons.length > 0 ? switchButtons : typeButtons;
+      if (buttons.length === 0) {
+        return;
+      }
+
+      const activeIndex = buttons.findIndex((button) => button.classList.contains('is-active'));
+      const direction = event.key === 'ArrowLeft' ? -1 : 1;
+      const nextIndex = activeIndex === -1
+        ? (direction === -1 ? buttons.length - 1 : 0)
+        : (activeIndex + direction + buttons.length) % buttons.length;
+
+  const nextButton = buttons[nextIndex];
+      if (nextButton) {
+        nextButton.focus();
+        updateType(nextButton.getAttribute('data-customer-type-option'));
       }
     });
   }
 
-  if (openDialogButton) {
-    openDialogButton.addEventListener('click', () => {
-      showDialog();
-    });
-  }
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      hideDialog();
-    }
-  });
-
-  // Ensure the correct label is applied on load.
-  if (typeInput) {
-    updateLabel(normalizeType(typeInput.value));
-  }
-
-  if (dialog && dialog.classList.contains('is-visible')) {
-    setBodyLock(true);
-  }
+  updateType(normalizeType(typeInput ? typeInput.value : 'private'));
 });

@@ -446,11 +446,13 @@ return [
                     'title' => 'Klient prywatny',
                     'description' => 'Osoby korzystające z prywatnych danych kontaktowych.',
                     'label' => 'Prywatny',
+                    'short' => 'Prywatny',
                 ],
                 'business' => [
                     'title' => 'Klient firmowy',
                     'description' => 'Firmy wymagające danych do fakturowania.',
                     'label' => 'Firmowy',
+                    'short' => 'Firmowy',
                 ],
             ],
             'sections' => [

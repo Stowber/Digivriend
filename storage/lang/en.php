@@ -446,11 +446,13 @@ return [
                     'title' => 'Private customer',
                     'description' => 'Individuals using their personal contact details.',
                     'label' => 'Private',
+                    'short' => 'Private',
                 ],
                 'business' => [
                     'title' => 'Business customer',
                     'description' => 'Companies that require linked invoicing information.',
                     'label' => 'Business',
+                    'short' => 'Business',
                 ],
             ],
             'sections' => [
