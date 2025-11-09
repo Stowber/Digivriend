@@ -296,9 +296,6 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
           <button type="button" class="btn btn--ghost" data-modal-target="customer-company-modal">
             <?= htmlspecialchars($company !== null ? __('customers.profile.company.edit_button') : __('customers.profile.company.add_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
-          <button type="button" class="btn btn--ghost" data-modal-target="customer-personal-modal">
-            <?= htmlspecialchars(__('customers.profile.edit.button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </button>
         </div>
       </header>
 
