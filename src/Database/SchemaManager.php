@@ -31,6 +31,7 @@ final class SchemaManager
         self::ensureCoreCustomerColumns($pdo);
         self::ensureCustomerCodeColumn($pdo);
         self::ensureOphaalbevestigingenTable($pdo);
+        self::ensureCustomerCompanyTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
         self::ensureDataRecoveryTable($pdo);
         self::ensureNotificationTable($pdo);
@@ -167,6 +168,99 @@ final class SchemaManager
         }
     }
 
+    private static function ensureCustomerCompanyTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS customer_companies (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    kvk TEXT NOT NULL,
+                    btw TEXT NULL,
+                    contact_person TEXT NOT NULL,
+                    email TEXT NULL,
+                    phone TEXT NULL,
+                    address TEXT NULL,
+                    postal_code TEXT NULL,
+                    city TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_customer_companies_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+                )
+            SQL);
+
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_companies_customer ON customer_companies(customer_id)');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS customer_companies (
+                    id SERIAL PRIMARY KEY,
+                    customer_id INT NOT NULL,
+                    name VARCHAR(191) NOT NULL,
+                    kvk VARCHAR(32) NOT NULL,
+                    btw VARCHAR(32) NULL,
+                    contact_person VARCHAR(191) NOT NULL,
+                    email VARCHAR(191) NULL,
+                    phone VARCHAR(64) NULL,
+                    address VARCHAR(255) NULL,
+                    postal_code VARCHAR(32) NULL,
+                    city VARCHAR(120) NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL);
+
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE customer_companies ADD CONSTRAINT fk_customer_companies_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
+                ['duplicate', 'already exists']
+            );
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'CREATE UNIQUE INDEX idx_customer_companies_customer ON customer_companies(customer_id)',
+                ['duplicate', 'already exists']
+            );
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS customer_companies (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                customer_id INT UNSIGNED NOT NULL,
+                name VARCHAR(191) NOT NULL,
+                kvk VARCHAR(32) NOT NULL,
+                btw VARCHAR(32) NULL,
+                contact_person VARCHAR(191) NOT NULL,
+                email VARCHAR(191) NULL,
+                phone VARCHAR(64) NULL,
+                address VARCHAR(255) NULL,
+                postal_code VARCHAR(32) NULL,
+                city VARCHAR(120) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY idx_customer_companies_customer (customer_id),
+                CONSTRAINT fk_customer_companies_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE customer_companies ADD CONSTRAINT fk_customer_companies_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE',
+            ['duplicate', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'CREATE UNIQUE INDEX idx_customer_companies_customer ON customer_companies(customer_id)',
+            ['duplicate', 'already exists']
+        );
+    }
 
     private static function ensurePcBuildEnhancements(PDO $pdo): void
     {
