@@ -7,6 +7,7 @@ use App\Http\Response;
 use App\Security\Csrf;
 use App\Support\Lang\Translator;
 use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\CustomerCompanyRepository;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Documents\DocumentRepository;
 use App\Validation\InputValidator;
@@ -16,6 +17,7 @@ require __DIR__ . '/auth.php';
 require_once __DIR__ . '/templates/partials/main-nav.php';
 
 $customerRepository = new CustomerRepository($pdo);
+$customerCompanyRepository = new CustomerCompanyRepository($pdo);
 $caseRepository = new CaseRepository($pdo);
 $documentRepository = new DocumentRepository($pdo);
 
@@ -30,7 +32,11 @@ if ($customer === null) {
 }
 
 $csrfToken = Csrf::token();
-$errors = [];
+$profileErrors = [];
+$companyErrors = [];
+$generalError = '';
+$companyGeneralError = '';
+$companyModalShouldOpen = false;
 $successMessage = '';
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 if ($created) {
@@ -68,37 +74,124 @@ if ($trimmedName !== '') {
     }
 }
 
+$company = $customerCompanyRepository->findByCustomerId((int) $customer['id']);
+
+$companyFormData = [
+    'company_name' => (string) ($company['name'] ?? ''),
+    'company_kvk' => (string) ($company['kvk'] ?? ''),
+    'company_btw' => (string) ($company['btw'] ?? ''),
+    'company_contact_person' => (string) ($company['contact_person'] ?? $fullName),
+    'company_email' => (string) ($company['email'] ?? ($customer['email'] ?? '')),
+    'company_phone' => (string) ($company['phone'] ?? ($customer['phone'] ?? '')),
+    'company_address' => (string) ($company['address'] ?? ''),
+    'company_postal_code' => (string) ($company['postal_code'] ?? ''),
+    'company_city' => (string) ($company['city'] ?? ''),
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
-        $errors['general'] = __('messages.session_expired');
+        $generalError = __('messages.session_expired');
     } else {
-        try {
-            $fullName = InputValidator::requireString($_POST, 'full_name', 191);
-            $email = InputValidator::requireEmail($_POST, 'email', 191);
-            $phone = InputValidator::requirePhone($_POST, 'phone', 32);
-            $address = InputValidator::requireString($_POST, 'address', 255);
-            $postalCode = InputValidator::requireString($_POST, 'postal_code', 16);
-            $city = InputValidator::requireString($_POST, 'city', 120);
+        $formType = isset($_POST['form_type']) ? (string) $_POST['form_type'] : 'profile';
 
-            $customerRepository->updateProfile(
-                (int) $customer['id'],
-                $fullName,
-                $email,
-                $phone,
-                $address,
-                $postalCode,
-                $city
-            );
+        if ($formType === 'company') {
+            try {
+                $companyFormData['company_name'] = InputValidator::requireString($_POST, 'company_name', 191);
+                $companyFormData['company_kvk'] = InputValidator::requireString($_POST, 'company_kvk', 32);
+                $companyFormData['company_btw'] = InputValidator::optionalString($_POST, 'company_btw', 32);
+                $companyFormData['company_contact_person'] = InputValidator::requireString($_POST, 'company_contact_person', 191);
+                $companyFormData['company_email'] = InputValidator::optionalEmail($_POST, 'company_email', 191);
+                $companyFormData['company_phone'] = InputValidator::optionalPhone($_POST, 'company_phone', 32);
+                $companyFormData['company_address'] = InputValidator::optionalString($_POST, 'company_address', 255);
+                $companyFormData['company_postal_code'] = InputValidator::optionalString($_POST, 'company_postal_code', 16);
+                $companyFormData['company_city'] = InputValidator::optionalString($_POST, 'company_city', 120);
 
-            $customer = $customerRepository->findById((int) $customer['id']);
-            $successMessage = __('customers.messages.updated');
-        } catch (ValidationException $exception) {
-            $errors = $exception->errors();
-        } catch (Throwable $exception) {
-            $errors['general'] = __('customers.messages.update_failed');
+                if ($companyFormData['company_address'] === '' && isset($customer['address'])) {
+                    $companyFormData['company_address'] = (string) $customer['address'];
+                }
+
+                if ($companyFormData['company_postal_code'] === '' && isset($customer['postal_code'])) {
+                    $companyFormData['company_postal_code'] = (string) $customer['postal_code'];
+                }
+
+                if ($companyFormData['company_city'] === '' && isset($customer['city'])) {
+                    $companyFormData['company_city'] = (string) $customer['city'];
+                }
+
+                $company = $customerCompanyRepository->upsert(
+                    (int) $customer['id'],
+                    $companyFormData['company_name'],
+                    $companyFormData['company_kvk'],
+                    $companyFormData['company_btw'] !== '' ? $companyFormData['company_btw'] : null,
+                    $companyFormData['company_contact_person'],
+                    $companyFormData['company_email'] !== '' ? $companyFormData['company_email'] : null,
+                    $companyFormData['company_phone'] !== '' ? $companyFormData['company_phone'] : null,
+                    $companyFormData['company_address'] !== '' ? $companyFormData['company_address'] : null,
+                    $companyFormData['company_postal_code'] !== '' ? $companyFormData['company_postal_code'] : null,
+                    $companyFormData['company_city'] !== '' ? $companyFormData['company_city'] : null
+                );
+
+                $successMessage = __('customers.messages.company_saved');
+            } catch (ValidationException $exception) {
+                $companyErrors = $exception->errors();
+                $companyModalShouldOpen = true;
+            } catch (Throwable $exception) {
+                $companyGeneralError = __('customers.messages.company_failed');
+                $companyModalShouldOpen = true;
+            }
+        } else {
+            try {
+                $fullName = InputValidator::requireString($_POST, 'full_name', 191);
+                $email = InputValidator::requireEmail($_POST, 'email', 191);
+                $phone = InputValidator::requirePhone($_POST, 'phone', 32);
+                $address = InputValidator::requireString($_POST, 'address', 255);
+                $postalCode = InputValidator::requireString($_POST, 'postal_code', 16);
+                $city = InputValidator::requireString($_POST, 'city', 120);
+
+                $customerRepository->updateProfile(
+                    (int) $customer['id'],
+                    $fullName,
+                    $email,
+                    $phone,
+                    $address,
+                    $postalCode,
+                    $city
+                );
+
+                $customer = $customerRepository->findById((int) $customer['id']);
+                $company = $customerCompanyRepository->findByCustomerId((int) $customer['id']);
+
+                $successMessage = __('customers.messages.updated');
+            } catch (ValidationException $exception) {
+                $profileErrors = $exception->errors();
+            } catch (Throwable $exception) {
+                $generalError = __('customers.messages.update_failed');
+            }
         }
     }
 }
+
+if ($company !== null) {
+    $companyFormData = [
+        'company_name' => (string) ($company['name'] ?? ''),
+        'company_kvk' => (string) ($company['kvk'] ?? ''),
+        'company_btw' => (string) ($company['btw'] ?? ''),
+        'company_contact_person' => (string) ($company['contact_person'] ?? $fullName),
+        'company_email' => (string) ($company['email'] ?? ''),
+        'company_phone' => (string) ($company['phone'] ?? ''),
+        'company_address' => (string) ($company['address'] ?? ''),
+        'company_postal_code' => (string) ($company['postal_code'] ?? ''),
+        'company_city' => (string) ($company['city'] ?? ''),
+    ];
+} elseif (!isset($companyFormData['company_contact_person']) || $companyFormData['company_contact_person'] === '') {
+    $companyFormData['company_contact_person'] = $fullName;
+}
+
+$companyAddressDefaults = [
+    'address' => (string) ($customer['address'] ?? ''),
+    'postal_code' => (string) ($customer['postal_code'] ?? ''),
+    'city' => (string) ($customer['city'] ?? ''),
+];
 
 $cases = $caseRepository->forCustomer((int) $customer['id'], 25);
 $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
@@ -172,6 +265,9 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
           <p><?= htmlspecialchars(__('customers.profile.details.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         </div>
         <div class="card__header-actions">
+          <button type="button" class="btn btn--ghost" data-modal-target="customer-company-modal">
+            <?= htmlspecialchars($company !== null ? __('customers.profile.company.edit_button') : __('customers.profile.company.add_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </button>
           <button type="button" class="btn btn--secondary" data-modal-target="customer-edit-modal" data-customer-edit-trigger>
             <?= htmlspecialchars(__('customers.profile.edit.button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
@@ -184,66 +280,152 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
         </div>
       <?php endif; ?>
 
-      <?php if (!empty($errors['general'])): ?>
+      <?php if ($generalError !== ''): ?>
         <div class="alert alert--danger">
-          <?= htmlspecialchars((string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          <?= htmlspecialchars($generalError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </div>
       <?php endif; ?>
 
-      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="form-grid" data-customer-profile-form>
+      <?php if ($companyGeneralError !== ''): ?>
+        <div class="alert alert--danger">
+          <?= htmlspecialchars($companyGeneralError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+        </div>
+        <?php endif; ?>
+
+      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="profile-contact-form" data-customer-profile-form>
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-        <div class="form-field form-field--wide">
-          <label for="customerFullName"><?= htmlspecialchars(__('customers.form.full_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerFullName" type="text" name="full_name" value="<?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="name" data-customer-editable disabled>
-          <?php if (!empty($errors['full_name'])): ?>
-            <p class="form-error"><?= htmlspecialchars((string) $errors['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          <?php endif; ?>
+        <input type="hidden" name="form_type" value="profile">
+
+        <div class="profile-contact-form__section">
+          <div class="profile-contact-form__header">
+            <h3><?= htmlspecialchars(__('customers.profile.personal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(__('customers.profile.personal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
+          <div class="profile-contact-form__fields form-grid">
+            <div class="form-field form-field--wide">
+              <label for="customerFullName"><?= htmlspecialchars(__('customers.form.full_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerFullName" type="text" name="full_name" value="<?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="name" data-customer-editable disabled>
+              <?php if (!empty($profileErrors['full_name'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerEmail"><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerEmail" type="email" name="email" value="<?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="email" data-customer-editable disabled>
+              <?php if (!empty($profileErrors['email'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerPhone"><?= htmlspecialchars(__('customers.form.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerPhone" type="tel" name="phone" value="<?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32" autocomplete="tel" data-customer-editable disabled>
+              <?php if (!empty($profileErrors['phone'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field form-field--wide">
+              <label for="customerAddress"><?= htmlspecialchars(__('customers.form.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerAddress" type="text" name="address" value="<?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="255" autocomplete="street-address" data-customer-editable disabled>
+              <?php if (!empty($profileErrors['address'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerPostal"><?= htmlspecialchars(__('customers.form.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerPostal" type="text" name="postal_code" value="<?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="16" autocomplete="postal-code" data-customer-editable disabled>
+              <?php if (!empty($profileErrors['postal_code'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="customerCity"><?= htmlspecialchars(__('customers.form.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="customerCity" type="text" name="city" value="<?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="120" autocomplete="address-level2" data-customer-editable disabled>
+              <?php if (!empty($profileErrors['city'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $profileErrors['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+          </div>
         </div>
-        <div class="form-field">
-          <label for="customerEmail"><?= htmlspecialchars(__('customers.form.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerEmail" type="email" name="email" value="<?= htmlspecialchars((string) ($customer['email'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191" autocomplete="email" data-customer-editable disabled>
-          <?php if (!empty($errors['email'])): ?>
-            <p class="form-error"><?= htmlspecialchars((string) $errors['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          <?php endif; ?>
-        </div>
-        <div class="form-field">
-          <label for="customerPhone"><?= htmlspecialchars(__('customers.form.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerPhone" type="tel" name="phone" value="<?= htmlspecialchars((string) ($customer['phone'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32" autocomplete="tel" data-customer-editable disabled>
-          <?php if (!empty($errors['phone'])): ?>
-            <p class="form-error"><?= htmlspecialchars((string) $errors['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          <?php endif; ?>
-        </div>
-        <div class="form-field form-field--wide">
-          <label for="customerAddress"><?= htmlspecialchars(__('customers.form.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerAddress" type="text" name="address" value="<?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="255" autocomplete="street-address" data-customer-editable disabled>
-          <?php if (!empty($errors['address'])): ?>
-            <p class="form-error"><?= htmlspecialchars((string) $errors['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          <?php endif; ?>
-        </div>
-        <div class="form-field">
-          <label for="customerPostal"><?= htmlspecialchars(__('customers.form.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerPostal" type="text" name="postal_code" value="<?= htmlspecialchars((string) ($customer['postal_code'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="16" autocomplete="postal-code" data-customer-editable disabled>
-          <?php if (!empty($errors['postal_code'])): ?>
-            <p class="form-error"><?= htmlspecialchars((string) $errors['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          <?php endif; ?>
-        </div>
-        <div class="form-field">
-          <label for="customerCity"><?= htmlspecialchars(__('customers.form.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
-          <input id="customerCity" type="text" name="city" value="<?= htmlspecialchars((string) ($customer['city'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="120" autocomplete="address-level2" data-customer-editable disabled>
-          <?php if (!empty($errors['city'])): ?>
-            <p class="form-error"><?= htmlspecialchars((string) $errors['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          <?php endif; ?>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn--ghost" data-customer-edit-cancel hidden disabled>
+        <div class="form-actions" data-customer-edit-actions hidden>
+          <button type="button" class="btn btn--ghost" data-customer-edit-cancel disabled>
             <?= htmlspecialchars(__('customers.profile.edit.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
-          <a href="customers.php" class="btn btn--ghost"><?= htmlspecialchars(__('customers.form.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
           <button type="submit" class="btn btn--primary" data-customer-edit-save disabled>
             <?= htmlspecialchars(__('customers.form.save'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </button>
         </div>
       </form>
+
+      <div class="profile-company" data-company-panel>
+        <div class="profile-company__header">
+          <div>
+            <h3><?= htmlspecialchars(__('customers.profile.company.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(__('customers.profile.company.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
+          <span class="profile-company__badge<?= $company !== null ? '' : ' profile-company__badge--muted' ?>">
+            <?= htmlspecialchars($company !== null ? __('customers.profile.company.linked') : __('customers.profile.company.unlinked'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </span>
+        </div>
+
+        <?php if ($company !== null): ?>
+          <dl class="profile-company__details">
+            <div class="profile-company__row">
+              <dt><?= htmlspecialchars(__('customers.profile.company.company_name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd><?= htmlspecialchars((string) ($company['name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+            <div class="profile-company__row">
+              <dt><?= htmlspecialchars(__('customers.profile.company.contact_person'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd><?= htmlspecialchars((string) ($company['contact_person'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+            <div class="profile-company__row profile-company__row--split">
+              <div>
+                <dt><?= htmlspecialchars(__('customers.profile.company.kvk'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                <dd><?= htmlspecialchars((string) ($company['kvk'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+              </div>
+              <div>
+                <dt><?= htmlspecialchars(__('customers.profile.company.btw'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                <dd><?= htmlspecialchars((string) (($company['btw'] ?? '') !== '' ? $company['btw'] : __('customers.profile.company.empty_value')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+              </div>
+            </div>
+            <div class="profile-company__row profile-company__row--split">
+              <div>
+                <dt><?= htmlspecialchars(__('customers.profile.company.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                <dd><?= htmlspecialchars((string) (($company['email'] ?? '') !== '' ? $company['email'] : __('customers.profile.company.empty_value')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+              </div>
+              <div>
+                <dt><?= htmlspecialchars(__('customers.profile.company.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+                <dd><?= htmlspecialchars((string) (($company['phone'] ?? '') !== '' ? $company['phone'] : __('customers.profile.company.empty_value')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+              </div>
+            </div>
+            <div class="profile-company__row">
+              <dt><?= htmlspecialchars(__('customers.profile.company.private_address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd>
+                <span><?= htmlspecialchars((string) ($customer['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><br>
+                <span><?= htmlspecialchars(trim(((string) ($customer['postal_code'] ?? '')) . ' ' . ((string) ($customer['city'] ?? ''))), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              </dd>
+            </div>
+            <div class="profile-company__row">
+              <dt><?= htmlspecialchars(__('customers.profile.company.company_address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
+              <dd>
+                <span><?= htmlspecialchars((string) ($company['address'] ?? ($customer['address'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span><br>
+                <span><?= htmlspecialchars(trim(((string) (($company['postal_code'] ?? '') !== '' ? $company['postal_code'] : ($customer['postal_code'] ?? ''))) . ' ' . ((string) (($company['city'] ?? '') !== '' ? $company['city'] : ($customer['city'] ?? '')))), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              </dd>
+            </div>
+            <div class="profile-company__actions">
+              <button type="button" class="btn btn--secondary" data-modal-target="customer-company-modal">
+                <?= htmlspecialchars(__('customers.profile.company.edit_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </button>
+            </div>
+          </dl>
+        <?php else: ?>
+          <div class="profile-company__empty">
+            <p><?= htmlspecialchars(__('customers.profile.company.empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            <button type="button" class="btn btn--secondary" data-modal-target="customer-company-modal">
+              <?= htmlspecialchars(__('customers.profile.company.add_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </button>
+          </div>
+        <?php endif; ?>
+      </div>
     </section>
 
     <section class="card profile-card profile-card--table">
@@ -335,6 +517,116 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
       <p><?= htmlspecialchars(__('customers.profile.invoices.placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
     </section>
   </main>
+  <div class="modal" id="customer-company-modal" role="dialog" aria-modal="true" aria-labelledby="customer-company-modal-title">
+    <div class="modal__panel">
+      <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post">
+        <div class="modal__header">
+          <h2 id="customer-company-modal-title"><?= htmlspecialchars(__('customers.profile.company_modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+          <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
+        </div>
+        <div class="modal__body">
+          <p><?= htmlspecialchars(__('customers.profile.company_modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="form_type" value="company">
+          <div class="form-grid company-form">
+            <div class="form-field form-field--wide">
+              <label for="companyName"><?= htmlspecialchars(__('customers.profile.company_modal.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="companyName" type="text" name="company_name" value="<?= htmlspecialchars($companyFormData['company_name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191">
+              <?php if (!empty($companyErrors['company_name'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="companyKvk"><?= htmlspecialchars(__('customers.profile.company_modal.kvk'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="companyKvk" type="text" name="company_kvk" value="<?= htmlspecialchars($companyFormData['company_kvk'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="32">
+              <?php if (!empty($companyErrors['company_kvk'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_kvk'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="companyBtw"><?= htmlspecialchars(__('customers.profile.company_modal.btw'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="companyBtw" type="text" name="company_btw" value="<?= htmlspecialchars($companyFormData['company_btw'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="32">
+              <?php if (!empty($companyErrors['company_btw'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_btw'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field form-field--wide">
+              <label for="companyContactPerson"><?= htmlspecialchars(__('customers.profile.company_modal.contact_person'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="companyContactPerson" type="text" name="company_contact_person" value="<?= htmlspecialchars($companyFormData['company_contact_person'] ?? $fullName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required maxlength="191">
+              <?php if (!empty($companyErrors['company_contact_person'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_contact_person'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="companyEmail"><?= htmlspecialchars(__('customers.profile.company_modal.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="companyEmail" type="email" name="company_email" value="<?= htmlspecialchars($companyFormData['company_email'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="191">
+              <?php if (!empty($companyErrors['company_email'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+            <div class="form-field">
+              <label for="companyPhone"><?= htmlspecialchars(__('customers.profile.company_modal.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+              <input id="companyPhone" type="tel" name="company_phone" value="<?= htmlspecialchars($companyFormData['company_phone'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="32">
+              <?php if (!empty($companyErrors['company_phone'])): ?>
+                <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <?php endif; ?>
+            </div>
+          </div>
+
+          <?php $companyAddressVisible = ($companyFormData['company_address'] ?? '') !== '' || ($companyFormData['company_postal_code'] ?? '') !== '' || ($companyFormData['company_city'] ?? '') !== ''; ?>
+          <div class="company-address-toggle">
+            <button
+              type="button"
+              class="btn btn--ghost"
+              data-company-address-toggle
+              data-label-add="<?= htmlspecialchars(__('customers.profile.company_modal.add_address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+              data-label-hide="<?= htmlspecialchars(__('customers.profile.company_modal.hide_address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+              data-address-expanded="<?= $companyAddressVisible ? 'true' : 'false' ?>"
+              aria-expanded="<?= $companyAddressVisible ? 'true' : 'false' ?>"
+            >
+              <?= htmlspecialchars($companyAddressVisible ? __('customers.profile.company_modal.hide_address') : __('customers.profile.company_modal.add_address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </button>
+          </div>
+
+          <div
+            class="company-address-fields<?= $companyAddressVisible ? ' is-visible' : '' ?>"
+            data-company-address-fields<?= $companyAddressVisible ? '' : ' hidden' ?>
+            data-default-address="<?= htmlspecialchars($companyAddressDefaults['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            data-default-postal="<?= htmlspecialchars($companyAddressDefaults['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            data-default-city="<?= htmlspecialchars($companyAddressDefaults['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+          >
+            <div class="form-grid">
+              <div class="form-field form-field--wide">
+                <label for="companyAddress"><?= htmlspecialchars(__('customers.profile.company_modal.address'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                <input id="companyAddress" type="text" name="company_address" value="<?= htmlspecialchars($companyFormData['company_address'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="255"<?= $companyAddressVisible ? '' : ' disabled' ?>>
+                <?php if (!empty($companyErrors['company_address'])): ?>
+                  <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <?php endif; ?>
+              </div>
+              <div class="form-field">
+                <label for="companyPostalCode"><?= htmlspecialchars(__('customers.profile.company_modal.postal_code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                <input id="companyPostalCode" type="text" name="company_postal_code" value="<?= htmlspecialchars($companyFormData['company_postal_code'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="16"<?= $companyAddressVisible ? '' : ' disabled' ?>>
+                <?php if (!empty($companyErrors['company_postal_code'])): ?>
+                  <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <?php endif; ?>
+              </div>
+              <div class="form-field">
+                <label for="companyCity"><?= htmlspecialchars(__('customers.profile.company_modal.city'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></label>
+                <input id="companyCity" type="text" name="company_city" value="<?= htmlspecialchars($companyFormData['company_city'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="120"<?= $companyAddressVisible ? '' : ' disabled' ?>>
+                <?php if (!empty($companyErrors['company_city'])): ?>
+                  <p class="form-error"><?= htmlspecialchars((string) $companyErrors['company_city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('customers.form.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+          <button type="submit" class="btn btn--primary"><?= htmlspecialchars(__('customers.profile.company_modal.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+        </div>
+      </form>
+    </div>
+  </div>
   <div class="modal" id="customer-edit-modal" role="dialog" aria-modal="true" aria-labelledby="customer-edit-modal-title">
     <div class="modal__panel">
       <div class="modal__header">
@@ -353,5 +645,21 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
 
   <script src="js/modals.js"></script>
   <script src="js/customer-profile.js"></script>
+  <?php if ($companyModalShouldOpen): ?>
+    <script>
+      (function () {
+        const modal = document.getElementById('customer-company-modal');
+        if (!modal) {
+          return;
+        }
+        modal.classList.add('is-visible');
+        document.body.classList.add('modal-open');
+        const firstField = modal.querySelector('input, select, textarea, button:not([data-modal-close])');
+        if (firstField) {
+          firstField.focus({ preventScroll: true });
+        }
+      })();
+    </script>
+  <?php endif; ?>
 </body>
 </html>
