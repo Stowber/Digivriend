@@ -26,7 +26,8 @@
     error: modal.dataset.errorMessage || 'Registration failed. Please try again.',
     success: modal.dataset.successMessage || 'Intake saved successfully.',
     exception: modal.dataset.exceptionMessage || 'An error occurred while saving. Check the details and try again.',
-    unknown: modal.dataset.unknownValue || 'Unknown'
+    unknown: modal.dataset.unknownValue || 'Unknown',
+    suspiciousLabel: modal.dataset.suspiciousLabel || 'Warning'
   };
   const resultPlaceholder = resultSection ? resultSection.getAttribute('data-placeholder') || '-' : '-';
 
@@ -52,6 +53,7 @@
   const customerEmpty = $('[data-customer-empty]', form);
   const customerSelected = $('[data-customer-selected]', form);
   const customerIdInput = $('[data-customer-id]', form);
+  const customerWarningNode = $('[data-customer-warning]', form);
   const customerSelectedFields = {
     code: $('[data-selected-code]', form),
     name: $('[data-selected-name]', form),
@@ -65,6 +67,9 @@
     : translations.unknown;
   const customerRequiredMessage = customerIdInput
     ? customerIdInput.getAttribute('data-customer-required-message') || translations.error
+    : translations.error;
+  const suspiciousBlockedMessage = customerIdInput
+    ? customerIdInput.getAttribute('data-suspicious-blocked-message') || translations.error
     : translations.error;
   let customerSearchTimer = null;
   let customerSearchSequence = 0;
@@ -182,6 +187,15 @@
         }
         return false;
       }
+      if (customerIdInput.dataset.blockedIntake === 'true') {
+        const warning = customerIdInput.dataset.suspiciousWarning || suspiciousBlockedMessage;
+        showFeedback(warning, 'error');
+        if (customerWarningNode) {
+          customerWarningNode.textContent = warning;
+          customerWarningNode.hidden = false;
+        }
+        return false;
+      }
     }
     if (stepKey === 'visit') {
       syncAppointment();
@@ -226,6 +240,8 @@
   function clearCustomerSelection(silent) {
     if (customerIdInput) {
       customerIdInput.value = '';
+      delete customerIdInput.dataset.blockedIntake;
+      delete customerIdInput.dataset.suspiciousWarning;
     }
     if (customerSearchInput) {
       customerSearchInput.value = '';
@@ -239,6 +255,10 @@
     }
     if (customerSelected) {
       customerSelected.hidden = true;
+    }
+    if (customerWarningNode) {
+      customerWarningNode.textContent = '';
+      customerWarningNode.hidden = true;
     }
     Object.keys(customerSelectedFields).forEach(function (key) {
       const field = customerSelectedFields[key];
@@ -287,6 +307,12 @@
       meta.textContent = metaParts.join(' • ');
       button.appendChild(name);
       button.appendChild(meta);
+      if (entry.suspicious && entry.suspicious.active) {
+        const badge = document.createElement('span');
+        badge.className = 'customer-picker__result-badge';
+        badge.textContent = translations.suspiciousLabel;
+        button.appendChild(badge);
+      }
       button.addEventListener('click', function () {
         selectCustomer(entry);
       });
@@ -340,6 +366,29 @@
     }
     if (customerSelectedFields.address) {
       customerSelectedFields.address.textContent = addressParts.join(' • ') || customerSelectedEmptyText;
+    }
+    const suspicious = entry && entry.suspicious ? entry.suspicious : {};
+    const blocked = Boolean(suspicious.active && suspicious.intake_blocked);
+    const warningText = suspicious.warning || '';
+    if (customerIdInput) {
+      customerIdInput.dataset.blockedIntake = blocked ? 'true' : 'false';
+      if (warningText) {
+        customerIdInput.dataset.suspiciousWarning = warningText;
+      } else if (customerIdInput.dataset.suspiciousWarning) {
+        delete customerIdInput.dataset.suspiciousWarning;
+      }
+    }
+    if (customerWarningNode) {
+      if (warningText) {
+        customerWarningNode.textContent = warningText;
+        customerWarningNode.hidden = false;
+      } else if (blocked) {
+        customerWarningNode.textContent = suspiciousBlockedMessage;
+        customerWarningNode.hidden = false;
+      } else {
+        customerWarningNode.textContent = '';
+        customerWarningNode.hidden = true;
+      }
     }
     clearFeedback();
   }
@@ -467,6 +516,12 @@
     syncAppointment();
     const currentPanel = panels[activeStep];
     if (!validatePanel(currentPanel, activeStep)) {
+      return;
+    }
+
+    if (customerIdInput && customerIdInput.dataset.blockedIntake === 'true') {
+      const warning = customerIdInput.dataset.suspiciousWarning || suspiciousBlockedMessage;
+      showFeedback(warning, 'error');
       return;
     }
 

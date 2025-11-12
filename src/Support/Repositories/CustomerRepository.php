@@ -6,6 +6,7 @@ namespace App\Support\Repositories;
 
 use App\Support\Clock;
 use App\Support\Customers\CustomerCodeGenerator;
+use App\Support\Customers\SuspiciousFlagRegistry;
 use PDO;
 
 final class CustomerRepository
@@ -21,7 +22,7 @@ final class CustomerRepository
     {
         $limit = max(1, min(500, $limit));
 
-        $sql = 'SELECT id, customer_code, customer_type, is_suspicious, suspicious_reason, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
+        $sql = 'SELECT id, customer_code, customer_type, is_suspicious, suspicious_reason, suspicious_flags, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
         $conditions = [];
         $params = [];
 
@@ -169,12 +170,23 @@ final class CustomerRepository
         ]);
     }
 
-    public function markSuspicious(int $customerId, string $reason): void
+    /**
+     * @param array<int, string> $flags
+     */
+    public function markSuspicious(int $customerId, array $flags, string $reason): void
     {
+        $normalizedFlags = SuspiciousFlagRegistry::normalizeFlags($flags);
+
+        if ($normalizedFlags === []) {
+            throw new \InvalidArgumentException('At least one suspicious flag is required.');
+        }
+
+        $encodedFlags = json_encode($normalizedFlags, JSON_THROW_ON_ERROR);
         $statement = $this->pdo->prepare(
             'UPDATE customers
              SET is_suspicious = 1,
                  suspicious_reason = :reason,
+                 suspicious_flags = :flags,
                  updated_at = :updated_at
              WHERE id = :id'
         );
@@ -182,6 +194,7 @@ final class CustomerRepository
         $statement->execute([
             'id' => $customerId,
             'reason' => $reason,
+            'flags' => $encodedFlags,
             'updated_at' => Clock::nowFormatted(),
         ]);
     }
@@ -192,6 +205,7 @@ final class CustomerRepository
             'UPDATE customers
              SET is_suspicious = 0,
                  suspicious_reason = NULL,
+                 suspicious_flags = NULL,
                  updated_at = :updated_at
              WHERE id = :id'
         );

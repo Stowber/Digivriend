@@ -7,6 +7,7 @@ use App\Security\Auth;
 use App\Security\Csrf;
 use App\Support\Audit\AuditLogger;
 use App\Support\Clock;
+use App\Support\Customers\SuspiciousFlagRegistry;
 use App\Support\Documents\DocumentRepository;
 use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\CaseRepository;
@@ -74,6 +75,22 @@ try {
             if ($case !== null) {
                 $customer = $customerRepository->findById((int) $case['customer_id']);
                 if ($customer !== null) {
+                    if (
+                        isset($customer['is_suspicious'])
+                        && (int) $customer['is_suspicious'] === 1
+                        && SuspiciousFlagRegistry::hasBlock(
+                            SuspiciousFlagRegistry::decodeFlags($customer['suspicious_flags'] ?? null),
+                            SuspiciousFlagRegistry::BLOCK_PICKUPS
+                        )
+                    ) {
+                        $reason = trim((string) ($customer['suspicious_reason'] ?? ''));
+                        $reasonText = $reason !== '' ? $reason : __('customers.profile.suspicious.reason_unknown');
+                        $_SESSION['pickup_error'] = __('customers.suspicious.blocked_action', [
+                            'action' => __('customers.profile.suspicious.blocks.pickups.label'),
+                            'reason' => $reasonText,
+                        ]);
+                        Response::redirect('pickup-sign.php?id=' . (int) $idValue);
+                    }
                     $noteRepository->add($caseId, (int) $customer['id'], (string) ($_SESSION['username'] ?? 'Systeem'), sprintf('Ophaalbevestiging ondertekend door %s.', (string) $ophaalRecord['klantnaam']));
                     $signatureDir = __DIR__ . '/storage/documents/signatures';
                     if (!is_dir($signatureDir)) {

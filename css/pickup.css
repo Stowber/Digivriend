@@ -42,4 +42,13 @@
 
 .back-link {
   margin-top: 1.75rem;
+  
+}.signature-stage__alert {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.12);
+  color: rgba(153, 27, 27, 0.95);
+  font-weight: 600;
 }

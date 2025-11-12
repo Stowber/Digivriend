@@ -7,6 +7,7 @@ use App\Http\Response;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Support\Barcode\BarcodeService;
+use App\Support\Customers\SuspiciousFlagRegistry;
 use App\Support\Documents\DocumentRepository;
 use App\Support\Env;
 use App\Support\Notifications\NotificationService;
@@ -93,6 +94,21 @@ $documentRepository = new DocumentRepository($pdo);
 $customer = $customerRepository->findById($customerId ?? 0);
 if ($customer === null) {
     Response::error(['customer_id' => __('intake.form.customer.errors.not_found')], 404);
+}
+
+if (isset($customer['is_suspicious']) && (int) $customer['is_suspicious'] === 1) {
+    $customerFlags = SuspiciousFlagRegistry::decodeFlags($customer['suspicious_flags'] ?? null);
+    if (SuspiciousFlagRegistry::hasBlock($customerFlags, SuspiciousFlagRegistry::BLOCK_INTAKES)) {
+        $reason = trim((string) ($customer['suspicious_reason'] ?? ''));
+        $reasonText = $reason !== '' ? $reason : __('customers.profile.suspicious.reason_unknown');
+        Response::error(
+            __('customers.suspicious.blocked_action', [
+                'action' => __('customers.profile.suspicious.blocks.intakes.label'),
+                'reason' => $reasonText,
+            ]),
+            423
+        );
+    }
 }
 
 $customerName = (string) ($customer['full_name'] ?? 'Onbekende klant');

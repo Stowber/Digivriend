@@ -10,6 +10,8 @@ require_once __DIR__ . '/templates/partials/main-nav.php';
 
 $csrfToken = Csrf::token();
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
+$pickupError = $_SESSION['pickup_error'] ?? '';
+unset($_SESSION['pickup_error']);
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -44,6 +46,11 @@ $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?? '';
       </div>
 
       <section class="form-shell signature-stage">
+        <?php if ($pickupError !== ''): ?>
+          <div class="alert alert--danger signature-stage__alert">
+            <?= htmlspecialchars($pickupError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </div>
+        <?php endif; ?>
         <div class="signature-board">
           <canvas id="signatureCanvas"></canvas>
         </div>

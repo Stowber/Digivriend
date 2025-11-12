@@ -198,6 +198,7 @@ $feedbackUnknown = __('intake.feedback.unknown');
     data-success-message="<?= htmlspecialchars($feedbackSuccess, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
     data-exception-message="<?= htmlspecialchars($feedbackException, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
     data-unknown-value="<?= htmlspecialchars($feedbackUnknown, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+    data-suspicious-label="<?= htmlspecialchars(__('intake.form.customer.suspicious_badge'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
   >
     <div class="intake-modal__backdrop" data-intake-close aria-hidden="true"></div>
     <div class="intake-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="intakeModalTitle">
@@ -236,7 +237,14 @@ $feedbackUnknown = __('intake.feedback.unknown');
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <section class="intake-form__panel" data-step="customer" aria-label="<?= htmlspecialchars($customerPanelAria, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
             <h3><?= htmlspecialchars($customerPanelTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-            <input type="hidden" name="customer_id" value="" data-customer-id data-customer-required-message="<?= htmlspecialchars(__('intake.form.customer.errors.required'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input
+              type="hidden"
+              name="customer_id"
+              value=""
+              data-customer-id
+              data-customer-required-message="<?= htmlspecialchars(__('intake.form.customer.errors.required'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+              data-suspicious-blocked-message="<?= htmlspecialchars(__('intake.form.customer.suspicious_blocked'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            >
             <div class="customer-picker">
               <label class="form-field form-field--wide">
                 <span><?= htmlspecialchars($customerSearchLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
@@ -258,6 +266,7 @@ $feedbackUnknown = __('intake.feedback.unknown');
                   <h4><?= htmlspecialchars($customerSelectedTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
                   <button type="button" class="btn btn--ghost btn--small" data-customer-clear><?= htmlspecialchars($customerChangeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 </div>
+                <p class="customer-picker__warning" data-customer-warning hidden></p>
                 <dl class="customer-picker__details">
                   <div>
                     <dt><?= htmlspecialchars($customerSelectedFields['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>

@@ -296,6 +296,9 @@ return [
                     'required' => 'Wybierz klienta z listy, aby kontynuować.',
                     'not_found' => 'Wybrany klient nie istnieje.',
                 ],
+                'suspicious_badge' => 'Ostrzeżenie',
+                'suspicious_blocked' => 'Tego klienta nie można obsłużyć bez zgody managera.',
+                'suspicious_warning' => 'Konto zablokowane (powód: :reason). Blokady: :blocks. :contact',
                 'next' => 'Następny krok',
             ],
             'visit' => [
@@ -381,6 +384,9 @@ return [
             'suspicious_cleared' => 'Usunięto oznaczenie klienta jako podejrzanego.',
             'suspicious_clear_failed' => 'Nie udało się usunąć oznaczenia. Spróbuj ponownie.',
         ],
+        'suspicious' => [
+            'blocked_action' => 'Konto klienta jest zablokowane dla akcji: :action. Powód: :reason. W razie pytań skontaktuj się z managerem.',
+        ],
         'validation' => [
             'duplicate_email' => 'Klient z tym adresem e-mail już istnieje. Wybierz go z listy albo użyj innego adresu.',
         ],
@@ -442,6 +448,9 @@ return [
             'suspicious_label' => 'Podejrzany',
             'suspicious_reason_label' => 'Powód',
             'suspicious_reason_empty' => 'Brak podanego powodu.',
+            'suspicious_flags_label' => 'Aktywne ostrzeżenia',
+            'suspicious_blocks_label' => 'Zablokowane działania',
+            'suspicious_contact' => 'Skontaktuj się z managerem przed kontynuacją.',
         ],
         'create' => [
             'meta' => [
@@ -581,6 +590,49 @@ return [
                 'banner_title' => 'Profil oznaczony ostrzeżeniem',
                 'banner_reason' => 'Powód: :reason',
                 'banner_reason_empty' => 'Powód: brak informacji',
+                'flags_label' => 'Wybierz ostrzeżenie',
+                'flags_hint' => 'Wybierz co najmniej jedną opcję. Każda blokada działa natychmiast.',
+                'flags_required' => 'Wybierz co najmniej jedno ostrzeżenie.',
+                'options' => [
+                    'thief' => [
+                        'label' => 'Złodziej',
+                        'description' => 'Przyłapany na kradzieży lub próbie wyniesienia sprzętu.',
+                    ],
+                    'non_payer' => [
+                        'label' => 'Nie płaci',
+                        'description' => 'Odmówił uregulowania należności za wykonane usługi.',
+                    ],
+                    'late_payment' => [
+                        'label' => 'Spóźnia się z płatnościami',
+                        'description' => 'Regularnie zalega z płatnościami lub wymaga windykacji.',
+                    ],
+                    'contract_breaker' => [
+                        'label' => 'Nie dotrzymuje umów',
+                        'description' => 'Łamie ustalenia lub odwołuje wizyty w ostatniej chwili.',
+                    ],
+                ],
+                'blocks' => [
+                    'appointments' => [
+                        'label' => 'Umawianie wizyt',
+                        'description' => 'Nie można planować wizyt ani spotkań z serwisem.',
+                    ],
+                    'intakes' => [
+                        'label' => 'Nowe intake',
+                        'description' => 'Blokuje rejestrowanie nowych intake i spraw.',
+                    ],
+                    'pickups' => [
+                        'label' => 'Wydanie sprzętu',
+                        'description' => 'Wstrzymuje wydanie urządzeń do czasu decyzji managera.',
+                    ],
+                ],
+                'selected_reason_label' => 'Powód ostrzeżenia',
+                'reason_unknown' => 'Brak informacji.',
+                'active_flags_title' => 'Aktywne ostrzeżenia',
+                'blocked_actions_title' => 'Zablokowane działania',
+                'contact_manager' => 'W razie pytań skontaktuj się z managerem.',
+                'option_blocks' => 'Blokuje: :blocks',
+                'intake_blocked' => 'Intake zablokowany',
+                'no_block_summary' => 'Brak zablokowanych działań.',
             ],
             'company_modal' => [
                 'title' => 'Dodaj firmę',

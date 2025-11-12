@@ -224,6 +224,7 @@ final class SchemaManager
         if ($driver === 'sqlite') {
             self::addSqliteColumnIfMissing($pdo, 'customers', 'is_suspicious', 'INTEGER NOT NULL DEFAULT 0');
             self::addSqliteColumnIfMissing($pdo, 'customers', 'suspicious_reason', 'TEXT NULL');
+            self::addSqliteColumnIfMissing($pdo, 'customers', 'suspicious_flags', 'TEXT NULL');
 
             return;
         }
@@ -239,6 +240,11 @@ final class SchemaManager
                 'ALTER TABLE customers ADD COLUMN suspicious_reason VARCHAR(255) NULL',
                 ['duplicate', 'already exists']
             );
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE customers ADD COLUMN suspicious_flags TEXT NULL',
+                ['duplicate', 'already exists']
+            );
 
             return;
         }
@@ -251,6 +257,11 @@ final class SchemaManager
         self::executeIgnoringDuplicates(
             $pdo,
             'ALTER TABLE customers ADD COLUMN suspicious_reason VARCHAR(255) NULL AFTER is_suspicious',
+            ['duplicate', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE customers ADD COLUMN suspicious_flags TEXT NULL AFTER suspicious_reason',
             ['duplicate', 'already exists']
         );
     }

@@ -7,6 +7,7 @@ use App\Http\Response;
 use App\Security\Csrf;
 use App\Support\Lang\Translator;
 use App\Support\Repositories\CaseRepository;
+use App\Support\Customers\SuspiciousFlagRegistry;
 use App\Support\Repositories\CustomerCompanyRepository;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Documents\DocumentRepository;
@@ -44,6 +45,7 @@ $suspiciousGeneralError = '';
 $suspiciousModalShouldOpen = false;
 $suspiciousFormData = [
     'suspicious_reason' => (string) ($customer['suspicious_reason'] ?? ''),
+    'suspicious_flags' => SuspiciousFlagRegistry::decodeFlags($customer['suspicious_flags'] ?? null),
 ];
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 if ($created) {
@@ -179,21 +181,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($formType === 'suspicious_mark') {
             try {
+              $flagsInput = $_POST['suspicious_flags'] ?? [];
+                if (!is_array($flagsInput)) {
+                    throw new ValidationException(['suspicious_flags' => __('customers.profile.suspicious.flags_required')]);
+                }
+
+                $selectedFlags = SuspiciousFlagRegistry::normalizeFlags(array_map('strval', $flagsInput));
+                if ($selectedFlags === []) {
+                    throw new ValidationException(['suspicious_flags' => __('customers.profile.suspicious.flags_required')]);
+                }
                 $reason = InputValidator::requireString($_POST, 'suspicious_reason', 255);
 
-                $customerRepository->markSuspicious((int) $customer['id'], $reason);
+                $customerRepository->markSuspicious((int) $customer['id'], $selectedFlags, $reason);
                 $customer = $customerRepository->findById((int) $customer['id']);
                 $company = $customerCompanyRepository->findByCustomerId((int) $customer['id']);
 
+                $savedSuspiciousFlags = SuspiciousFlagRegistry::decodeFlags($customer['suspicious_flags'] ?? null);
                 $suspiciousFormData['suspicious_reason'] = (string) ($customer['suspicious_reason'] ?? '');
+                $suspiciousFormData['suspicious_flags'] = $savedSuspiciousFlags;
                 $successMessage = __('customers.messages.suspicious_marked');
             } catch (ValidationException $exception) {
                 $suspiciousErrors = $exception->errors();
                 $suspiciousFormData['suspicious_reason'] = (string) ($_POST['suspicious_reason'] ?? '');
+                $suspiciousFormData['suspicious_flags'] = SuspiciousFlagRegistry::normalizeFlags(
+                    is_array($_POST['suspicious_flags'] ?? null)
+                        ? array_map('strval', (array) $_POST['suspicious_flags'])
+                        : []
+                );
                 $suspiciousModalShouldOpen = true;
             } catch (Throwable $exception) {
                 $suspiciousGeneralError = __('customers.messages.suspicious_failed');
                 $suspiciousFormData['suspicious_reason'] = (string) ($_POST['suspicious_reason'] ?? '');
+                $suspiciousFormData['suspicious_flags'] = SuspiciousFlagRegistry::normalizeFlags(
+                    is_array($_POST['suspicious_flags'] ?? null)
+                        ? array_map('strval', (array) $_POST['suspicious_flags'])
+                        : []
+                );
                 $suspiciousModalShouldOpen = true;
             }
         } elseif ($formType === 'suspicious_clear') {
@@ -203,6 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $company = $customerCompanyRepository->findByCustomerId((int) $customer['id']);
 
                 $suspiciousFormData['suspicious_reason'] = '';
+                $suspiciousFormData['suspicious_flags'] = [];
                 $successMessage = __('customers.messages.suspicious_cleared');
             } catch (Throwable $exception) {
                 $suspiciousGeneralError = __('customers.messages.suspicious_clear_failed');
@@ -268,6 +292,16 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
 
 $isSuspicious = isset($customer['is_suspicious']) && (int) $customer['is_suspicious'] === 1;
 $currentSuspiciousReason = $isSuspicious ? (string) ($customer['suspicious_reason'] ?? '') : '';
+$currentSuspiciousFlags = $isSuspicious ? SuspiciousFlagRegistry::decodeFlags($customer['suspicious_flags'] ?? null) : [];
+
+if (!$suspiciousModalShouldOpen) {
+    $suspiciousFormData['suspicious_flags'] = $currentSuspiciousFlags;
+}
+
+$suspiciousFlagDefinitions = SuspiciousFlagRegistry::definitions();
+$suspiciousBlockDefinitions = SuspiciousFlagRegistry::blockDefinitions();
+$activeSuspiciousBlocks = SuspiciousFlagRegistry::blocksForFlags($currentSuspiciousFlags);
+$intakeBlocked = in_array(SuspiciousFlagRegistry::BLOCK_INTAKES, $activeSuspiciousBlocks, true);
 
 if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
     $suspiciousFormData['suspicious_reason'] = $currentSuspiciousReason;
@@ -309,7 +343,13 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
           <p class="profile-hero__intro"><?= htmlspecialchars(__('customers.profile.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         </div>
         <div class="profile-hero__actions">
-          <a href="intake.php" class="btn btn--secondary profile-hero__action"><?= htmlspecialchars(__('customers.profile.actions.intake'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+          <?php if ($intakeBlocked): ?>
+            <span class="btn btn--secondary profile-hero__action profile-hero__action--disabled" aria-disabled="true">
+              <?= htmlspecialchars(__('customers.profile.suspicious.intake_blocked'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </span>
+          <?php else: ?>
+            <a href="intake.php" class="btn btn--secondary profile-hero__action"><?= htmlspecialchars(__('customers.profile.actions.intake'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -325,6 +365,18 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
                   ENT_QUOTES | ENT_SUBSTITUTE,
                   'UTF-8'
               ) ?>
+            </p>
+            <?php if ($activeSuspiciousBlocks !== []): ?>
+              <ul class="profile-suspicious-banner__blocks">
+                <?php foreach ($activeSuspiciousBlocks as $blockKey): ?>
+                  <?php $blockDefinition = $suspiciousBlockDefinitions[$blockKey] ?? null; ?>
+                  <?php if ($blockDefinition === null) { continue; } ?>
+                  <li><?= htmlspecialchars(__($blockDefinition['label']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
+            <p class="profile-suspicious-banner__contact">
+              <?= htmlspecialchars(__('customers.profile.suspicious.contact_manager'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
             </p>
           </div>
         </div>
@@ -394,6 +446,58 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
         <?php if ($suspiciousGeneralError !== ''): ?>
           <div class="alert alert--danger profile-suspicious__alert">
             <?= htmlspecialchars($suspiciousGeneralError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($isSuspicious): ?>
+          <div class="profile-suspicious__summary" role="note">
+            <div class="profile-suspicious__summary-section">
+              <h4><?= htmlspecialchars(__('customers.profile.suspicious.selected_reason_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+              <p>
+                <?= htmlspecialchars(
+                    $currentSuspiciousReason !== ''
+                        ? $currentSuspiciousReason
+                        : __('customers.profile.suspicious.reason_unknown'),
+                    ENT_QUOTES | ENT_SUBSTITUTE,
+                    'UTF-8'
+                ) ?>
+              </p>
+            </div>
+
+            <?php if ($currentSuspiciousFlags !== []): ?>
+              <div class="profile-suspicious__summary-section">
+                <h4><?= htmlspecialchars(__('customers.profile.suspicious.active_flags_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+                <ul class="profile-suspicious__list">
+                  <?php foreach ($currentSuspiciousFlags as $flagKey): ?>
+                    <?php $definition = $suspiciousFlagDefinitions[$flagKey] ?? null; ?>
+                    <?php if ($definition === null) { continue; } ?>
+                    <li>
+                      <strong><?= htmlspecialchars(__($definition['label']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                      <span><?= htmlspecialchars(__($definition['description']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+            <?php endif; ?>
+
+            <?php if ($activeSuspiciousBlocks !== []): ?>
+              <div class="profile-suspicious__summary-section">
+                <h4><?= htmlspecialchars(__('customers.profile.suspicious.blocked_actions_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+                <ul class="profile-suspicious__list profile-suspicious__list--blocks">
+                  <?php foreach ($activeSuspiciousBlocks as $blockKey): ?>
+                    <?php $blockDefinition = $suspiciousBlockDefinitions[$blockKey] ?? null; ?>
+                    <?php if ($blockDefinition === null) { continue; } ?>
+                    <li>
+                      <strong><?= htmlspecialchars(__($blockDefinition['label']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                      <span><?= htmlspecialchars(__($blockDefinition['description']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+                <p class="profile-suspicious__contact">
+                  <?= htmlspecialchars(__('customers.profile.suspicious.contact_manager'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                </p>
+              </div>
+            <?php endif; ?>
           </div>
         <?php endif; ?>
 
@@ -667,6 +771,45 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
           <p><?= htmlspecialchars(__('customers.profile.suspicious.modal_description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <input type="hidden" name="form_type" value="suspicious_mark">
+          <fieldset class="profile-suspicious__options<?= isset($suspiciousErrors['suspicious_flags']) ? ' profile-suspicious__options--error' : '' ?>">
+            <legend class="profile-suspicious__label"><?= htmlspecialchars(__('customers.profile.suspicious.flags_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></legend>
+            <p class="profile-suspicious__hint"><?= htmlspecialchars(__('customers.profile.suspicious.flags_hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            <div class="profile-suspicious__choices">
+              <?php foreach ($suspiciousFlagDefinitions as $flagKey => $definition): ?>
+                <?php $isChecked = in_array($flagKey, $suspiciousFormData['suspicious_flags'], true); ?>
+                <?php $blockLabels = [];
+                foreach ($definition['blocks'] as $blockKey) {
+                    $blockDefinition = $suspiciousBlockDefinitions[$blockKey] ?? null;
+                    if ($blockDefinition !== null) {
+                        $blockLabels[] = __($blockDefinition['label']);
+                    }
+                }
+                ?>
+                <label class="profile-suspicious__option">
+                  <input
+                    type="checkbox"
+                    name="suspicious_flags[]"
+                    value="<?= htmlspecialchars($flagKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    <?= $isChecked ? 'checked' : '' ?>
+                  >
+                  <span class="profile-suspicious__option-content">
+                    <span class="profile-suspicious__option-title"><?= htmlspecialchars(__($definition['label']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <span class="profile-suspicious__option-description"><?= htmlspecialchars(__($definition['description']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <?php if ($blockLabels !== []): ?>
+                      <span class="profile-suspicious__option-blocks">
+                        <?= htmlspecialchars(__('customers.profile.suspicious.option_blocks', ['blocks' => implode(', ', $blockLabels)]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      </span>
+                    <?php endif; ?>
+                  </span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+          </fieldset>
+          <?php if (isset($suspiciousErrors['suspicious_flags'])): ?>
+            <p class="profile-suspicious__error">
+              <?= htmlspecialchars((string) $suspiciousErrors['suspicious_flags'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </p>
+          <?php endif; ?>
           <label class="profile-suspicious__label" for="suspicious-modal-reason">
             <?= htmlspecialchars(__('customers.profile.suspicious.reason_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
           </label>

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Customers\SuspiciousFlagRegistry;
 use App\Support\Lang\Translator;
 use App\Support\Repositories\CustomerRepository;
 
@@ -37,6 +38,9 @@ $createdMessage = '';
 if (isset($_GET['created']) && $_GET['created'] === '1') {
     $createdMessage = __('customers.messages.created');
 }
+
+$suspiciousFlagDefinitions = SuspiciousFlagRegistry::definitions();
+$suspiciousBlockDefinitions = SuspiciousFlagRegistry::blockDefinitions();
 
 $customerGroups = [
     [
@@ -248,6 +252,26 @@ $defaultGroup = $privateCount > 0 ? 'private' : ($businessCount > 0 ? 'business'
                       : '—';
                     $isSuspicious = isset($customer['is_suspicious']) && (int) $customer['is_suspicious'] === 1;
                     $suspiciousReason = $isSuspicious ? (string) ($customer['suspicious_reason'] ?? '') : '';
+                    $suspiciousFlags = $isSuspicious
+                      ? SuspiciousFlagRegistry::decodeFlags($customer['suspicious_flags'] ?? null)
+                      : [];
+                    $suspiciousFlagLabels = [];
+                    foreach ($suspiciousFlags as $flagKey) {
+                        if (!isset($suspiciousFlagDefinitions[$flagKey])) {
+                            continue;
+                        }
+                        $suspiciousFlagLabels[] = __($suspiciousFlagDefinitions[$flagKey]['label']);
+                    }
+                    $suspiciousBlocks = $isSuspicious
+                      ? SuspiciousFlagRegistry::blocksForFlags($suspiciousFlags)
+                      : [];
+                    $suspiciousBlockLabels = [];
+                    foreach ($suspiciousBlocks as $blockKey) {
+                        if (!isset($suspiciousBlockDefinitions[$blockKey])) {
+                            continue;
+                        }
+                        $suspiciousBlockLabels[] = __($suspiciousBlockDefinitions[$blockKey]['label']);
+                    }
                   ?>
                   <li class="customers-list__item<?= $isSuspicious ? ' customers-list__item--suspicious' : '' ?>" data-href="customer.php?id=<?= (int) $customer['id'] ?>" role="link" tabindex="0">
                     <div class="customers-list__identity">
@@ -277,6 +301,21 @@ $defaultGroup = $privateCount > 0 ? 'private' : ($businessCount > 0 ? 'business'
                             ) ?>
                           </span>
                         </div>
+                        <?php if ($suspiciousFlagLabels !== []): ?>
+                          <div class="customers-list__group customers-list__group--suspicious">
+                            <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.suspicious_flags_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                            <span><?= htmlspecialchars(implode(', ', $suspiciousFlagLabels), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          </div>
+                        <?php endif; ?>
+                        <?php if ($suspiciousBlockLabels !== []): ?>
+                          <div class="customers-list__group customers-list__group--suspicious">
+                            <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.suspicious_blocks_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                            <span><?= htmlspecialchars(implode(', ', $suspiciousBlockLabels), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          </div>
+                          <p class="customers-list__note customers-list__note--suspicious">
+                            <?= htmlspecialchars(__('customers.list.suspicious_contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                          </p>
+                        <?php endif; ?>
                       <?php endif; ?>
                       <div class="customers-list__group">
                         <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.table.contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>

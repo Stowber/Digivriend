@@ -296,6 +296,9 @@ return [
                     'required' => 'Selecteer een klant voordat je doorgaat.',
                     'not_found' => 'Geselecteerde klant bestaat niet.',
                 ],
+                'suspicious_badge' => 'Waarschuwing',
+                'suspicious_blocked' => 'Deze klant kan niet worden verwerkt zonder toestemming van de manager.',
+                'suspicious_warning' => 'Account geblokkeerd (reden: :reason). Blokkades: :blocks. :contact',
                 'next' => 'Volgende stap',
             ],
             'visit' => [
@@ -376,6 +379,13 @@ return [
             'company_failed' => 'Opslaan van de bedrijfsgegevens is mislukt. Probeer het opnieuw.',
             'company_deleted' => 'Bedrijf verwijderd bij deze klant.',
             'company_delete_failed' => 'Verwijderen van het bedrijf is mislukt. Probeer het opnieuw.',
+            'suspicious_marked' => 'Klant gemarkeerd als verdacht.',
+            'suspicious_failed' => 'Markeren als verdacht is mislukt. Probeer het opnieuw.',
+            'suspicious_cleared' => 'Verdachte markering verwijderd.',
+            'suspicious_clear_failed' => 'Verwijderen van de markering is mislukt. Probeer het opnieuw.',
+        ],
+        'suspicious' => [
+            'blocked_action' => 'Dit klantaccount is geblokkeerd voor: :action. Reden: :reason. Neem contact op met de manager.',
         ],
         'validation' => [
             'duplicate_email' => 'Er bestaat al een klant met dit e-mailadres. Kies de bestaande klant of gebruik een ander e-mailadres.',
@@ -435,6 +445,12 @@ return [
             'empty' => 'Er zijn nog geen klanten geregistreerd.',
             'empty_private' => 'Geen particuliere klanten gevonden.',
             'empty_business' => 'Geen zakelijke klanten gevonden.',
+            'suspicious_label' => 'Verdacht',
+            'suspicious_reason_label' => 'Notitie',
+            'suspicious_reason_empty' => 'Geen reden opgegeven.',
+            'suspicious_flags_label' => 'Actieve waarschuwingen',
+            'suspicious_blocks_label' => 'Geblokkeerde acties',
+            'suspicious_contact' => 'Neem contact op met de manager voordat je verdergaat.',
         ],
         'create' => [
             'meta' => [
@@ -574,6 +590,49 @@ return [
                 'banner_title' => 'Verdacht profiel',
                 'banner_reason' => 'Reden: :reason',
                 'banner_reason_empty' => 'Reden: niet opgegeven',
+                'flags_label' => 'Waarschuwingstype',
+                'flags_hint' => 'Selecteer minimaal één optie. Elke blokkade wordt direct actief.',
+                'flags_required' => 'Selecteer minimaal één waarschuwing.',
+                'options' => [
+                    'thief' => [
+                        'label' => 'Diefstal',
+                        'description' => 'Betrapt op het stelen van apparatuur of accessoires.',
+                    ],
+                    'non_payer' => [
+                        'label' => 'Betaalt niet',
+                        'description' => 'Weigert te betalen voor uitgevoerde werkzaamheden.',
+                    ],
+                    'late_payment' => [
+                        'label' => 'Betaalt te laat',
+                        'description' => 'Betaalt structureel te laat of vereist incasso.',
+                    ],
+                    'contract_breaker' => [
+                        'label' => 'Komt afspraken niet na',
+                        'description' => 'Breekt afspraken of annuleert op het laatste moment.',
+                    ],
+                ],
+                'blocks' => [
+                    'appointments' => [
+                        'label' => 'Afspraken plannen',
+                        'description' => 'Blokkeert het plannen van afspraken en huisbezoeken.',
+                    ],
+                    'intakes' => [
+                        'label' => 'Nieuwe intake',
+                        'description' => 'Verhindert het aanmaken van nieuwe intake dossiers.',
+                    ],
+                    'pickups' => [
+                        'label' => 'Uitgifte apparatuur',
+                        'description' => 'Verhindert het meegeven van apparatuur zonder managergoedkeuring.',
+                    ],
+                ],
+                'selected_reason_label' => 'Reden van waarschuwing',
+                'reason_unknown' => 'Geen informatie beschikbaar.',
+                'active_flags_title' => 'Actieve waarschuwingen',
+                'blocked_actions_title' => 'Geblokkeerde acties',
+                'contact_manager' => 'Neem contact op met de manager voor instructies.',
+                'option_blocks' => 'Blokkeert: :blocks',
+                'intake_blocked' => 'Intake geblokkeerd',
+                'no_block_summary' => 'Geen acties geblokkeerd.',
             ],
             'company_modal' => [
                 'title' => 'Bedrijf toevoegen',

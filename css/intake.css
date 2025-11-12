@@ -583,4 +583,26 @@ textarea {
     width: 100%;
     justify-content: center;
   }
+}.customer-picker__warning {
+  margin: 0.5rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.12);
+  color: rgba(153, 27, 27, 0.95);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.customer-picker__result-badge {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.18);
+  color: rgba(153, 27, 27, 0.95);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

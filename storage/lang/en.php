@@ -296,6 +296,9 @@ return [
                     'required' => 'Select a customer before continuing.',
                     'not_found' => 'Selected customer could not be found.',
                 ],
+                'suspicious_badge' => 'Warning',
+                'suspicious_blocked' => 'This customer cannot be processed without manager approval.',
+                'suspicious_warning' => 'Account blocked (reason: :reason). Blocks: :blocks. :contact',
                 'next' => 'Next step',
             ],
             'visit' => [
@@ -381,6 +384,9 @@ return [
             'suspicious_cleared' => 'Suspicious flag removed from the customer.',
             'suspicious_clear_failed' => 'Unable to remove the suspicious flag. Please try again.',
         ],
+        'suspicious' => [
+            'blocked_action' => 'This customer account is blocked for: :action. Reason: :reason. Please contact the manager.',
+        ],
         'validation' => [
             'duplicate_email' => 'A customer with this email address already exists. Select the existing customer or use a different email address.',
         ],
@@ -442,6 +448,9 @@ return [
             'suspicious_label' => 'Suspicious',
             'suspicious_reason_label' => 'Suspicious note',
             'suspicious_reason_empty' => 'No reason provided.',
+            'suspicious_flags_label' => 'Active warnings',
+            'suspicious_blocks_label' => 'Blocked actions',
+            'suspicious_contact' => 'Contact the manager before continuing.',
         ],
         'create' => [
             'meta' => [
@@ -581,6 +590,49 @@ return [
                 'banner_title' => 'Suspicious profile',
                 'banner_reason' => 'Reason: :reason',
                 'banner_reason_empty' => 'Reason: not provided',
+                'flags_label' => 'Select warning type',
+                'flags_hint' => 'Choose at least one option. Every block applies immediately.',
+                'flags_required' => 'Select at least one warning.',
+                'options' => [
+                    'thief' => [
+                        'label' => 'Theft',
+                        'description' => 'Caught stealing company or customer property.',
+                    ],
+                    'non_payer' => [
+                        'label' => 'Refuses to pay',
+                        'description' => 'Refused to pay for delivered work.',
+                    ],
+                    'late_payment' => [
+                        'label' => 'Late payments',
+                        'description' => 'Frequently pays late or requires debt collection.',
+                    ],
+                    'contract_breaker' => [
+                        'label' => 'Breaks agreements',
+                        'description' => 'Breaks agreements or cancels at the last minute.',
+                    ],
+                ],
+                'blocks' => [
+                    'appointments' => [
+                        'label' => 'Scheduling visits',
+                        'description' => 'Prevents planning any appointments or on-site visits.',
+                    ],
+                    'intakes' => [
+                        'label' => 'New intake',
+                        'description' => 'Blocks registering new intakes and service cases.',
+                    ],
+                    'pickups' => [
+                        'label' => 'Device handoff',
+                        'description' => 'Stops releasing devices until a manager approves.',
+                    ],
+                ],
+                'selected_reason_label' => 'Warning reason',
+                'reason_unknown' => 'No information provided.',
+                'active_flags_title' => 'Active warnings',
+                'blocked_actions_title' => 'Blocked actions',
+                'contact_manager' => 'Contact the manager for guidance.',
+                'option_blocks' => 'Blocks: :blocks',
+                'intake_blocked' => 'Intake blocked',
+                'no_block_summary' => 'No actions blocked.',
             ],
             'company_modal' => [
                 'title' => 'Add company',

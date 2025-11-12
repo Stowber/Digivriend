@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Security\Auth;
 use App\Security\Csrf;
+use App\Support\Customers\SuspiciousFlagRegistry;
 use App\Support\Repositories\AppointmentRepository;
 use App\Support\Repositories\CaseRepository;
+use App\Support\Repositories\CustomerRepository;
 use App\Support\Repositories\EmployeeRepository;
 use App\Validation\InputValidator;
 
@@ -17,6 +19,7 @@ require_once __DIR__ . '/templates/partials/field-help.php';
 $appointmentRepository = new AppointmentRepository($pdo);
 $employeeRepository = new EmployeeRepository($pdo);
 $caseRepository = new CaseRepository($pdo);
+$customerRepository = new CustomerRepository($pdo);
 
 $messages = [
     'success' => [],
@@ -72,6 +75,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($caseId) {
                         $caseRecord = $caseRepository->findById((int) $caseId);
                         $customerId = $caseRecord['customer_id'] ?? null;
+                        if ($customerId) {
+                            $customerRecord = $customerRepository->findById((int) $customerId);
+                            if (
+                                $customerRecord !== null
+                                && isset($customerRecord['is_suspicious'])
+                                && (int) $customerRecord['is_suspicious'] === 1
+                            ) {
+                                $customerFlags = SuspiciousFlagRegistry::decodeFlags($customerRecord['suspicious_flags'] ?? null);
+                                if (SuspiciousFlagRegistry::hasBlock($customerFlags, SuspiciousFlagRegistry::BLOCK_APPOINTMENTS)) {
+                                    $reason = trim((string) ($customerRecord['suspicious_reason'] ?? ''));
+                                    $reasonText = $reason !== '' ? $reason : __('customers.profile.suspicious.reason_unknown');
+                                    $messages['error'][] = __('customers.suspicious.blocked_action', [
+                                        'action' => __('customers.profile.suspicious.blocks.appointments.label'),
+                                        'reason' => $reasonText,
+                                    ]);
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     $resourceLines = preg_split('/\r?\n/', (string) ($_POST['resources'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
