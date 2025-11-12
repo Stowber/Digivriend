@@ -934,6 +934,14 @@
   flex-wrap: wrap;
 }
 
+.profile-suspicious__trigger {
+  font-weight: 600;
+}
+
+.profile-suspicious__clear-form {
+  margin: 0;
+}
+
 .profile-suspicious__clear-button {
   font-weight: 600;
 }
