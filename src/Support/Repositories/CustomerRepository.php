@@ -21,7 +21,7 @@ final class CustomerRepository
     {
         $limit = max(1, min(500, $limit));
 
-        $sql = 'SELECT id, customer_code, customer_type, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
+        $sql = 'SELECT id, customer_code, customer_type, is_suspicious, suspicious_reason, full_name, email, phone, address, postal_code, city, last_interaction_at, updated_at FROM customers';
         $conditions = [];
         $params = [];
 
@@ -165,6 +165,39 @@ final class CustomerRepository
             'address' => $address ?: null,
             'postal_code' => $postalCode ?: null,
             'city' => $city ?: null,
+            'updated_at' => Clock::nowFormatted(),
+        ]);
+    }
+
+    public function markSuspicious(int $customerId, string $reason): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE customers
+             SET is_suspicious = 1,
+                 suspicious_reason = :reason,
+                 updated_at = :updated_at
+             WHERE id = :id'
+        );
+
+        $statement->execute([
+            'id' => $customerId,
+            'reason' => $reason,
+            'updated_at' => Clock::nowFormatted(),
+        ]);
+    }
+
+    public function clearSuspicious(int $customerId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE customers
+             SET is_suspicious = 0,
+                 suspicious_reason = NULL,
+                 updated_at = :updated_at
+             WHERE id = :id'
+        );
+
+        $statement->execute([
+            'id' => $customerId,
             'updated_at' => Clock::nowFormatted(),
         ]);
     }

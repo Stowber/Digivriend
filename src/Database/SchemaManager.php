@@ -31,6 +31,7 @@ final class SchemaManager
         self::ensureCoreCustomerColumns($pdo);
         self::ensureCustomerCompanyTable($pdo);
         self::ensureCustomerTypeColumn($pdo);
+        self::ensureCustomerSuspiciousColumns($pdo);
         self::ensureCustomerCodeColumn($pdo);
         self::ensureOphaalbevestigingenTable($pdo);
         self::ensureReparatieOnderzoekTable($pdo);
@@ -214,6 +215,44 @@ final class SchemaManager
         } catch (PDOException) {
             // Ignore if the relation does not exist yet.
         }
+    }
+
+    private static function ensureCustomerSuspiciousColumns(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            self::addSqliteColumnIfMissing($pdo, 'customers', 'is_suspicious', 'INTEGER NOT NULL DEFAULT 0');
+            self::addSqliteColumnIfMissing($pdo, 'customers', 'suspicious_reason', 'TEXT NULL');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE customers ADD COLUMN is_suspicious BOOLEAN NOT NULL DEFAULT FALSE',
+                ['duplicate', 'already exists']
+            );
+            self::executeIgnoringDuplicates(
+                $pdo,
+                'ALTER TABLE customers ADD COLUMN suspicious_reason VARCHAR(255) NULL',
+                ['duplicate', 'already exists']
+            );
+
+            return;
+        }
+
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE customers ADD COLUMN is_suspicious TINYINT(1) NOT NULL DEFAULT 0 AFTER customer_type',
+            ['duplicate', 'already exists']
+        );
+        self::executeIgnoringDuplicates(
+            $pdo,
+            'ALTER TABLE customers ADD COLUMN suspicious_reason VARCHAR(255) NULL AFTER is_suspicious',
+            ['duplicate', 'already exists']
+        );
     }
 
     private static function ensureCustomerCompanyTable(PDO $pdo): void

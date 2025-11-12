@@ -246,17 +246,38 @@ $defaultGroup = $privateCount > 0 ? 'private' : ($businessCount > 0 ? 'business'
                     $updatedAt = isset($customer['updated_at']) && $customer['updated_at'] !== null
                       ? date('d-m-Y H:i', strtotime((string) $customer['updated_at']))
                       : '—';
+                    $isSuspicious = isset($customer['is_suspicious']) && (int) $customer['is_suspicious'] === 1;
+                    $suspiciousReason = $isSuspicious ? (string) ($customer['suspicious_reason'] ?? '') : '';
                   ?>
-                  <li class="customers-list__item" data-href="customer.php?id=<?= (int) $customer['id'] ?>" role="link" tabindex="0">
+                  <li class="customers-list__item<?= $isSuspicious ? ' customers-list__item--suspicious' : '' ?>" data-href="customer.php?id=<?= (int) $customer['id'] ?>" role="link" tabindex="0">
                     <div class="customers-list__identity">
                       <span class="code-badge">
                         <?= htmlspecialchars($customerCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                       </span>
                       <div>
                         <strong><?= htmlspecialchars((string) ($customer['full_name'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                        <?php if ($isSuspicious): ?>
+                          <span class="customers-list__badge customers-list__badge--suspicious">
+                            <?= htmlspecialchars(__('customers.list.suspicious_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                          </span>
+                        <?php endif; ?>
                       </div>
                     </div>
                     <div class="customers-list__details">
+                      <?php if ($isSuspicious): ?>
+                        <div class="customers-list__group customers-list__group--suspicious">
+                          <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.suspicious_reason_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          <span>
+                            <?= htmlspecialchars(
+                                $suspiciousReason !== ''
+                                    ? $suspiciousReason
+                                    : __('customers.list.suspicious_reason_empty'),
+                                ENT_QUOTES | ENT_SUBSTITUTE,
+                                'UTF-8'
+                            ) ?>
+                          </span>
+                        </div>
+                      <?php endif; ?>
                       <div class="customers-list__group">
                         <span class="customers-list__label"><?= htmlspecialchars(__('customers.list.table.contact'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                         <span><?= htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>

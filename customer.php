@@ -39,6 +39,11 @@ $companyGeneralError = '';
 $companyModalShouldOpen = false;
 $personalModalShouldOpen = false;
 $successMessage = '';
+$suspiciousErrors = [];
+$suspiciousGeneralError = '';
+$suspiciousFormData = [
+    'suspicious_reason' => (string) ($customer['suspicious_reason'] ?? ''),
+];
 $created = isset($_GET['created']) && $_GET['created'] === '1';
 if ($created) {
     $successMessage = __('customers.messages.created');
@@ -171,6 +176,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Throwable $exception) {
                 $companyGeneralError = __('customers.messages.company_delete_failed');
             }
+            } elseif ($formType === 'suspicious_mark') {
+            try {
+                $reason = InputValidator::requireString($_POST, 'suspicious_reason', 255);
+
+                $customerRepository->markSuspicious((int) $customer['id'], $reason);
+                $customer = $customerRepository->findById((int) $customer['id']);
+                $company = $customerCompanyRepository->findByCustomerId((int) $customer['id']);
+
+                $suspiciousFormData['suspicious_reason'] = (string) ($customer['suspicious_reason'] ?? '');
+                $successMessage = __('customers.messages.suspicious_marked');
+            } catch (ValidationException $exception) {
+                $suspiciousErrors = $exception->errors();
+                $suspiciousFormData['suspicious_reason'] = (string) ($_POST['suspicious_reason'] ?? '');
+            } catch (Throwable $exception) {
+                $suspiciousGeneralError = __('customers.messages.suspicious_failed');
+                $suspiciousFormData['suspicious_reason'] = (string) ($_POST['suspicious_reason'] ?? '');
+            }
+        } elseif ($formType === 'suspicious_clear') {
+            try {
+                $customerRepository->clearSuspicious((int) $customer['id']);
+                $customer = $customerRepository->findById((int) $customer['id']);
+                $company = $customerCompanyRepository->findByCustomerId((int) $customer['id']);
+
+                $suspiciousFormData['suspicious_reason'] = '';
+                $successMessage = __('customers.messages.suspicious_cleared');
+            } catch (Throwable $exception) {
+                $suspiciousGeneralError = __('customers.messages.suspicious_clear_failed');
+            }
         } else {
             try {
                 $fullName = InputValidator::requireString($_POST, 'full_name', 191);
@@ -230,6 +263,13 @@ $companyAddressDefaults = [
 $cases = $caseRepository->forCustomer((int) $customer['id'], 25);
 $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
 
+$isSuspicious = isset($customer['is_suspicious']) && (int) $customer['is_suspicious'] === 1;
+$currentSuspiciousReason = $isSuspicious ? (string) ($customer['suspicious_reason'] ?? '') : '';
+
+if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
+    $suspiciousFormData['suspicious_reason'] = $currentSuspiciousReason;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
@@ -269,6 +309,23 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
           <a href="intake.php" class="btn btn--secondary profile-hero__action"><?= htmlspecialchars(__('customers.profile.actions.intake'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
         </div>
       </div>
+
+      <?php if ($isSuspicious): ?>
+        <div class="profile-suspicious-banner" role="alert">
+          <div>
+            <p class="profile-suspicious-banner__title"><?= htmlspecialchars(__('customers.profile.suspicious.banner_title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            <p class="profile-suspicious-banner__reason">
+              <?= htmlspecialchars(
+                  $currentSuspiciousReason !== ''
+                      ? __('customers.profile.suspicious.banner_reason', ['reason' => $currentSuspiciousReason])
+                      : __('customers.profile.suspicious.banner_reason_empty'),
+                  ENT_QUOTES | ENT_SUBSTITUTE,
+                  'UTF-8'
+              ) ?>
+            </p>
+          </div>
+        </div>
+      <?php endif; ?>
 
     <dl class="profile-meta">
         <div class="profile-meta__item">
@@ -322,6 +379,64 @@ $documents = $documentRepository->forCustomer((int) $customer['id'], 25);
           <?= htmlspecialchars($companyGeneralError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </div>
         <?php endif; ?>
+
+      <section class="profile-suspicious<?= $isSuspicious ? ' profile-suspicious--active' : '' ?>" aria-labelledby="profile-suspicious-title">
+        <div class="profile-suspicious__header">
+          <div>
+            <h3 id="profile-suspicious-title"><?= htmlspecialchars(__('customers.profile.suspicious.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(__('customers.profile.suspicious.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
+        </div>
+
+        <?php if ($suspiciousGeneralError !== ''): ?>
+          <div class="alert alert--danger profile-suspicious__alert">
+            <?= htmlspecialchars($suspiciousGeneralError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          </div>
+        <?php endif; ?>
+
+        <div class="profile-suspicious__forms">
+          <form method="post" class="profile-suspicious__form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="form_type" value="suspicious_mark">
+            <label class="profile-suspicious__label" for="suspicious-reason">
+              <?= htmlspecialchars(__('customers.profile.suspicious.reason_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </label>
+            <textarea id="suspicious-reason" name="suspicious_reason" rows="3" class="profile-suspicious__input<?= isset($suspiciousErrors['suspicious_reason']) ? ' profile-suspicious__input--error' : '' ?>" placeholder="<?= htmlspecialchars(__('customers.profile.suspicious.reason_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($suspiciousFormData['suspicious_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+            <?php if (isset($suspiciousErrors['suspicious_reason'])): ?>
+              <p class="profile-suspicious__error">
+                <?= htmlspecialchars((string) $suspiciousErrors['suspicious_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </p>
+            <?php else: ?>
+              <p class="profile-suspicious__hint">
+                <?= htmlspecialchars(__('customers.profile.suspicious.reason_hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </p>
+            <?php endif; ?>
+            <div class="profile-suspicious__actions">
+              <button type="submit" class="btn btn--danger">
+                <?= htmlspecialchars(
+                    $isSuspicious
+                        ? __('customers.profile.suspicious.update_button')
+                        : __('customers.profile.suspicious.mark_button'),
+                    ENT_QUOTES | ENT_SUBSTITUTE,
+                    'UTF-8'
+                ) ?>
+              </button>
+            </div>
+          </form>
+
+          <?php if ($isSuspicious): ?>
+            <form method="post" class="profile-suspicious__form profile-suspicious__form--clear">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="form_type" value="suspicious_clear">
+              <div class="profile-suspicious__actions">
+                <button type="submit" class="btn btn--ghost profile-suspicious__clear-button">
+                  <?= htmlspecialchars(__('customers.profile.suspicious.clear_button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                </button>
+              </div>
+            </form>
+          <?php endif; ?>
+        </div>
+      </section>
 
       <div class="profile-personal">
         <div class="profile-personal__header">

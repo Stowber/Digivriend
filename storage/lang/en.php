@@ -376,6 +376,10 @@ return [
             'company_failed' => 'Unable to save the company details. Please try again.',
             'company_deleted' => 'Company removed from the customer.',
             'company_delete_failed' => 'Removing the company failed. Please try again.',
+            'suspicious_marked' => 'Customer marked as suspicious.',
+            'suspicious_failed' => 'Unable to mark the customer as suspicious. Please try again.',
+            'suspicious_cleared' => 'Suspicious flag removed from the customer.',
+            'suspicious_clear_failed' => 'Unable to remove the suspicious flag. Please try again.',
         ],
         'validation' => [
             'duplicate_email' => 'A customer with this email address already exists. Select the existing customer or use a different email address.',
@@ -435,6 +439,9 @@ return [
             'empty' => 'No customers registered yet.',
             'empty_private' => 'No private customers found.',
             'empty_business' => 'No business customers found.',
+            'suspicious_label' => 'Suspicious',
+            'suspicious_reason_label' => 'Suspicious note',
+            'suspicious_reason_empty' => 'No reason provided.',
         ],
         'create' => [
             'meta' => [
@@ -556,6 +563,19 @@ return [
                 'private_address' => 'Private address',
                 'company_address' => 'Company address',
                 'empty_value' => 'Not provided',
+            ],
+            'suspicious' => [
+                'title' => 'Suspicious flag',
+                'description' => 'Warn the team about risky behaviour directly from the profile.',
+                'reason_label' => 'Reason for the flag',
+                'reason_placeholder' => 'Provide a short warning for the team…',
+                'reason_hint' => 'The note is visible to all team members viewing this customer.',
+                'mark_button' => 'Mark as suspicious',
+                'update_button' => 'Update warning',
+                'clear_button' => 'Remove flag',
+                'banner_title' => 'Suspicious profile',
+                'banner_reason' => 'Reason: :reason',
+                'banner_reason_empty' => 'Reason: not provided',
             ],
             'company_modal' => [
                 'title' => 'Add company',

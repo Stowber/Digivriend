@@ -376,6 +376,10 @@ return [
             'company_failed' => 'Nie udało się zapisać danych firmy. Spróbuj ponownie.',
             'company_deleted' => 'Firma została usunięta z profilu klienta.',
             'company_delete_failed' => 'Usunięcie firmy nie powiodło się. Spróbuj ponownie.',
+            'suspicious_marked' => 'Klient oznaczony jako podejrzany.',
+            'suspicious_failed' => 'Nie udało się oznaczyć klienta jako podejrzanego. Spróbuj ponownie.',
+            'suspicious_cleared' => 'Usunięto oznaczenie klienta jako podejrzanego.',
+            'suspicious_clear_failed' => 'Nie udało się usunąć oznaczenia. Spróbuj ponownie.',
         ],
         'validation' => [
             'duplicate_email' => 'Klient z tym adresem e-mail już istnieje. Wybierz go z listy albo użyj innego adresu.',
@@ -435,6 +439,9 @@ return [
             'empty' => 'Nie zarejestrowano jeszcze żadnych klientów.',
             'empty_private' => 'Nie znaleziono klientów prywatnych.',
             'empty_business' => 'Nie znaleziono klientów firmowych.',
+            'suspicious_label' => 'Podejrzany',
+            'suspicious_reason_label' => 'Powód',
+            'suspicious_reason_empty' => 'Brak podanego powodu.',
         ],
         'create' => [
             'meta' => [
