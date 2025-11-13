@@ -749,26 +749,36 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
     aria-labelledby="customer-suspicious-modal-title"
     data-open-on-load="<?= $suspiciousModalShouldOpen ? 'true' : 'false' ?>"
   >
-    <div class="modal__panel">
+    <div class="modal__panel modal__panel--suspicious">
       <form
         method="post"
         data-suspicious-form
         data-confirm-message="<?= htmlspecialchars(__('customers.profile.suspicious.modal_confirm'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
       >
-        <div class="modal__header">
-          <h2 id="customer-suspicious-modal-title">
-            <?= htmlspecialchars(
-                $isSuspicious
-                    ? __('customers.profile.suspicious.modal_title_update')
-                    : __('customers.profile.suspicious.modal_title_mark'),
-                ENT_QUOTES | ENT_SUBSTITUTE,
-                'UTF-8'
-            ) ?>
-          </h2>
+        <div class="modal__header modal__header--suspicious">
+          <div class="modal__header-visual" aria-hidden="true">
+            <span class="modal__header-icon"></span>
+          </div>
+          <div class="modal__header-copy">
+            <span class="modal__header-eyebrow">
+              <?= htmlspecialchars(__('customers.profile.suspicious.flags_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </span>
+            <h2 id="customer-suspicious-modal-title">
+              <?= htmlspecialchars(
+                  $isSuspicious
+                      ? __('customers.profile.suspicious.modal_title_update')
+                      : __('customers.profile.suspicious.modal_title_mark'),
+                  ENT_QUOTES | ENT_SUBSTITUTE,
+                  'UTF-8'
+              ) ?>
+            </h2>
+          </div>
           <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
         </div>
-        <div class="modal__body">
-          <p><?= htmlspecialchars(__('customers.profile.suspicious.modal_description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <div class="modal__body modal__body--suspicious">
+          <div class="profile-suspicious__intro-card">
+            <p><?= htmlspecialchars(__('customers.profile.suspicious.modal_description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <input type="hidden" name="form_type" value="suspicious_mark">
           <fieldset class="profile-suspicious__options<?= isset($suspiciousErrors['suspicious_flags']) ? ' profile-suspicious__options--error' : '' ?>">
@@ -792,14 +802,19 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
                     value="<?= htmlspecialchars($flagKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                     <?= $isChecked ? 'checked' : '' ?>
                   >
-                  <span class="profile-suspicious__option-content">
-                    <span class="profile-suspicious__option-title"><?= htmlspecialchars(__($definition['label']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                    <span class="profile-suspicious__option-description"><?= htmlspecialchars(__($definition['description']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                    <?php if ($blockLabels !== []): ?>
-                      <span class="profile-suspicious__option-blocks">
-                        <?= htmlspecialchars(__('customers.profile.suspicious.option_blocks', ['blocks' => implode(', ', $blockLabels)]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                      </span>
-                    <?php endif; ?>
+                  <span class="profile-suspicious__option-tile">
+                    <span class="profile-suspicious__option-marker" aria-hidden="true">
+                      <span class="profile-suspicious__option-marker-icon"></span>
+                    </span>
+                    <span class="profile-suspicious__option-content">
+                      <span class="profile-suspicious__option-title"><?= htmlspecialchars(__($definition['label']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <span class="profile-suspicious__option-description"><?= htmlspecialchars(__($definition['description']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <?php if ($blockLabels !== []): ?>
+                        <span class="profile-suspicious__option-blocks">
+                          <?= htmlspecialchars(__('customers.profile.suspicious.option_blocks', ['blocks' => implode(', ', $blockLabels)]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        </span>
+                      <?php endif; ?>
+                    </span>
                   </span>
                 </label>
               <?php endforeach; ?>
@@ -810,25 +825,27 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
               <?= htmlspecialchars((string) $suspiciousErrors['suspicious_flags'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
             </p>
           <?php endif; ?>
-          <label class="profile-suspicious__label" for="suspicious-modal-reason">
-            <?= htmlspecialchars(__('customers.profile.suspicious.reason_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          </label>
-          <textarea
-            id="suspicious-modal-reason"
-            name="suspicious_reason"
-            rows="4"
-            class="profile-suspicious__input<?= isset($suspiciousErrors['suspicious_reason']) ? ' profile-suspicious__input--error' : '' ?>"
-            placeholder="<?= htmlspecialchars(__('customers.profile.suspicious.reason_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-          ><?= htmlspecialchars($suspiciousFormData['suspicious_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-          <?php if (isset($suspiciousErrors['suspicious_reason'])): ?>
-            <p class="profile-suspicious__error">
-              <?= htmlspecialchars((string) $suspiciousErrors['suspicious_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-            </p>
-          <?php else: ?>
-            <p class="profile-suspicious__hint">
-              <?= htmlspecialchars(__('customers.profile.suspicious.reason_hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-            </p>
-          <?php endif; ?>
+          <div class="profile-suspicious__reason-card<?= isset($suspiciousErrors['suspicious_reason']) ? ' profile-suspicious__reason-card--error' : '' ?>">
+            <label class="profile-suspicious__label" for="suspicious-modal-reason">
+              <?= htmlspecialchars(__('customers.profile.suspicious.reason_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+            </label>
+            <textarea
+              id="suspicious-modal-reason"
+              name="suspicious_reason"
+              rows="4"
+              class="profile-suspicious__input<?= isset($suspiciousErrors['suspicious_reason']) ? ' profile-suspicious__input--error' : '' ?>"
+              placeholder="<?= htmlspecialchars(__('customers.profile.suspicious.reason_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            ><?= htmlspecialchars($suspiciousFormData['suspicious_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+            <?php if (isset($suspiciousErrors['suspicious_reason'])): ?>
+              <p class="profile-suspicious__error">
+                <?= htmlspecialchars((string) $suspiciousErrors['suspicious_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </p>
+            <?php else: ?>
+              <p class="profile-suspicious__hint profile-suspicious__hint--muted">
+                <?= htmlspecialchars(__('customers.profile.suspicious.reason_hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              </p>
+            <?php endif; ?>
+          </div>
         </div>
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('customers.form.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
