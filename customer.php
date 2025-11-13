@@ -518,7 +518,7 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
           </button>
 
           <?php if ($isSuspicious): ?>
-            <form method="post" class="profile-suspicious__clear-form">
+            <form action="customer.php?id=<?= (int) $customer['id'] ?>" method="post" class="profile-suspicious__clear-form">
               <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
               <input type="hidden" name="form_type" value="suspicious_clear">
               <button type="submit" class="btn btn--ghost profile-suspicious__clear-button">
@@ -751,6 +751,7 @@ if ($isSuspicious && $suspiciousFormData['suspicious_reason'] === '') {
   >
     <div class="modal__panel modal__panel--suspicious">
       <form
+        action="customer.php?id=<?= (int) $customer['id'] ?>"
         method="post"
         data-suspicious-form
         data-confirm-message="<?= htmlspecialchars(__('customers.profile.suspicious.modal_confirm'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
