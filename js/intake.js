@@ -255,6 +255,7 @@
     }
     if (customerSelected) {
       customerSelected.hidden = true;
+      customerSelected.classList.remove('is-visible');
     }
     if (customerWarningNode) {
       customerWarningNode.textContent = '';
@@ -337,6 +338,7 @@
     }
     if (customerSelected) {
       customerSelected.hidden = false;
+      customerSelected.classList.add('is-visible');
     }
     const addressParts = [];
     if (entry.address) {

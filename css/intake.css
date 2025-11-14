@@ -324,12 +324,16 @@ body.has-open-modal {
 }
 
 .customer-picker__selected {
+  display: none;
   border-radius: var(--radius-md);
   border: 1px solid rgba(15, 23, 42, 0.1);
   background: rgba(255, 255, 255, 0.95);
   padding: 1.25rem 1.5rem;
-  display: grid;
   gap: 1rem;
+}
+
+.customer-picker__selected.is-visible {
+  display: grid;
 }
 
 .customer-picker__selected-header {
