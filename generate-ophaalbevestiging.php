@@ -6,6 +6,8 @@ use App\Http\Response;
 use App\Security\Csrf;
 use App\Security\Auth;
 use App\Support\Audit\AuditLogger;
+use App\Services\DocumentGenerator;
+use App\Services\DocumentRequest;
 use App\Support\Codes\PickupCodeGenerator;
 use App\Support\Documents\DocumentRepository;
 use App\Support\Notifications\NotificationService;
@@ -13,10 +15,7 @@ use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\CustomerRepository;
 use App\Support\Repositories\DeviceRepository;
 use App\Support\Repositories\NoteRepository;
-use App\Support\View;
 use App\Validation\InputValidator;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -176,41 +175,29 @@ $documentTitel = 'Ophaalbevestiging';
 $bedrijfsNaam = 'Digivriend';
 $huidigeDatum = date('d-m-Y');
 
-$html = View::render('pdf/ophaalbevestiging.php', [
-    'documentTitel' => $documentTitel,
-    'bedrijfsNaam' => $bedrijfsNaam,
-    'huidigeDatum' => $huidigeDatum,
-    'klantnaam' => $klantnaam,
-    'ophaalcode' => $ophaalcode,
-    'merkmodel' => $merkmodel,
-    'datumgereed' => $datumgereed,
-]);
-
-$options = new Options();
-$options->set('isRemoteEnabled', true);
-$dompdf = new Dompdf($options);
-$dompdf->loadHtml($html);
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
+$documentGenerator = new DocumentGenerator($documentRepository);
 $filename = sprintf('Ophaalbevestiging[%s][%d].pdf', $huidigeDatum, $insertId);
-$pdfContent = $dompdf->output();
 
-$documentDirectory = __DIR__ . '/storage/documents';
-if (!is_dir($documentDirectory)) {
-    mkdir($documentDirectory, 0775, true);
-}
-
-$storagePath = sprintf('storage/documents/%s', $filename);
-file_put_contents(__DIR__ . '/' . $storagePath, $pdfContent);
-
-$documentRepository->store(
-    (int) $case['id'],
-    'ophaalbevestiging',
-    $storagePath,
-    [
-        'klantnaam' => $klantnaam,
-        'ophaalcode' => $ophaalcode,
-        'datumgereed' => $datumgereed,
-    ]
+$documentGenerator->generate(
+    new DocumentRequest(
+        template: 'pdf/ophaalbevestiging.php',
+        context: [
+            'documentTitel' => $documentTitel,
+            'bedrijfsNaam' => $bedrijfsNaam,
+            'huidigeDatum' => $huidigeDatum,
+            'klantnaam' => $klantnaam,
+            'ophaalcode' => $ophaalcode,
+            'merkmodel' => $merkmodel,
+            'datumgereed' => $datumgereed,
+        ],
+        filename: $filename,
+        store: true,
+        documentType: 'ophaalbevestiging',
+        caseId: (int) $case['id'],
+        metadata: [
+            'klantnaam' => $klantnaam,
+            'ophaalcode' => $ophaalcode,
+            'datumgereed' => $datumgereed,
+        ],
+    )
 );
-$dompdf->stream($filename, ['Attachment' => true]);

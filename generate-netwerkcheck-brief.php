@@ -5,11 +5,10 @@ declare(strict_types=1);
 use App\Exception\ValidationException;
 use App\Http\Response;
 use App\Security\Csrf;
+use App\Services\DocumentGenerator;
+use App\Services\DocumentRequest;
 use App\Support\Documents\DocumentRepository;
-use App\Support\View;
 use App\Validation\InputValidator;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 require __DIR__ . '/bootstrap.php';
 
@@ -119,57 +118,44 @@ if (is_readable($logoPath)) {
     }
 }
 
-$html = View::render('pdf/netwerkcheck-brief.php', [
-    'bedrijfsNaam' => 'Digivriend',
-    'documentTitel' => 'Buurtbrief netwerkscan',
-    'focusLine' => $focusLine,
-    'letterDateHuman' => $letterDateHuman,
-    'salutation' => $salutation,
-    'periodSummary' => $periodSummary,
-    'areaSummary' => $areaSummary,
-    'timeSlots' => $timeSlots,
-    'contactName' => $contactName,
-    'contactRole' => $contactRole,
-    'contactPhone' => $contactPhone,
-    'contactEmail' => $contactEmail,
-    'contactUrl' => $contactUrl,
-    'signatureName' => $signatureName,
-    'signatureRole' => $signatureRole,
-    'rsvpDeadlineHuman' => $rsvpDeadlineHuman,
-    'additionalNoteHtml' => $additionalNoteHtml,
-    'startDateHuman' => $startDateHuman,
-    'endDateHuman' => $endDateHuman,
-]);
-
-$options = new Options();
-$options->set('isRemoteEnabled', true);
-$dompdf = new Dompdf($options);
-$dompdf->loadHtml($html);
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
+$documentGenerator = new DocumentGenerator($documentRepository);
 
 $filename = sprintf('Netwerkcheck-brief[%s].pdf', date('Ymd_His'));
-$pdfContent = $dompdf->output();
 
-$documentDirectory = __DIR__ . '/storage/documents';
-if (!is_dir($documentDirectory)) {
-    mkdir($documentDirectory, 0775, true);
-}
 
-$storagePath = sprintf('storage/documents/%s', $filename);
-file_put_contents(__DIR__ . '/' . $storagePath, $pdfContent);
-
-$documentRepository->store(
-    null,
-    'netwerkcheck_brief',
-    $storagePath,
-    [
-        'area' => $areaSummary,
-        'start_date' => $startDate,
-        'end_date' => $endDate,
-        'letter_date' => $letterDate,
-        'contact_name' => $contactName,
-    ]
+$documentGenerator->generate(
+    new DocumentRequest(
+        template: 'pdf/netwerkcheck-brief.php',
+        context: [
+            'bedrijfsNaam' => 'Digivriend',
+            'documentTitel' => 'Buurtbrief netwerkscan',
+            'focusLine' => $focusLine,
+            'letterDateHuman' => $letterDateHuman,
+            'salutation' => $salutation,
+            'periodSummary' => $periodSummary,
+            'areaSummary' => $areaSummary,
+            'timeSlots' => $timeSlots,
+            'contactName' => $contactName,
+            'contactRole' => $contactRole,
+            'contactPhone' => $contactPhone,
+            'contactEmail' => $contactEmail,
+            'contactUrl' => $contactUrl,
+            'signatureName' => $signatureName,
+            'signatureRole' => $signatureRole,
+            'rsvpDeadlineHuman' => $rsvpDeadlineHuman,
+            'additionalNoteHtml' => $additionalNoteHtml,
+            'startDateHuman' => $startDateHuman,
+            'endDateHuman' => $endDateHuman,
+        ],
+        filename: $filename,
+        store: true,
+        documentType: 'netwerkcheck_brief',
+        metadata: [
+            'area' => $areaSummary,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'letter_date' => $letterDate,
+            'contact_name' => $contactName,
+        ],
+    )
 );
-
-$dompdf->stream($filename, ['Attachment' => true]);
