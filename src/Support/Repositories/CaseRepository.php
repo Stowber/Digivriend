@@ -179,9 +179,14 @@ final class CaseRepository
             . ' LEFT JOIN devices dev ON dev.id = c.device_id';
 
         $params = [];
+        $conditions = ['c.closed_at IS NULL'];
         if ($type !== null && $type !== '' && $type !== 'all') {
-            $sql .= ' WHERE c.type = :type';
+            $conditions[] = 'c.type = :type';
             $params['type'] = $type;
+        }
+
+        if ($conditions !== []) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
         }
 
         $sql .= ' ORDER BY c.created_at DESC LIMIT :limit';
