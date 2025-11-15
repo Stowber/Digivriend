@@ -61,12 +61,17 @@ final class CaseRepository
                  closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END
              WHERE id = :id'
         );
-        $statement->execute([
-            'status' => $status,
-            'id' => $caseId,
-            'should_close' => $shouldClose ? 1 : 0,
-            'closed_at' => $shouldClose ? Clock::nowFormatted() : null,
-        ]);
+        $statement->bindValue(':status', $status);
+        $statement->bindValue(':id', $caseId, PDO::PARAM_INT);
+        $statement->bindValue(':should_close', $shouldClose ? 1 : 0, PDO::PARAM_INT);
+
+        if ($shouldClose) {
+            $statement->bindValue(':closed_at', Clock::nowFormatted());
+        } else {
+            $statement->bindValue(':closed_at', null, PDO::PARAM_NULL);
+        }
+
+        $statement->execute();
     }
 
     public function findById(int $caseId): ?array
@@ -336,13 +341,18 @@ final class CaseRepository
                  closed_at = CASE WHEN :should_close = 1 THEN :closed_at ELSE closed_at END
              WHERE id = :id'
         );
-        $statement->execute([
-            'id' => $caseId,
-            'status' => $status,
-            'details' => json_encode($details, JSON_THROW_ON_ERROR),
-            'should_close' => $shouldClose ? 1 : 0,
-            'closed_at' => $shouldClose ? Clock::nowFormatted() : null,
-        ]);
+        $statement->bindValue(':id', $caseId, PDO::PARAM_INT);
+        $statement->bindValue(':status', $status);
+        $statement->bindValue(':details', json_encode($details, JSON_THROW_ON_ERROR));
+        $statement->bindValue(':should_close', $shouldClose ? 1 : 0, PDO::PARAM_INT);
+
+        if ($shouldClose) {
+            $statement->bindValue(':closed_at', Clock::nowFormatted());
+        } else {
+            $statement->bindValue(':closed_at', null, PDO::PARAM_NULL);
+        }
+
+        $statement->execute();
     }
 
     /**
