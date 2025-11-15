@@ -1335,117 +1335,179 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
     </section>
 
     <section class="checklists-section">
-      <header class="checklists-header">
-        <h2>Checklist workflow</h2>
+      <?php
+        $totalChecklists = count($checklists);
+        $totalItems = 0;
+        $totalCompleted = 0;
+        $checklistProgress = [];
+        foreach ($checklists as $progressChecklist) {
+            $items = is_array($progressChecklist['items'] ?? null) ? $progressChecklist['items'] : [];
+            $itemsCount = count($items);
+            $completedCount = 0;
+            foreach ($items as $item) {
+                if ((int) ($item['is_completed'] ?? 0) === 1) {
+                    $completedCount++;
+                }
+            }
+            $totalItems += $itemsCount;
+            $totalCompleted += $completedCount;
+            $checklistProgress[(int) $progressChecklist['id']] = [
+                'total' => $itemsCount,
+                'completed' => $completedCount,
+            ];
+        }
+        $overallCompletion = $totalItems > 0 ? (int) round(($totalCompleted / $totalItems) * 100) : 0;
+      ?>
+      <header class="checklist-board__header">
+        <div>
+          <h2>Checklist workflow</h2>
+          <p class="checklist-board__intro">Beheer iedere checklist vanuit een overzichtelijke werkbank en zie meteen hoe ver je bent.</p>
+        </div>
+        <dl class="checklist-board__stats">
+          <div>
+            <dt>Totaal checklists</dt>
+            <dd><?= (int) $totalChecklists ?></dd>
+          </div>
+          <div>
+            <dt>Openstaande stappen</dt>
+            <dd><?= (int) ($totalItems - $totalCompleted) ?></dd>
+          </div>
+          <div>
+            <dt>Voltooid</dt>
+            <dd><span><?= (int) $overallCompletion ?></span>%</dd>
+          </div>
+        </dl>
       </header>
-      <div class="checklists-grid">
-        <article class="checklist-card checklist-card--new">
-          <h3>Nieuwe checklist</h3>
+      <div class="checklist-board">
+        <aside class="checklist-composer">
+          <div class="checklist-composer__header">
+            <h3>Nieuwe checklist</h3>
+            <p class="muted">Maak een checklist en wijs deze direct toe aan de juiste collega.</p>
+          </div>
           <?php if (!empty($checklistErrors['general'])): ?>
             <div class="alert alert--error"><?= htmlspecialchars((string) $checklistErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
           <?php endif; ?>
-          <form method="POST" class="checklist-form">
+          <form method="POST" class="checklist-composer__form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
             <input type="hidden" name="action" value="add-checklist">
-            <label>
+            <label class="checklist-composer__field">
               <span>Titel</span>
               <input type="text" name="title" maxlength="160" required>
               <?php if (!empty($checklistErrors['title'])): ?><small class="form-error"><?= htmlspecialchars((string) $checklistErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
             </label>
-            <label>
+            <label class="checklist-composer__field">
               <span>Toegewezen aan</span>
               <input type="text" name="assigned_to" maxlength="120" placeholder="Bijv. Technicus Jan">
               <?php if (!empty($checklistErrors['assigned_to'])): ?><small class="form-error"><?= htmlspecialchars((string) $checklistErrors['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
             </label>
-            <label>
+            <label class="checklist-composer__field">
               <span>Deadline</span>
               <input type="date" name="due_date">
               <?php if (!empty($checklistErrors['due_date'])): ?><small class="form-error"><?= htmlspecialchars((string) $checklistErrors['due_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
             </label>
-            <button type="submit" class="btn">Checklist toevoegen</button>
+            <button type="submit" class="btn btn--full">Checklist toevoegen</button>
           </form>
-        </article>
+        </aside>
 
-        <?php if (empty($checklists)): ?>
-          <article class="checklist-card checklist-card--empty">
-            <p class="muted">Nog geen checklist aangemaakt voor deze case.</p>
-          </article>
-        <?php else: ?>
-          <?php foreach ($checklists as $checklist): ?>
-            <article class="checklist-card">
-              <header class="checklist-card__header">
-                <div class="checklist-card__title">
-                  <h3><?= htmlspecialchars((string) $checklist['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-                  <?php
-                    $metaParts = [];
-                    if (!empty($checklist['assigned_to'])) {
-                        $metaParts[] = 'Toegewezen aan ' . htmlspecialchars((string) $checklist['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                    }
-                    if (!empty($checklist['due_at'])) {
-                        $metaParts[] = 'Deadline ' . htmlspecialchars(date('d-m-Y', strtotime((string) $checklist['due_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                    }
-                  ?>
-                  <?php if ($metaParts !== []): ?>
-                    <div class="checklist-card__meta"><?= implode(' · ', $metaParts) ?></div>
-                  <?php endif; ?>
-                </div>
-                <form method="POST">
-                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                  <input type="hidden" name="action" value="remove-checklist">
-                  <input type="hidden" name="checklist_id" value="<?= (int) $checklist['id'] ?>">
-                  <button type="submit" class="btn btn--ghost" onclick="return confirm('Checklist verwijderen?')">Verwijder</button>
-                </form>
-              </header>
+        <div class="checklist-collection">
+          <?php if (empty($checklists)): ?>
+            <article class="checklist-empty">
+              <h3>Geen checklists</h3>
+              <p class="muted">Je hebt nog geen checklists aangemaakt voor deze case. Voeg er links eentje toe om te beginnen.</p>
+            </article>
+          <?php else: ?>
+            <?php foreach ($checklists as $checklist): ?>
+              <?php
+                $progress = $checklistProgress[(int) $checklist['id']] ?? ['total' => 0, 'completed' => 0];
+                $progressPercent = $progress['total'] > 0 ? (int) round(($progress['completed'] / $progress['total']) * 100) : 0;
+                $metaParts = [];
+                if (!empty($checklist['assigned_to'])) {
+                    $metaParts[] = 'Toegewezen aan ' . htmlspecialchars((string) $checklist['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                }
+                if (!empty($checklist['due_at'])) {
+                    $metaParts[] = 'Deadline ' . htmlspecialchars(date('d-m-Y', strtotime((string) $checklist['due_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                }
+              ?>
+              <article class="checklist-panel">
+                <header class="checklist-panel__header">
+                  <div class="checklist-panel__titles">
+                    <h3><?= htmlspecialchars((string) $checklist['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                    <?php if ($metaParts !== []): ?>
+                      <p class="checklist-panel__meta"><?= implode(' · ', $metaParts) ?></p>
+                    <?php endif; ?>
+                  </div>
+                  <div class="checklist-panel__tools">
+                    <div class="checklist-progress" role="group" aria-label="Voortgang">
+                      <span class="checklist-progress__value" aria-hidden="true"><?= (int) $progressPercent ?>%</span>
+                      <div class="checklist-progress__track" role="presentation">
+                        <div class="checklist-progress__bar" style="width: <?= (int) $progressPercent ?>%"></div>
+                      </div>
+                      <span class="sr-only"><?= (int) $progress['completed'] ?> van <?= (int) $progress['total'] ?> stappen voltooid</span>
+                    </div>
+                    <form method="POST">
+                      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                      <input type="hidden" name="action" value="remove-checklist">
+                      <input type="hidden" name="checklist_id" value="<?= (int) $checklist['id'] ?>">
+                      <button type="submit" class="btn btn--ghost btn--small" onclick="return confirm('Checklist verwijderen?')">Verwijder</button>
+                    </form>
+                  </div>
+                </header>
 
               <?php if ($checklistQuickActions !== []): ?>
-                <div class="checklist-card__actions">
-                  <p class="checklist-card__actions-label" id="checklist-actions-<?= (int) $checklist['id'] ?>">Szybkie działania</p>
-                  <div class="checklist-quick-actions" role="group" aria-labelledby="checklist-actions-<?= (int) $checklist['id'] ?>">
+                  <div class="checklist-panel__shortcuts" role="group" aria-label="Snel toevoegen">
                     <?php foreach ($checklistQuickActions as $quickAction): ?>
                       <?php if (empty($quickAction['id']) || empty($quickAction['label'])) { continue; } ?>
-                      <button type="button" class="checklist-quick-action" data-modal-target="<?= htmlspecialchars((string) $quickAction['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-checklist="<?= (int) $checklist['id'] ?>">
-                        <?= htmlspecialchars((string) $quickAction['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                      <button type="button" class="checklist-shortcut" data-modal-target="<?= htmlspecialchars((string) $quickAction['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-checklist="<?= (int) $checklist['id'] ?>">
+                        <span><?= htmlspecialchars((string) $quickAction['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                       </button>
                     <?php endforeach; ?>
                   </div>
-                </div>
-              <?php endif; ?>
-
-              <ul class="checklist-items">
-                <?php if (empty($checklist['items'])): ?>
-                  <li class="muted">Nog geen stappen toegevoegd.</li>
-                <?php else: ?>
-                  <?php foreach ($checklist['items'] as $item): ?>
-                    <li class="checklist-item <?= (int) $item['is_completed'] === 1 ? 'checklist-item--done' : '' ?>">
-                      <div>
-                        <strong><?= htmlspecialchars((string) $item['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                        <?php if ((int) $item['is_completed'] === 1): ?>
-                          <div class="muted">Voltooid door <?= htmlspecialchars((string) ($item['completed_by'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> op <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $item['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-                        <?php endif; ?>
-                      </div>
-                      <form method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                        <input type="hidden" name="action" value="toggle-checklist-item">
-                        <input type="hidden" name="item_id" value="<?= (int) $item['id'] ?>">
-                        <input type="hidden" name="completed" value="<?= (int) $item['is_completed'] === 1 ? '0' : '1' ?>">
-                        <button type="submit" class="btn btn--ghost btn--small"><?= (int) $item['is_completed'] === 1 ? 'Markeer open' : 'Markeer voltooid' ?></button>
-                      </form>
-                    </li>
-                  <?php endforeach; ?>
                 <?php endif; ?>
-              </ul>
 
-              <form method="POST" class="checklist-item-form">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <input type="hidden" name="action" value="add-checklist-item">
-                <input type="hidden" name="checklist_id" value="<?= (int) $checklist['id'] ?>">
-                <label class="sr-only" for="item-<?= (int) $checklist['id'] ?>">Nieuwe stap</label>
-                <input id="item-<?= (int) $checklist['id'] ?>" type="text" name="description" maxlength="255" placeholder="Voeg een stap toe" required>
-                <button type="submit" class="btn btn--ghost">Stap toevoegen</button>
-              </form>
-            </article>
-          <?php endforeach; ?>
-        <?php endif; ?>
+              <ol class="checklist-steps">
+                  <?php if (empty($checklist['items'])): ?>
+                    <li class="checklist-steps__empty muted">Nog geen stappen toegevoegd.</li>
+                  <?php else: ?>
+                    <?php foreach ($checklist['items'] as $item): ?>
+                      <?php $isCompleted = (int) ($item['is_completed'] ?? 0) === 1; ?>
+                      <li class="checklist-step <?= $isCompleted ? 'checklist-step--done' : '' ?>">
+                        <div class="checklist-step__marker" aria-hidden="true">
+                          <span></span>
+                        </div>
+                        <div class="checklist-step__body">
+                          <div class="checklist-step__content">
+                            <strong><?= htmlspecialchars((string) $item['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                            <?php if ($isCompleted): ?>
+                              <span class="checklist-step__meta">Voltooid door <?= htmlspecialchars((string) ($item['completed_by'] ?? 'Onbekend'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> op <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $item['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                            <?php endif; ?>
+                          </div>
+                          <form method="POST" class="checklist-step__action">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                            <input type="hidden" name="action" value="toggle-checklist-item">
+                            <input type="hidden" name="item_id" value="<?= (int) $item['id'] ?>">
+                            <input type="hidden" name="completed" value="<?= $isCompleted ? '0' : '1' ?>">
+                            <button type="submit" class="btn btn--ghost btn--small"><?= $isCompleted ? 'Markeer open' : 'Markeer voltooid' ?></button>
+                          </form>
+                        </div>
+                      </li>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                </ol>
+
+                <form method="POST" class="checklist-step-form">
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="action" value="add-checklist-item">
+                  <input type="hidden" name="checklist_id" value="<?= (int) $checklist['id'] ?>">
+                  <label class="sr-only" for="item-<?= (int) $checklist['id'] ?>">Nieuwe stap</label>
+                  <div class="checklist-step-form__fields">
+                    <input id="item-<?= (int) $checklist['id'] ?>" type="text" name="description" maxlength="255" placeholder="Voeg een stap toe" required>
+                    <button type="submit" class="btn btn--ghost">Stap toevoegen</button>
+                  </div>
+                </form>
+              </article>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
       </div>
       <?php if ($checklistQuickActions !== []): ?>
         <?php foreach ($checklistQuickActions as $quickActionModal): ?>
