@@ -9,6 +9,8 @@ use App\Security\Csrf;
 use App\Support\Audit\AuditLogger;
 use App\Support\Checklist\ChecklistRepository;
 use App\Support\Clock;
+use App\Support\Codes\PickupCodeGenerator;
+use App\Support\Documents\DocumentRepository;
 use App\Support\Notifications\NotificationService;
 use App\Support\Repositories\AppointmentRepository;
 use App\Support\Repositories\CaseRepository;
@@ -16,6 +18,9 @@ use App\Support\Repositories\EmployeeRepository;
 use App\Support\Repositories\NoteRepository;
 use App\Support\Repositories\WarehouseRepository;
 use App\Validation\InputValidator;
+use App\Support\View;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
@@ -35,6 +40,8 @@ $warehouseRepository = new WarehouseRepository($pdo);
 $employeeRepository = new EmployeeRepository($pdo);
 $appointmentRepository = new AppointmentRepository($pdo);
 $notificationService = new NotificationService($pdo);
+$documentRepository = new DocumentRepository($pdo);
+$pickupCodeGenerator = new PickupCodeGenerator($pdo);
 
 $case = $caseRepository->findById((int) $caseId);
 if ($case === null) {
@@ -54,6 +61,9 @@ $caseRecord = $statement->fetch();
 if (!$caseRecord) {
     Response::error('Casegegevens konden niet worden geladen.', 500);
 }
+
+$caseCustomerEmail = trim((string) ($caseRecord['email'] ?? ''));
+$caseCustomerPhone = trim((string) ($caseRecord['phone'] ?? ''));
 
 $warehouseStatusLabels = $warehouseRepository->statusLabels();
 $warehouseItems = $warehouseRepository->findByCaseId((int) $caseId);
@@ -83,6 +93,11 @@ foreach ($warehouseItems as $warehouseItem) {
     $warehouseTotals['quantity'] += (int) ($warehouseItem['quantity'] ?? 0);
     $warehouseTotals['reserved'] += (int) ($warehouseItem['reserved_quantity'] ?? 0);
 }
+
+$pickupStatement = $pdo->prepare('SELECT * FROM ophaalbevestigingen WHERE case_id = :case_id ORDER BY created_at DESC');
+$pickupStatement->execute(['case_id' => $caseId]);
+$pickupConfirmations = $pickupStatement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$latestPickupConfirmation = $pickupConfirmations[0] ?? null;
 
 $caseDetails = [];
 if (!empty($caseRecord['details'])) {
@@ -193,6 +208,34 @@ if (array_key_exists('barcode', $caseDetails)) {
         'key' => 'barcode',
         'label' => 'Barcode',
         'value' => $normalizeValue($caseDetails['barcode']),
+    ];
+}
+
+if (array_key_exists('pickup_code', $caseDetails)) {
+    $handledDetailKeys[] = 'pickup_code';
+    $detailItems[] = [
+        'key' => 'pickup_code',
+        'label' => 'Ophaalcode',
+        'value' => $normalizeValue($caseDetails['pickup_code']),
+    ];
+}
+
+if (array_key_exists('pickup_ready_date', $caseDetails)) {
+    $handledDetailKeys[] = 'pickup_ready_date';
+    $detailItems[] = [
+        'key' => 'pickup_ready_date',
+        'label' => 'Datum afgifte',
+        'value' => $normalizeValue($caseDetails['pickup_ready_date']),
+    ];
+}
+
+if (array_key_exists('case_closed_at', $caseDetails)) {
+    $handledDetailKeys[] = 'case_closed_at';
+    $closedAtValue = $formatDateTime($caseDetails['case_closed_at']);
+    $detailItems[] = [
+        'key' => 'case_closed_at',
+        'label' => 'Case gesloten op',
+        'value' => $closedAtValue !== '' ? $closedAtValue : '—',
     ];
 }
 
@@ -401,6 +444,17 @@ $appointmentFormValues = [
 $appointmentFormErrors = [];
 $shouldOpenAppointmentModal = false;
 
+$closeCaseFormValues = [
+    'pickup_code' => htmlspecialchars((string) ($caseDetails['pickup_code'] ?? ($caseRecord['reference_code'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+    'ready_date' => isset($caseDetails['pickup_ready_date']) ? substr((string) $caseDetails['pickup_ready_date'], 0, 10) : date('Y-m-d'),
+    'remarks' => '',
+    'closing_note' => '',
+    'notify_email' => $caseCustomerEmail !== '' ? '1' : '',
+    'notify_sms' => '',
+];
+$closeCaseErrors = [];
+$shouldOpenCaseCloseModal = false;
+
 $errors = [];
 $checklistErrors = [];
 $noteEditErrors = [];
@@ -428,6 +482,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $attendanceFormValues['reschedule_at'] = (string) $_POST['reschedule_at'];
             }
             $attendanceFormValues['cancellation_reason'] = isset($_POST['cancellation_reason']) ? (string) $_POST['cancellation_reason'] : '';
+            } elseif ($action === 'close-case') {
+            $closeCaseFormValues['pickup_code'] = isset($_POST['pickup_code']) ? htmlspecialchars((string) $_POST['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : $closeCaseFormValues['pickup_code'];
+            $closeCaseFormValues['ready_date'] = isset($_POST['ready_date']) ? (string) $_POST['ready_date'] : $closeCaseFormValues['ready_date'];
+            $closeCaseFormValues['remarks'] = isset($_POST['remarks']) ? htmlspecialchars((string) $_POST['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : $closeCaseFormValues['remarks'];
+            $closeCaseFormValues['closing_note'] = isset($_POST['closing_note']) ? htmlspecialchars((string) $_POST['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : $closeCaseFormValues['closing_note'];
+            $closeCaseFormValues['notify_email'] = isset($_POST['notify_email']) ? '1' : '';
+            $closeCaseFormValues['notify_sms'] = isset($_POST['notify_sms']) ? '1' : '';
         }
 
         switch ($action) {
@@ -756,6 +817,211 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $caseDetails = $updatedDetails;
                 break;
+                case 'close-case':
+                $preferredCodeRaw = trim((string) ($_POST['pickup_code'] ?? ''));
+                if (mb_strlen($preferredCodeRaw) > 32) {
+                    throw new ValidationException(['pickup_code' => 'Ophaalcode mag maximaal 32 tekens bevatten.']);
+                }
+
+                $readyDate = InputValidator::requireDate($_POST, 'ready_date');
+
+                $remarksRaw = trim((string) ($_POST['remarks'] ?? ''));
+                if (mb_strlen($remarksRaw) > 500) {
+                    throw new ValidationException(['remarks' => 'Opmerkingen mogen maximaal 500 tekens bevatten.']);
+                }
+
+                $closingNoteRaw = trim((string) ($_POST['closing_note'] ?? ''));
+                if (mb_strlen($closingNoteRaw) > 500) {
+                    throw new ValidationException(['closing_note' => 'Notitie mag maximaal 500 tekens bevatten.']);
+                }
+
+                try {
+                    $pickupCode = $pickupCodeGenerator->generate($preferredCodeRaw !== '' ? $preferredCodeRaw : null);
+                } catch (\RuntimeException $exception) {
+                    throw new ValidationException(['pickup_code' => $exception->getMessage()]);
+                }
+
+                $closeCaseFormValues['pickup_code'] = htmlspecialchars($pickupCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $closeCaseFormValues['ready_date'] = $readyDate;
+                $closeCaseFormValues['remarks'] = htmlspecialchars($remarksRaw, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $closeCaseFormValues['closing_note'] = htmlspecialchars($closingNoteRaw, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+                $shouldNotifyEmail = isset($_POST['notify_email']);
+                $shouldNotifySms = isset($_POST['notify_sms']);
+
+                $customerId = (int) $caseRecord['customer_id'];
+                $customerName = trim((string) ($caseRecord['full_name'] ?? ''));
+                if ($customerName === '') {
+                    $customerName = 'Onbekende klant';
+                }
+
+                $customerEmail = trim((string) ($caseRecord['email'] ?? ''));
+                $customerPhone = trim((string) ($caseRecord['phone'] ?? ''));
+                $deviceBrand = trim((string) ($caseRecord['device_brand'] ?? ''));
+                $deviceModel = trim((string) ($caseRecord['device_model'] ?? ''));
+                $merkmodel = trim($deviceBrand . ' ' . $deviceModel);
+                if ($merkmodel === '') {
+                    $merkmodel = 'Onbekend apparaat';
+                }
+
+                $caseReference = trim((string) ($caseRecord['reference_code'] ?? ''));
+                $now = Clock::nowFormatted();
+
+                $insertStatement = $pdo->prepare(
+                    'INSERT INTO ophaalbevestigingen '
+                    . '(klantnaam, klantemail, klanttelefoon, merkmodel, apparaatmerk, apparaatmodel, ophaalcode, case_reference, case_id, datumgereed, status, opmerkingen, pickup_signed_at) '
+                    . 'VALUES (:klantnaam, :klantemail, :klanttelefoon, :merkmodel, :apparaatmerk, :apparaatmodel, :ophaalcode, :case_reference, :case_id, :datumgereed, :status, :opmerkingen, :pickup_signed_at)'
+                );
+                $insertStatement->execute([
+                    'klantnaam' => $customerName,
+                    'klantemail' => $customerEmail !== '' ? $customerEmail : null,
+                    'klanttelefoon' => $customerPhone !== '' ? $customerPhone : null,
+                    'merkmodel' => $merkmodel,
+                    'apparaatmerk' => $deviceBrand !== '' ? $deviceBrand : null,
+                    'apparaatmodel' => $deviceModel !== '' ? $deviceModel : null,
+                    'ophaalcode' => $pickupCode,
+                    'case_reference' => $caseReference !== '' ? $caseReference : null,
+                    'case_id' => (int) $caseId,
+                    'datumgereed' => $readyDate,
+                    'status' => 'opgehaald',
+                    'opmerkingen' => $remarksRaw !== '' ? $remarksRaw : null,
+                    'pickup_signed_at' => $now,
+                ]);
+
+                $pickupId = (int) $pdo->lastInsertId();
+
+                $caseRepository->updateStatus((int) $caseId, 'opgehaald');
+                $caseRecord['status'] = 'opgehaald';
+                $case['status'] = 'opgehaald';
+
+                $updatedDetails = $caseDetails;
+                $updatedDetails['pickup_code'] = $pickupCode;
+                $updatedDetails['pickup_ready_date'] = $readyDate;
+                $updatedDetails['pickup_confirmation_id'] = $pickupId;
+                $updatedDetails['case_closed_at'] = $now;
+                $updatedDetails['case_closed_by'] = Auth::username();
+                if ($closingNoteRaw !== '') {
+                    $updatedDetails['case_closing_note'] = $closingNoteRaw;
+                } else {
+                    unset($updatedDetails['case_closing_note']);
+                }
+                if ($remarksRaw !== '') {
+                    $updatedDetails['pickup_closing_notes'] = $remarksRaw;
+                } else {
+                    unset($updatedDetails['pickup_closing_notes']);
+                }
+                $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                $caseDetails = $updatedDetails;
+
+                $receiptHtml = View::render('pdf/apparaat-opgehaald.php', [
+                    'documentTitel' => 'Apparaat Opgehaald',
+                    'bedrijfsNaam' => 'Digivriend',
+                    'huidigeDatum' => date('d-m-Y'),
+                    'klantnaam' => htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                    'ophaalcode' => htmlspecialchars($pickupCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                    'merkmodel' => htmlspecialchars($merkmodel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                    'datumgereed' => htmlspecialchars($readyDate, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                    'pickupSignature' => '',
+                ]);
+
+                $pdfOptions = new Options();
+                $pdfOptions->set('isRemoteEnabled', true);
+                $dompdf = new Dompdf($pdfOptions);
+                $dompdf->loadHtml($receiptHtml);
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->render();
+
+                $documentsDirectory = __DIR__ . '/storage/documents';
+                if (!is_dir($documentsDirectory)) {
+                    mkdir($documentsDirectory, 0775, true);
+                }
+
+                $documentFilename = sprintf('PickupReceipt[%s][%d].pdf', date('Ymd'), $pickupId);
+                $documentPath = $documentsDirectory . '/' . $documentFilename;
+                file_put_contents($documentPath, $dompdf->output());
+
+                $documentRepository->store(
+                    (int) $caseId,
+                    'pickup_receipt',
+                    'storage/documents/' . $documentFilename,
+                    [
+                        'pickup_confirmation_id' => $pickupId,
+                        'pickup_code' => $pickupCode,
+                        'pickup_date' => $readyDate,
+                        'closed_by' => Auth::username(),
+                    ]
+                );
+
+                $notifiedAt = null;
+                if ($shouldNotifyEmail && $customerEmail !== '') {
+                    $notificationService->sendPickupConfirmation(
+                        (int) $caseId,
+                        $customerId ?: null,
+                        $customerEmail,
+                        [
+                            'customer_name' => $customerName,
+                            'pickup_code' => $pickupCode,
+                            'pickup_date' => date('d-m-Y', strtotime($readyDate)),
+                        ]
+                    );
+                    $notifiedAt = $now;
+                }
+
+                if ($shouldNotifySms && $customerPhone !== '') {
+                    $notificationService->sendSms(
+                        (int) $caseId,
+                        $customerId ?: null,
+                        $customerPhone,
+                        [
+                            'body' => sprintf('Bedankt voor uw bezoek! Code %s is opgehaald.', $pickupCode),
+                            'subject' => 'Pickup bevestigd',
+                        ]
+                    );
+                    $notifiedAt = $notifiedAt ?? $now;
+                }
+
+                if ($notifiedAt !== null) {
+                    $notifiedStatement = $pdo->prepare('UPDATE ophaalbevestigingen SET notified_collected_at = :notified WHERE id = :id');
+                    $notifiedStatement->execute([
+                        'notified' => $notifiedAt,
+                        'id' => $pickupId,
+                    ]);
+                }
+
+                $noteParts = [
+                    'Case afgesloten als opgehaald.',
+                    sprintf('Ophaalcode: %s.', $pickupCode),
+                ];
+                if ($closingNoteRaw !== '') {
+                    $noteParts[] = 'Notitie: ' . $closingNoteRaw;
+                }
+                if ($remarksRaw !== '') {
+                    $noteParts[] = 'Opmerkingen: ' . $remarksRaw;
+                }
+                $noteRepository->add(
+                    (int) $caseId,
+                    $customerId,
+                    Auth::username(),
+                    implode(' ', $noteParts)
+                );
+
+                $auditLogger->log(
+                    (int) $caseId,
+                    Auth::id(),
+                    Auth::username(),
+                    'case_closed_pickup',
+                    [
+                        'pickup_confirmation_id' => $pickupId,
+                        'pickup_code' => $pickupCode,
+                        'pickup_date' => $readyDate,
+                        'notifications' => [
+                            'email' => $shouldNotifyEmail && $customerEmail !== '',
+                            'sms' => $shouldNotifySms && $customerPhone !== '',
+                        ],
+                    ]
+                );
+
+                Response::redirect('case.php?id=' . (int) $caseId . '&case_closed=1&pickup_id=' . $pickupId);
             case 'add-note':
                 $body = InputValidator::requireString($_POST, 'body', 2000);
                 $noteRepository->add((int) $caseId, (int) $caseRecord['customer_id'], Auth::username(), $body);
@@ -939,6 +1205,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = $validationErrors;
         } elseif ($currentAction === 'intake-attendance') {
             $attendanceErrors = $validationErrors;
+        } elseif ($currentAction === 'close-case') {
+            $closeCaseErrors = $validationErrors;
+            $shouldOpenCaseCloseModal = true;
         } elseif ($currentAction === 'create-appointment') {
             $appointmentFormErrors = $validationErrors;
             $shouldOpenAppointmentModal = true;
@@ -953,6 +1222,8 @@ if ($currentAction === 'intake-attendance' && $attendanceErrors !== []) {
 }
 
 $appointmentCreated = filter_input(INPUT_GET, 'appointment_created', FILTER_VALIDATE_BOOLEAN);
+$caseClosedSuccess = filter_input(INPUT_GET, 'case_closed', FILTER_VALIDATE_BOOLEAN);
+$caseClosedPickupId = filter_input(INPUT_GET, 'pickup_id', FILTER_VALIDATE_INT);
 
 $notes = $noteRepository->forCase((int) $caseId);
 $csrfToken = Csrf::token();
@@ -1170,6 +1441,14 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
     <?php if ($assignmentSuccess): ?>
       <div class="alert alert--success">Je bent nu verantwoordelijk voor dit dossier.</div>
     <?php endif; ?>
+    <?php if ($caseClosedSuccess): ?>
+      <div class="alert alert--success">
+        Case succesvol afgesloten en ontvangstbevestiging geregistreerd.
+        <?php if ($caseClosedPickupId): ?>
+          <a class="btn-link" href="generate-apparaat-opgehaald.php?id=<?= (int) $caseClosedPickupId ?>" target="_blank" rel="noopener">Bekijk bevestiging</a>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
     <?php if (!empty($errors['general'])): ?>
       <?php $generalMessage = is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general']; ?>
       <div class="alert alert--danger"><?= htmlspecialchars($generalMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
@@ -1377,6 +1656,63 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           </div>
           <button type="submit" class="btn btn--primary">Zapisz zespół</button>
         </form>
+      </article>
+
+      <article class="info-card info-card--wide">
+        <h2>Odbiór urządzenia</h2>
+        <p class="muted">Overzicht van ophaalbevestigingen en afsluiting van dit dossier.</p>
+        <?php if ($pickupConfirmations === []): ?>
+          <p class="muted">Er zijn nog geen ophaalbevestigingen gekoppeld aan deze case.</p>
+        <?php else: ?>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Datum gereed</th>
+                  <th>Status</th>
+                  <th>Laatst bijgewerkt</th>
+                  <th>Acties</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pickupConfirmations as $confirmation): ?>
+                  <?php
+                    $confirmationId = (int) ($confirmation['id'] ?? 0);
+                    $confirmationCode = (string) ($confirmation['ophaalcode'] ?? '');
+                    $confirmationStatus = (string) ($confirmation['status'] ?? '');
+                    $statusClass = $confirmationStatus === 'opgehaald' ? 'status-pill--picked' : 'status-pill--ready';
+                    $statusLabel = $confirmationStatus !== '' ? ucfirst($confirmationStatus) : 'Onbekend';
+                    $readyDateLabel = (string) ($confirmation['datumgereed'] ?? '');
+                    $updatedAtRaw = $confirmation['updated_at'] ?? $confirmation['pickup_signed_at'] ?? $confirmation['created_at'] ?? null;
+                    $updatedLabel = $updatedAtRaw ? date('d-m-Y H:i', strtotime((string) $updatedAtRaw)) : '—';
+                    $hasSignature = !empty($confirmation['pickup_signature']);
+                  ?>
+                  <tr>
+                    <td><?= htmlspecialchars($confirmationCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($readyDateLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                    <td><span class="status-pill <?= htmlspecialchars($statusClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
+                    <td><?= htmlspecialchars($updatedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                    <td>
+                      <div class="button-row">
+                        <a class="btn btn--ghost btn--small" href="generate-apparaat-opgehaald.php?id=<?= $confirmationId ?>" target="_blank" rel="noopener">PDF</a>
+                        <?php if (!$hasSignature && $confirmationStatus === 'klaar'): ?>
+                          <a class="btn btn--ghost btn--small" href="pickup-sign.php?id=<?= $confirmationId ?>">Handtekening</a>
+                        <?php endif; ?>
+                      </div>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+        <div class="button-row">
+          <button class="btn btn--primary" type="button" data-modal-target="case-close-modal">Zamknij case i wystaw potwierdzenie</button>
+          <?php if ($latestPickupConfirmation !== null): ?>
+            <a class="btn btn--ghost" href="generate-apparaat-opgehaald.php?id=<?= (int) ($latestPickupConfirmation['id'] ?? 0) ?>" target="_blank" rel="noopener">Laatste bevestiging</a>
+          <?php endif; ?>
+        </div>
       </article>
 
       <article class="info-card info-card--wide">
@@ -1628,6 +1964,75 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           <footer class="modal__footer">
             <button type="button" class="btn btn--ghost" data-modal-close>Anuluj</button>
             <button type="submit" class="btn btn--primary">Zapisz wizytę</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+
+    <div
+      class="modal"
+      id="case-close-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="case-close-modal-title"
+      data-case-close-modal
+      <?= $shouldOpenCaseCloseModal ? ' data-open-on-load="true"' : '' ?>
+    >
+      <div class="modal__panel" role="document">
+        <header class="modal__header">
+          <div>
+            <p class="modal__eyebrow">Case afsluiting</p>
+            <h2 id="case-close-modal-title">Zamknij case #<?= (int) $caseId ?></h2>
+          </div>
+          <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
+        </header>
+        <form method="post" class="case-close-form" novalidate>
+          <div class="modal__body">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="close-case">
+            <?php if (!empty($closeCaseErrors['general'])): ?>
+              <?php $closeGeneral = is_array($closeCaseErrors['general']) ? implode(' ', array_map('strval', $closeCaseErrors['general'])) : (string) $closeCaseErrors['general']; ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($closeGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <div class="form-grid">
+              <label class="form-field">
+                <span class="form-field__label">Ophaalcode</span>
+                <input type="text" name="pickup_code" value="<?= htmlspecialchars($closeCaseFormValues['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="32" placeholder="Automatisch genereren">
+                <small class="muted">Laat leeg om automatisch een unieke code te genereren.</small>
+                <?php if (!empty($closeCaseErrors['pickup_code'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['pickup_code']) ? implode(' ', array_map('strval', $closeCaseErrors['pickup_code'])) : (string) $closeCaseErrors['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Datum afgifte</span>
+                <input type="date" name="ready_date" value="<?= htmlspecialchars($closeCaseFormValues['ready_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?php if (!empty($closeCaseErrors['ready_date'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['ready_date']) ? implode(' ', array_map('strval', $closeCaseErrors['ready_date'])) : (string) $closeCaseErrors['ready_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="form-field__label">Opmerkingen voor bevestiging</span>
+              <textarea name="remarks" rows="3" placeholder="Bijvoorbeeld: apparaat opgehaald door klant"><?= htmlspecialchars($closeCaseFormValues['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <?php if (!empty($closeCaseErrors['remarks'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['remarks']) ? implode(' ', array_map('strval', $closeCaseErrors['remarks'])) : (string) $closeCaseErrors['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Notitie voor het dossier</span>
+              <textarea name="closing_note" rows="3" placeholder="Deze notitie wordt toegevoegd aan de case"><?= htmlspecialchars($closeCaseFormValues['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <?php if (!empty($closeCaseErrors['closing_note'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['closing_note']) ? implode(' ', array_map('strval', $closeCaseErrors['closing_note'])) : (string) $closeCaseErrors['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <fieldset class="form-field">
+              <legend class="form-field__label">Automatische meldingen</legend>
+              <label>
+                <input type="checkbox" name="notify_email" value="1" <?= $closeCaseFormValues['notify_email'] === '1' ? 'checked' : '' ?> <?= $caseCustomerEmail === '' ? 'disabled' : '' ?>>
+                <span>E-mail naar <?= $caseCustomerEmail !== '' ? htmlspecialchars($caseCustomerEmail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'geen e-mailadres beschikbaar' ?></span>
+              </label>
+              <label>
+                <input type="checkbox" name="notify_sms" value="1" <?= $closeCaseFormValues['notify_sms'] === '1' ? 'checked' : '' ?> <?= $caseCustomerPhone === '' ? 'disabled' : '' ?>>
+                <span>SMS naar <?= $caseCustomerPhone !== '' ? htmlspecialchars($caseCustomerPhone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'geen telefoonnummer beschikbaar' ?></span>
+              </label>
+            </fieldset>
+          </div>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-modal-close>Annuleer</button>
+            <button type="submit" class="btn btn--primary">Case sluiten</button>
           </footer>
         </form>
       </div>
