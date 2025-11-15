@@ -1163,6 +1163,174 @@ body.detail-modal-open {
   box-shadow: none;
 }
 
+.appointment-modal .modal__panel {
+  width: min(760px, 100%);
+}
+
+.appointment-modal__layout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: flex-start;
+}
+
+.appointment-modal__types {
+  display: grid;
+  gap: 16px;
+}
+
+.appointment-modal__intro {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.appointment-type-list {
+  display: grid;
+  gap: 12px;
+}
+
+.appointment-type-card {
+  position: relative;
+  display: flex;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(248, 250, 252, 0.9);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.appointment-type-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.appointment-type-card__content {
+  display: grid;
+  gap: 6px;
+}
+
+.appointment-type-card__label {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.appointment-type-card__description {
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.appointment-type-card--active,
+.appointment-type-card:hover {
+  border-color: rgba(240, 90, 40, 0.6);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  background: rgba(255, 247, 237, 0.9);
+}
+
+.appointment-modal__details {
+  display: grid;
+  gap: 18px;
+}
+
+.appointment-form__datetime {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.appointment-form__color {
+  display: grid;
+}
+
+.appointment-color-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.appointment-color-picker input[type='color'] {
+  width: 52px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.appointment-color-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.appointment-color-preview::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--appointment-color, #2563eb);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.appointment-form__confirmation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.appointment-form__employees {
+  margin-top: 8px;
+}
+
+.appointment-employee-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.appointment-employee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.7);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.appointment-employee input {
+  width: 18px;
+  height: 18px;
+}
+
+.appointment-employee__name {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.appointment-employee:hover {
+  border-color: rgba(240, 90, 40, 0.5);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 960px) {
+  .appointment-modal__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-form__datetime,
+  .appointment-form__confirmation {
+    grid-template-columns: 1fr;
+  }
+}
+
 .checklist-modal__description {
   margin: 0;
   color: #475569;

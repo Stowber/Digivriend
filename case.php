@@ -302,6 +302,105 @@ foreach ($activeCaseAssignments as $assignment) {
     }
 }
 
+$appointmentTypePresets = [
+    'intake_visit' => [
+        'label' => 'Intake w serwisie',
+        'description' => 'Klient odwiedza serwis, aby przekazać urządzenie do dalszych działań.',
+        'default_title' => 'Intake wizyta',
+        'default_duration' => 30,
+        'status' => 'scheduled',
+        'color' => '#F05A28',
+        'confirmation_method' => 'email',
+        'confirmation_status' => 'pending',
+    ],
+    'pickup_visit' => [
+        'label' => 'Odbiór urządzenia',
+        'description' => 'Serwisant udaje się do klienta, aby odebrać sprzęt.',
+        'default_title' => 'Odbiór urządzenia',
+        'default_duration' => 45,
+        'status' => 'scheduled',
+        'color' => '#2563EB',
+        'confirmation_method' => 'phone',
+        'confirmation_status' => 'awaiting',
+    ],
+    'diagnostics_session' => [
+        'label' => 'Diagnostyka',
+        'description' => 'Spotkanie poświęcone analizie problemu i testom urządzenia.',
+        'default_title' => 'Sesja diagnostyczna',
+        'default_duration' => 60,
+        'status' => 'tentative',
+        'color' => '#7C3AED',
+        'confirmation_method' => 'email',
+        'confirmation_status' => 'pending',
+    ],
+    'delivery_visit' => [
+        'label' => 'Dowóz / wydanie',
+        'description' => 'Dostarczenie naprawionego urządzenia do klienta lub przekazanie na miejscu.',
+        'default_title' => 'Dowóz urządzenia',
+        'default_duration' => 45,
+        'status' => 'confirmed',
+        'color' => '#0EA5E9',
+        'confirmation_method' => 'phone',
+        'confirmation_status' => 'confirmed',
+    ],
+    'service_followup' => [
+        'label' => 'Kontrola po serwisie',
+        'description' => 'Wizyta sprawdzająca po zakończonej naprawie.',
+        'default_title' => 'Kontrola serwisowa',
+        'default_duration' => 30,
+        'status' => 'scheduled',
+        'color' => '#22C55E',
+        'confirmation_method' => 'email',
+        'confirmation_status' => 'pending',
+    ],
+];
+
+$defaultAppointmentType = 'intake_visit';
+if (!isset($appointmentTypePresets[$defaultAppointmentType])) {
+    $presetKeys = array_keys($appointmentTypePresets);
+    $defaultAppointmentType = $presetKeys[0] ?? 'intake_visit';
+}
+$defaultPreset = $appointmentTypePresets[$defaultAppointmentType] ?? [];
+$appointmentDurationOptions = [30, 45, 60, 90, 120, 180];
+$appointmentStatusOptions = [
+    'scheduled' => 'Zaplanowana',
+    'tentative' => 'Wstępna',
+    'confirmed' => 'Potwierdzona',
+    'completed' => 'Zakończona',
+    'cancelled' => 'Anulowana',
+    'no_show' => 'Nieobecność',
+];
+$appointmentConfirmationMethods = [
+    '' => '—',
+    'phone' => 'Telefon',
+    'email' => 'E-mail',
+    'sms' => 'SMS',
+];
+$appointmentConfirmationStatuses = [
+    '' => '—',
+    'pending' => 'W trakcie potwierdzania',
+    'awaiting' => 'Oczekuje',
+    'confirmed' => 'Potwierdzone',
+    'declined' => 'Odrzucone',
+];
+
+$appointmentFormValues = [
+    'title' => (string) ($defaultPreset['default_title'] ?? 'Wizyta serwisowa'),
+    'appointment_type' => $defaultAppointmentType,
+    'start_at' => '',
+    'duration' => (string) ($defaultPreset['default_duration'] ?? 60),
+    'location' => '',
+    'notes' => '',
+    'status' => (string) ($defaultPreset['status'] ?? 'scheduled'),
+    'color' => (string) ($defaultPreset['color'] ?? '#2563EB'),
+    'confirmation_method' => (string) ($defaultPreset['confirmation_method'] ?? ''),
+    'confirmation_status' => (string) ($defaultPreset['confirmation_status'] ?? ''),
+    'employees' => $currentEmployeeId ? [(string) $currentEmployeeId] : [],
+    'resources' => '',
+];
+$appointmentFormErrors = [];
+$shouldOpenAppointmentModal = false;
+
 $errors = [];
 $checklistErrors = [];
 $noteEditErrors = [];
@@ -332,7 +431,132 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         switch ($action) {
-          case 'intake-attendance':
+          case 'create-appointment':
+                $appointmentFormValues['title'] = isset($_POST['title']) ? (string) $_POST['title'] : $appointmentFormValues['title'];
+                $appointmentFormValues['appointment_type'] = isset($_POST['appointment_type']) ? (string) $_POST['appointment_type'] : $appointmentFormValues['appointment_type'];
+                $appointmentFormValues['start_at'] = isset($_POST['start_at']) ? (string) $_POST['start_at'] : $appointmentFormValues['start_at'];
+                $appointmentFormValues['duration'] = isset($_POST['duration']) ? (string) $_POST['duration'] : $appointmentFormValues['duration'];
+                $appointmentFormValues['location'] = isset($_POST['location']) ? (string) $_POST['location'] : $appointmentFormValues['location'];
+                $appointmentFormValues['notes'] = isset($_POST['notes']) ? (string) $_POST['notes'] : $appointmentFormValues['notes'];
+                $appointmentFormValues['status'] = isset($_POST['status']) ? (string) $_POST['status'] : $appointmentFormValues['status'];
+                $appointmentFormValues['color'] = isset($_POST['color']) ? (string) $_POST['color'] : $appointmentFormValues['color'];
+                $appointmentFormValues['confirmation_method'] = isset($_POST['confirmation_method']) ? (string) $_POST['confirmation_method'] : $appointmentFormValues['confirmation_method'];
+                $appointmentFormValues['confirmation_status'] = isset($_POST['confirmation_status']) ? (string) $_POST['confirmation_status'] : $appointmentFormValues['confirmation_status'];
+                $appointmentFormValues['resources'] = isset($_POST['resources']) ? (string) $_POST['resources'] : $appointmentFormValues['resources'];
+                $appointmentFormValues['employees'] = array_map('strval', (array) ($_POST['employees'] ?? $appointmentFormValues['employees']));
+
+                $selectedType = InputValidator::requireString($_POST, 'appointment_type', 64);
+                if (!isset($appointmentTypePresets[$selectedType])) {
+                    throw new ValidationException(['appointment_type' => 'Wybierz prawidłowy rodzaj wizyty.']);
+                }
+
+                $title = InputValidator::requireString($_POST, 'title', 191);
+                $startRaw = InputValidator::requireString($_POST, 'start_at', 32);
+                $durationMinutes = filter_var($_POST['duration'] ?? null, FILTER_VALIDATE_INT);
+                if ($durationMinutes === false || $durationMinutes < 15 || $durationMinutes > 480) {
+                    throw new ValidationException(['duration' => 'Wybierz czas trwania wizyty (15–480 minut).']);
+                }
+
+                $startAt = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $startRaw);
+                if (!$startAt instanceof DateTimeImmutable) {
+                    throw new ValidationException(['start_at' => 'Podaj prawidłową datę i godzinę wizyty.']);
+                }
+
+                $endAt = $startAt->add(new DateInterval('PT' . $durationMinutes . 'M'));
+
+                $employeeIds = array_map('intval', (array) ($_POST['employees'] ?? []));
+                $employeeIds = array_values(array_filter($employeeIds, static fn (int $value): bool => $value > 0));
+                if ($employeeIds === []) {
+                    throw new ValidationException(['employees' => 'Wybierz przynajmniej jednego pracownika.']);
+                }
+
+                $location = InputValidator::optionalString($_POST, 'location', 191);
+                $notes = InputValidator::optionalString($_POST, 'notes', 500);
+                $status = InputValidator::optionalString($_POST, 'status', 32);
+                $status = $status !== '' ? $status : (string) ($appointmentTypePresets[$selectedType]['status'] ?? 'scheduled');
+                $color = InputValidator::optionalString($_POST, 'color', 16);
+                if ($color === '' && isset($appointmentTypePresets[$selectedType]['color'])) {
+                    $color = (string) $appointmentTypePresets[$selectedType]['color'];
+                }
+                $confirmationMethod = InputValidator::optionalString($_POST, 'confirmation_method', 64);
+                $confirmationStatus = InputValidator::optionalString($_POST, 'confirmation_status', 32);
+                $resourcesRaw = InputValidator::optionalString($_POST, 'resources', 2000);
+
+                $resources = [];
+                if ($resourcesRaw !== '') {
+                    $resourceLines = preg_split('/\r?\n/', $resourcesRaw, -1, PREG_SPLIT_NO_EMPTY);
+                    foreach ($resourceLines as $line) {
+                        $trimmedLine = trim($line);
+                        if ($trimmedLine === '') {
+                            continue;
+                        }
+                        $parts = array_map('trim', explode('|', $trimmedLine));
+                        $labelSource = $parts[1] !== '' ? $parts[1] : ($parts[0] !== '' ? $parts[0] : $trimmedLine);
+                        $resources[] = [
+                            'type' => $parts[0] !== '' ? $parts[0] : 'resource',
+                            'label' => $labelSource,
+                            'details' => $parts[2] !== '' ? $parts[2] : null,
+                        ];
+                    }
+                }
+
+                $conflicts = $appointmentRepository->conflicts(
+                    $startAt->format('Y-m-d H:i:s'),
+                    $endAt->format('Y-m-d H:i:s'),
+                    $employeeIds
+                );
+
+                if ($conflicts !== []) {
+                    throw new ValidationException(['general' => 'Wybrani pracownicy mają już wizytę w tym czasie.']);
+                }
+
+                $appointmentCustomerId = isset($caseRecord['customer_id']) ? (int) $caseRecord['customer_id'] : 0;
+
+                $appointment = $appointmentRepository->create(
+                    $title,
+                    $selectedType,
+                    $status,
+                    $startAt->format('Y-m-d H:i:s'),
+                    $endAt->format('Y-m-d H:i:s'),
+                    (int) $caseId,
+                    $appointmentCustomerId > 0 ? $appointmentCustomerId : null,
+                    $location !== '' ? $location : null,
+                    $notes !== '' ? $notes : null,
+                    $color !== '' ? $color : null,
+                    $confirmationMethod !== '' ? $confirmationMethod : null,
+                    $confirmationStatus !== '' ? $confirmationStatus : null,
+                    null,
+                    Auth::username(),
+                    Auth::username(),
+                    $employeeIds,
+                    $resources
+                );
+
+                $customerId = $appointmentCustomerId;
+                if ($customerId > 0) {
+                    $noteLabel = $appointmentTypePresets[$selectedType]['label'] ?? $selectedType;
+                    $noteRepository->add(
+                        (int) $caseId,
+                        $customerId,
+                        Auth::username(),
+                        sprintf(
+                            'Zaplanowano wizytę: %s (%s).',
+                            $noteLabel,
+                            $startAt->format('d-m-Y H:i')
+                        )
+                    );
+                }
+
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'appointment_created', [
+                    'appointment_id' => (int) ($appointment['id'] ?? 0),
+                    'type' => $selectedType,
+                    'start_at' => $startAt->format('Y-m-d H:i:s'),
+                    'end_at' => $endAt->format('Y-m-d H:i:s'),
+                    'employees' => $employeeIds,
+                ]);
+
+                Response::redirect('case.php?id=' . (int) $caseId . '&appointment_created=1');
+            case 'intake-attendance':
                 $attendanceActionRaw = InputValidator::requireString($_POST, 'attendance_action', 40);
                 $attendanceAction = strtolower($attendanceActionRaw);
                 $allowedAttendanceActions = ['arrived', 'no_show', 'rescheduled', 'cancelled'];
@@ -715,6 +939,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = $validationErrors;
         } elseif ($currentAction === 'intake-attendance') {
             $attendanceErrors = $validationErrors;
+        } elseif ($currentAction === 'create-appointment') {
+            $appointmentFormErrors = $validationErrors;
+            $shouldOpenAppointmentModal = true;
         } else {
             $errors = array_merge($errors, $validationErrors);
         }
@@ -724,6 +951,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($currentAction === 'intake-attendance' && $attendanceErrors !== []) {
     $shouldShowAttendanceModal = true;
 }
+
+$appointmentCreated = filter_input(INPUT_GET, 'appointment_created', FILTER_VALIDATE_BOOLEAN);
 
 $notes = $noteRepository->forCase((int) $caseId);
 $csrfToken = Csrf::token();
@@ -944,6 +1173,9 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
     <?php if (!empty($errors['general'])): ?>
       <?php $generalMessage = is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general']; ?>
       <div class="alert alert--danger"><?= htmlspecialchars($generalMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+    <?php endif; ?>
+    <?php if ($appointmentCreated): ?>
+      <div class="alert alert--success">Nowa wizyta została zaplanowana.</div>
     <?php endif; ?>
     <?php if ($shouldShowAttendanceModal): ?>
       <div class="detail-modal" data-detail-modal="intake-attendance" data-open-on-load="true" aria-hidden="true">
@@ -1183,9 +1415,223 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
             </tbody>
           </table>
         <?php endif; ?>
-        <a class="btn btn--ghost" href="calendar.php?case=<?= (int) $caseId ?>">Zaplanuj wizytę</a>
+        <button class="btn btn--ghost" type="button" data-modal-target="case-appointment-modal">Zaplanuj wizytę</button>
       </article>
     </section>
+
+    <div
+      class="modal appointment-modal"
+      id="case-appointment-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="case-appointment-modal-title"
+      data-case-appointment-modal
+      <?= $shouldOpenAppointmentModal ? ' data-open-on-load="true"' : '' ?>
+    >
+      <div class="modal__panel" role="document">
+        <header class="modal__header">
+          <div>
+            <p class="modal__eyebrow">Nowa wizyta</p>
+            <h2 id="case-appointment-modal-title">Zaplanuj wizytę dla case #<?= (int) $caseId ?></h2>
+          </div>
+          <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
+        </header>
+        <form method="post" class="appointment-form" novalidate>
+          <div class="modal__body">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="create-appointment">
+            <?php if (!empty($appointmentFormErrors['general'])): ?>
+              <?php $appointmentGeneral = is_array($appointmentFormErrors['general']) ? implode(' ', array_map('strval', $appointmentFormErrors['general'])) : (string) $appointmentFormErrors['general']; ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($appointmentGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <section class="appointment-modal__layout">
+              <div class="appointment-modal__types">
+                <h3>Rodzaj wizyty</h3>
+                <p class="appointment-modal__intro">Wybierz scenariusz, a my dopasujemy domyślne ustawienia do jego charakteru.</p>
+                <div class="appointment-type-list">
+                  <?php foreach ($appointmentTypePresets as $typeKey => $preset): ?>
+                    <?php
+                      $isSelectedType = $appointmentFormValues['appointment_type'] === $typeKey;
+                      $presetTitle = (string) ($preset['default_title'] ?? '');
+                      $presetDuration = (int) ($preset['default_duration'] ?? 60);
+                      $presetStatus = (string) ($preset['status'] ?? 'scheduled');
+                      $presetColor = (string) ($preset['color'] ?? '');
+                      $presetConfirmationMethod = (string) ($preset['confirmation_method'] ?? '');
+                      $presetConfirmationStatus = (string) ($preset['confirmation_status'] ?? '');
+                    ?>
+                    <label class="appointment-type-card<?= $isSelectedType ? ' appointment-type-card--active' : '' ?>">
+                      <input
+                        type="radio"
+                        name="appointment_type"
+                        value="<?= htmlspecialchars($typeKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        <?= $isSelectedType ? 'checked' : '' ?>
+                        data-default-title="<?= htmlspecialchars($presetTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-duration="<?= $presetDuration ?>"
+                        data-default-status="<?= htmlspecialchars($presetStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-color="<?= htmlspecialchars($presetColor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-confirmation-method="<?= htmlspecialchars($presetConfirmationMethod, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-confirmation-status="<?= htmlspecialchars($presetConfirmationStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      >
+                      <span class="appointment-type-card__content">
+                        <span class="appointment-type-card__label"><?= htmlspecialchars((string) ($preset['label'] ?? ucfirst($typeKey)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <?php if (!empty($preset['description'])): ?>
+                          <span class="appointment-type-card__description"><?= htmlspecialchars((string) $preset['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <?php endif; ?>
+                      </span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+                <?php if (!empty($appointmentFormErrors['appointment_type'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['appointment_type']) ? implode(' ', array_map('strval', $appointmentFormErrors['appointment_type'])) : (string) $appointmentFormErrors['appointment_type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </div>
+              <div class="appointment-modal__details">
+                <label class="form-field" for="appointment-title">
+                  <span class="form-field__label">Tytuł wizyty</span>
+                  <input
+                    id="appointment-title"
+                    type="text"
+                    name="title"
+                    value="<?= htmlspecialchars($appointmentFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    maxlength="191"
+                    required
+                    data-field="title"
+                  >
+                  <?php if (!empty($appointmentFormErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['title']) ? implode(' ', array_map('strval', $appointmentFormErrors['title'])) : (string) $appointmentFormErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <div class="appointment-form__datetime">
+                  <label class="form-field" for="appointment-start">
+                    <span class="form-field__label">Data i godzina rozpoczęcia</span>
+                    <input
+                      id="appointment-start"
+                      type="datetime-local"
+                      name="start_at"
+                      value="<?= htmlspecialchars($appointmentFormValues['start_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      required
+                      data-autofocus
+                    >
+                    <?php if (!empty($appointmentFormErrors['start_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['start_at']) ? implode(' ', array_map('strval', $appointmentFormErrors['start_at'])) : (string) $appointmentFormErrors['start_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                  <label class="form-field" for="appointment-duration">
+                    <span class="form-field__label">Czas trwania</span>
+                    <select id="appointment-duration" name="duration" data-field="duration">
+                      <?php foreach ($appointmentDurationOptions as $durationOption): ?>
+                        <?php $durationSelected = (int) $appointmentFormValues['duration'] === (int) $durationOption; ?>
+                        <option value="<?= (int) $durationOption ?>"<?= $durationSelected ? ' selected' : '' ?>><?= (int) $durationOption ?> minut</option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($appointmentFormErrors['duration'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['duration']) ? implode(' ', array_map('strval', $appointmentFormErrors['duration'])) : (string) $appointmentFormErrors['duration'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                </div>
+                <label class="form-field" for="appointment-location">
+                  <span class="form-field__label">Lokalizacja</span>
+                  <input
+                    id="appointment-location"
+                    type="text"
+                    name="location"
+                    maxlength="191"
+                    value="<?= htmlspecialchars($appointmentFormValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    placeholder="Serwis, adres klienta lub opis miejsca"
+                  >
+                  <?php if (!empty($appointmentFormErrors['location'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['location']) ? implode(' ', array_map('strval', $appointmentFormErrors['location'])) : (string) $appointmentFormErrors['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <label class="form-field" for="appointment-status">
+                  <span class="form-field__label">Status wizyty</span>
+                  <select id="appointment-status" name="status" data-field="status">
+                    <?php foreach ($appointmentStatusOptions as $statusKey => $statusLabel): ?>
+                      <option value="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $appointmentFormValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                  <?php if (!empty($appointmentFormErrors['status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['status']) ? implode(' ', array_map('strval', $appointmentFormErrors['status'])) : (string) $appointmentFormErrors['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <div class="appointment-form__color">
+                  <label class="form-field" for="appointment-color">
+                    <span class="form-field__label">Kolor w kalendarzu</span>
+                    <div class="appointment-color-picker">
+                      <?php $colorValue = $appointmentFormValues['color'] !== '' ? $appointmentFormValues['color'] : '#2563EB'; ?>
+                      <input
+                        id="appointment-color"
+                        type="color"
+                        name="color"
+                        value="<?= htmlspecialchars($colorValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-field="color"
+                      >
+                      <span class="appointment-color-preview" data-color-preview style="--appointment-color: <?= htmlspecialchars($colorValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-color-value="<?= htmlspecialchars(strtoupper($colorValue), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(strtoupper($colorValue), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    </div>
+                    <?php if (!empty($appointmentFormErrors['color'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['color']) ? implode(' ', array_map('strval', $appointmentFormErrors['color'])) : (string) $appointmentFormErrors['color'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                </div>
+                <div class="appointment-form__confirmation">
+                  <label class="form-field" for="appointment-confirmation-method">
+                    <span class="form-field__label">Sposób potwierdzenia</span>
+                    <select id="appointment-confirmation-method" name="confirmation_method" data-field="confirmation-method">
+                      <?php foreach ($appointmentConfirmationMethods as $methodValue => $methodLabel): ?>
+                        <option value="<?= htmlspecialchars($methodValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $appointmentFormValues['confirmation_method'] === $methodValue ? ' selected' : '' ?>><?= htmlspecialchars($methodLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($appointmentFormErrors['confirmation_method'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['confirmation_method']) ? implode(' ', array_map('strval', $appointmentFormErrors['confirmation_method'])) : (string) $appointmentFormErrors['confirmation_method'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                  <label class="form-field" for="appointment-confirmation-status">
+                    <span class="form-field__label">Status potwierdzenia</span>
+                    <select id="appointment-confirmation-status" name="confirmation_status" data-field="confirmation-status">
+                      <?php foreach ($appointmentConfirmationStatuses as $confirmationValue => $confirmationLabel): ?>
+                        <option value="<?= htmlspecialchars($confirmationValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $appointmentFormValues['confirmation_status'] === $confirmationValue ? ' selected' : '' ?>><?= htmlspecialchars($confirmationLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($appointmentFormErrors['confirmation_status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['confirmation_status']) ? implode(' ', array_map('strval', $appointmentFormErrors['confirmation_status'])) : (string) $appointmentFormErrors['confirmation_status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                </div>
+                <label class="form-field" for="appointment-notes">
+                  <span class="form-field__label">Notatki do wizyty</span>
+                  <textarea
+                    id="appointment-notes"
+                    name="notes"
+                    rows="3"
+                    placeholder="Najważniejsze informacje dla zespołu lub klienta."
+                  ><?= htmlspecialchars($appointmentFormValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  <?php if (!empty($appointmentFormErrors['notes'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['notes']) ? implode(' ', array_map('strval', $appointmentFormErrors['notes'])) : (string) $appointmentFormErrors['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <label class="form-field" for="appointment-resources">
+                  <span class="form-field__label">Zasoby (typ|nazwa|szczegóły)</span>
+                  <textarea
+                    id="appointment-resources"
+                    name="resources"
+                    rows="3"
+                    placeholder="samochód|Bus 1&#10;stanowisko|Serwis 2"
+                  ><?= htmlspecialchars($appointmentFormValues['resources'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  <?php if (!empty($appointmentFormErrors['resources'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['resources']) ? implode(' ', array_map('strval', $appointmentFormErrors['resources'])) : (string) $appointmentFormErrors['resources'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+              </div>
+            </section>
+            <fieldset class="form-field appointment-form__employees">
+              <legend class="form-field__label">Pracownicy</legend>
+              <?php if ($activeEmployees === []): ?>
+                <p class="muted">Brak dostępnych pracowników. Uzupełnij listę w panelu pracowników.</p>
+              <?php else: ?>
+                <div class="appointment-employee-grid">
+                  <?php foreach ($activeEmployees as $employee): ?>
+                    <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
+                    <label class="appointment-employee">
+                      <input
+                        type="checkbox"
+                        name="employees[]"
+                        value="<?= $employeeId ?>"
+                        <?= in_array((string) $employeeId, $appointmentFormValues['employees'], true) ? 'checked' : '' ?>
+                      >
+                      <span class="appointment-employee__name"><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+              <?php if (!empty($appointmentFormErrors['employees'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['employees']) ? implode(' ', array_map('strval', $appointmentFormErrors['employees'])) : (string) $appointmentFormErrors['employees'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </fieldset>
+          </div>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-modal-close>Anuluj</button>
+            <button type="submit" class="btn btn--primary">Zapisz wizytę</button>
+          </footer>
+        </form>
+      </div>
+    </div>
 
     <section class="case-grid">
       <article class="info-card">
@@ -1788,6 +2234,7 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
       }
     })();
   </script>
+  <script src="js/case-appointments.js"></script>
   <script src="js/modals.js"></script>
   <script src="js/checklist-quick-actions.js"></script>
   <script src="js/field-help.js"></script>
