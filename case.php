@@ -2685,100 +2685,106 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
 
     <section class="repair-workflow" id="repair-workflow">
       <header class="repair-workflow__header">
-        <div>
+        <div class="repair-workflow__heading">
           <p class="repair-workflow__eyebrow">Proces naprawczy</p>
           <h2>Tablica zadań naprawy</h2>
           <p class="muted">Monitoruj pełny cykl pracy: od diagnozy, przez montaż, po przekazanie urządzenia.</p>
         </div>
-        <dl class="repair-workflow__stats">
-          <div>
-            <dt>Łącznie</dt>
-            <dd><?= (int) $workflowTotals['total'] ?></dd>
-          </div>
-          <div>
-            <dt>Aktywne</dt>
-            <dd><?= (int) $workflowTotals['active'] ?></dd>
-          </div>
-          <div>
-            <dt>Zablokowane</dt>
-            <dd><?= (int) $workflowTotals['blocked'] ?></dd>
-          </div>
-          <div>
-            <dt>Po terminie</dt>
-            <dd><?= (int) $workflowTotals['overdue'] ?></dd>
-          </div>
-        </dl>
+        <ul class="workflow-kpis" role="list">
+          <li>
+            <span class="workflow-kpis__label">Łącznie</span>
+            <span class="workflow-kpis__value"><?= (int) $workflowTotals['total'] ?></span>
+          </li>
+          <li>
+            <span class="workflow-kpis__label">Aktywne</span>
+            <span class="workflow-kpis__value"><?= (int) $workflowTotals['active'] ?></span>
+          </li>
+          <li>
+            <span class="workflow-kpis__label">Zablokowane</span>
+            <span class="workflow-kpis__value"><?= (int) $workflowTotals['blocked'] ?></span>
+          </li>
+          <li>
+            <span class="workflow-kpis__label">Po terminie</span>
+            <span class="workflow-kpis__value"><?= (int) $workflowTotals['overdue'] ?></span>
+          </li>
+        </ul>
       </header>
-      <div class="repair-workflow__layout">
-        <aside class="workflow-planner">
-          <div class="workflow-planner__header">
-            <h3>Nowe zadanie</h3>
-            <p class="muted">Zaplanuj pracę, ustaw etap i priorytet lub skorzystaj z gotowego szablonu.</p>
+      <div class="workflow-panels">
+        <aside class="workflow-compose">
+          <div class="workflow-compose__card">
+            <div class="workflow-compose__header">
+              <h3>Nowe zadanie</h3>
+              <p class="muted">Zaplanuj pracę, ustaw etap i priorytet lub skorzystaj z gotowego szablonu.</p>
+            </div>
+            <?php if (!empty($workflowErrors['general'])): ?>
+              <?php $workflowGeneral = is_array($workflowErrors['general']) ? implode(' ', array_map('strval', $workflowErrors['general'])) : (string) $workflowErrors['general']; ?>
+              <div class="alert alert--error"><?= htmlspecialchars($workflowGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <form method="POST" class="workflow-form" novalidate>
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="workflow-create-task">
+              <label class="form-field">
+                <span class="form-field__label">Tytuł zadania</span>
+                <input type="text" name="title" maxlength="191" value="<?= htmlspecialchars($workflowFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
+                <?php if (!empty($workflowErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['title']) ? implode(' ', array_map('strval', $workflowErrors['title'])) : (string) $workflowErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Etap procesu</span>
+                <select name="stage" required>
+                  <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
+                    <option value="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['stage'] === $stageKey ? 'selected' : '' ?>><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (!empty($workflowErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['stage']) ? implode(' ', array_map('strval', $workflowErrors['stage'])) : (string) $workflowErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Priorytet</span>
+                <select name="priority" required>
+                  <?php foreach ($workflowPriorities as $priorityKey => $priorityLabel): ?>
+                    <option value="<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['priority'] === $priorityKey ? 'selected' : '' ?>><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (!empty($workflowErrors['priority'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['priority']) ? implode(' ', array_map('strval', $workflowErrors['priority'])) : (string) $workflowErrors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Przydzielony</span>
+                <input type="text" name="assigned_to" maxlength="120" placeholder="Technik / zespół" value="<?= htmlspecialchars($workflowFormValues['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?php if (!empty($workflowErrors['assigned_to'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['assigned_to']) ? implode(' ', array_map('strval', $workflowErrors['assigned_to'])) : (string) $workflowErrors['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Termin</span>
+                <input type="datetime-local" name="due_at" value="<?= htmlspecialchars($workflowFormValues['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?php if (!empty($workflowErrors['due_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['due_at']) ? implode(' ', array_map('strval', $workflowErrors['due_at'])) : (string) $workflowErrors['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Opis (opcjonalnie)</span>
+                <textarea name="description" rows="3" placeholder="Kroki do wykonania, oczekiwany wynik"><?= htmlspecialchars($workflowFormValues['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                <?php if (!empty($workflowErrors['description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['description']) ? implode(' ', array_map('strval', $workflowErrors['description'])) : (string) $workflowErrors['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <button type="submit" class="btn btn--primary btn--full">Dodaj zadanie</button>
+            </form>
           </div>
-          <?php if (!empty($workflowErrors['general'])): ?>
-            <?php $workflowGeneral = is_array($workflowErrors['general']) ? implode(' ', array_map('strval', $workflowErrors['general'])) : (string) $workflowErrors['general']; ?>
-            <div class="alert alert--error"><?= htmlspecialchars($workflowGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-          <?php endif; ?>
-          <form method="POST" class="workflow-form" novalidate>
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="workflow-create-task">
-            <label class="form-field">
-              <span class="form-field__label">Tytuł zadania</span>
-              <input type="text" name="title" maxlength="191" value="<?= htmlspecialchars($workflowFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
-              <?php if (!empty($workflowErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['title']) ? implode(' ', array_map('strval', $workflowErrors['title'])) : (string) $workflowErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Etap procesu</span>
-              <select name="stage" required>
-                <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
-                  <option value="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['stage'] === $stageKey ? 'selected' : '' ?>><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($workflowErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['stage']) ? implode(' ', array_map('strval', $workflowErrors['stage'])) : (string) $workflowErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Priorytet</span>
-              <select name="priority" required>
-                <?php foreach ($workflowPriorities as $priorityKey => $priorityLabel): ?>
-                  <option value="<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['priority'] === $priorityKey ? 'selected' : '' ?>><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($workflowErrors['priority'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['priority']) ? implode(' ', array_map('strval', $workflowErrors['priority'])) : (string) $workflowErrors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Przydzielony</span>
-              <input type="text" name="assigned_to" maxlength="120" placeholder="Technik / zespół" value="<?= htmlspecialchars($workflowFormValues['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-              <?php if (!empty($workflowErrors['assigned_to'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['assigned_to']) ? implode(' ', array_map('strval', $workflowErrors['assigned_to'])) : (string) $workflowErrors['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Termin</span>
-              <input type="datetime-local" name="due_at" value="<?= htmlspecialchars($workflowFormValues['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-              <?php if (!empty($workflowErrors['due_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['due_at']) ? implode(' ', array_map('strval', $workflowErrors['due_at'])) : (string) $workflowErrors['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Opis (opcjonalnie)</span>
-              <textarea name="description" rows="3" placeholder="Kroki do wykonania, oczekiwany wynik"><?= htmlspecialchars($workflowFormValues['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-              <?php if (!empty($workflowErrors['description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['description']) ? implode(' ', array_map('strval', $workflowErrors['description'])) : (string) $workflowErrors['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <button type="submit" class="btn btn--primary btn--full">Dodaj zadanie</button>
-          </form>
-          <div class="workflow-templates">
-            <h4>Szablony procesu</h4>
-            <p class="muted">Jednym kliknięciem dodaj komplet kroków dla typowych scenariuszy.</p>
+          <div class="workflow-compose__card workflow-compose__card--templates">
+            <div class="workflow-compose__header">
+              <h4>Szablony procesu</h4>
+              <p class="muted">Jednym kliknięciem dodaj komplet kroków dla typowych scenariuszy.</p>
+            </div>
             <?php if (!empty($workflowErrors['template'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['template']) ? implode(' ', array_map('strval', $workflowErrors['template'])) : (string) $workflowErrors['template'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            <?php foreach ($workflowTemplates as $templateKey => $template): ?>
-              <form method="POST" class="workflow-template" novalidate>
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <input type="hidden" name="action" value="workflow-apply-template">
-                <input type="hidden" name="template" value="<?= htmlspecialchars($templateKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <div>
-                  <h5><?= htmlspecialchars((string) ($template['label'] ?? 'Szablon'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h5>
-                  <p class="muted"><?= htmlspecialchars((string) ($template['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-                  <p class="workflow-template__count"><?= count($template['tasks']) ?> kroków</p>
-                </div>
-                <button type="submit" class="btn btn--ghost btn--small">Dodaj</button>
-              </form>
-            <?php endforeach; ?>
+            <div class="workflow-templates">
+              <?php foreach ($workflowTemplates as $templateKey => $template): ?>
+                <form method="POST" class="workflow-template" novalidate>
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="action" value="workflow-apply-template">
+                  <input type="hidden" name="template" value="<?= htmlspecialchars($templateKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <div>
+                    <h5><?= htmlspecialchars((string) ($template['label'] ?? 'Szablon'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h5>
+                    <p class="muted"><?= htmlspecialchars((string) ($template['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                    <p class="workflow-template__count"><?= count($template['tasks']) ?> kroków</p>
+                  </div>
+                  <button type="submit" class="btn btn--ghost btn--small">Dodaj</button>
+                </form>
+              <?php endforeach; ?>
+            </div>
           </div>
         </aside>
         <div class="workflow-board" role="region" aria-label="Tablica procesu naprawczego">
@@ -2786,7 +2792,10 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
             <?php $stageTasks = $workflowBoard[$stageKey] ?? []; ?>
             <section class="workflow-column" aria-labelledby="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
               <header class="workflow-column__header">
-                <h3 id="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <div>
+                  <p class="workflow-column__eyebrow">Etap</p>
+                  <h3 id="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                </div>
                 <span class="workflow-column__count"><?= count($stageTasks) ?></span>
               </header>
               <?php if ($stageTasks === []): ?>
@@ -2806,10 +2815,10 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
                     $taskErrors = $workflowTaskErrors[$taskId] ?? [];
                   ?>
                   <article class="workflow-card workflow-card--status-<?= htmlspecialchars($taskStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> workflow-card--priority-<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                    <header class="workflow-card__header">
-                      <span class="workflow-card__status"><?= htmlspecialchars($taskStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                      <span class="workflow-card__priority"><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                    </header>
+                    <div class="workflow-card__chips">
+                      <span class="workflow-chip workflow-chip--status"><?= htmlspecialchars($taskStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <span class="workflow-chip workflow-chip--priority"><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    </div>
                     <div class="workflow-card__body">
                       <h4><?= htmlspecialchars((string) ($workflowTask['title'] ?? 'Zadanie'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
                       <?php if (!empty($workflowTask['description'])): ?>
@@ -2845,7 +2854,7 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
                         <p class="workflow-card__blocked-reason">Blokada: <?= nl2br(htmlspecialchars($taskBlockedReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
                       <?php endif; ?>
                     </div>
-                    <footer class="workflow-card__footer">
+                    <footer class="workflow-card__actions">
                       <form method="POST" class="workflow-card__form" novalidate>
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                         <input type="hidden" name="action" value="workflow-update-task">
