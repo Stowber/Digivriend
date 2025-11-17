@@ -17,6 +17,7 @@ use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\EmployeeRepository;
 use App\Support\Repositories\NoteRepository;
 use App\Support\Repositories\WarehouseRepository;
+use App\Support\Workflow\RepairWorkflowRepository;
 use App\Validation\InputValidator;
 use App\Support\View;
 use Dompdf\Dompdf;
@@ -42,6 +43,7 @@ $appointmentRepository = new AppointmentRepository($pdo);
 $notificationService = new NotificationService($pdo);
 $documentRepository = new DocumentRepository($pdo);
 $pickupCodeGenerator = new PickupCodeGenerator($pdo);
+$workflowRepository = new RepairWorkflowRepository($pdo);
 
 $case = $caseRepository->findById((int) $caseId);
 if ($case === null) {
@@ -467,6 +469,58 @@ $attendanceFormValues = [
     'cancellation_reason' => '',
 ];
 
+$workflowStages = [
+    'intake' => 'Intake & Diagnose',
+    'repair' => 'Reparatie & Onderdelen',
+    'quality_control' => 'Test & Validatie',
+    'handover' => 'Afhandeling & Pickup',
+];
+$workflowStatuses = [
+    'todo' => 'Te plannen',
+    'in_progress' => 'In uitvoering',
+    'blocked' => 'Geblokkeerd',
+    'done' => 'Afgerond',
+];
+$workflowPriorities = [
+    'low' => 'Laag',
+    'normal' => 'Normaal',
+    'high' => 'Hoog',
+    'critical' => 'Kritiek',
+];
+$workflowTemplates = [
+    'standard_repair' => [
+        'label' => 'Standaard reparatieproces',
+        'description' => 'Compleet traject van intake, reparatie, testen en overdracht.',
+        'tasks' => [
+            ['stage' => 'intake', 'priority' => 'normal', 'title' => 'Technische intake', 'description' => 'Analyseer klacht, verzamel symptoomdata en noteer bijzonderheden.'],
+            ['stage' => 'repair', 'priority' => 'high', 'title' => 'Onderdelen bestellen/monteren', 'description' => 'Controleer magazijn, reserveer onderdelen en plan de fysieke reparatie.'],
+            ['stage' => 'quality_control', 'priority' => 'normal', 'title' => 'Volledige testcyclus', 'description' => 'Voer minimaal 3 tests uit (stress, performance, diagnostyka).'],
+            ['stage' => 'handover', 'priority' => 'normal', 'title' => 'Afronding & pickup', 'description' => 'Werk logboek bij, stel pickup-code op en informeer klant.'],
+        ],
+    ],
+    'data_recovery' => [
+        'label' => 'Proces odzysku danych',
+        'description' => 'Plan diagnostykę, odzysk i raport końcowy.',
+        'tasks' => [
+            ['stage' => 'intake', 'priority' => 'normal', 'title' => 'Ocena nośnika', 'description' => 'Zweryfikuj typ nośnika, poziom uszkodzeń i potrzebne narzędzia.'],
+            ['stage' => 'repair', 'priority' => 'critical', 'title' => 'Sesja odzyskiwania danych', 'description' => 'Uruchom oprogramowanie DR, monitoruj postęp i loguj błędy.'],
+            ['stage' => 'quality_control', 'priority' => 'high', 'title' => 'Weryfikacja i kopia kontrolna', 'description' => 'Zweryfikuj losowe próbki plików oraz przygotuj kopię na nośnik klienta.'],
+            ['stage' => 'handover', 'priority' => 'normal', 'title' => 'Raport + przekazanie', 'description' => 'Przygotuj raport dla klienta, potwierdź integralność danych i ustal wydanie.'],
+        ],
+    ],
+];
+$workflowFormDefaults = [
+    'title' => '',
+    'stage' => 'intake',
+    'priority' => 'normal',
+    'assigned_to' => '',
+    'due_at' => '',
+    'description' => '',
+];
+$workflowFormValues = $workflowFormDefaults;
+$workflowErrors = [];
+$workflowTaskErrors = [];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
@@ -489,6 +543,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $closeCaseFormValues['closing_note'] = isset($_POST['closing_note']) ? htmlspecialchars((string) $_POST['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : $closeCaseFormValues['closing_note'];
             $closeCaseFormValues['notify_email'] = isset($_POST['notify_email']) ? '1' : '';
             $closeCaseFormValues['notify_sms'] = isset($_POST['notify_sms']) ? '1' : '';
+        } elseif ($action === 'workflow-create-task') {
+            $workflowFormValues['title'] = isset($_POST['title']) ? (string) $_POST['title'] : $workflowFormValues['title'];
+            $workflowFormValues['stage'] = isset($_POST['stage']) ? (string) $_POST['stage'] : $workflowFormValues['stage'];
+            $workflowFormValues['priority'] = isset($_POST['priority']) ? (string) $_POST['priority'] : $workflowFormValues['priority'];
+            $workflowFormValues['assigned_to'] = isset($_POST['assigned_to']) ? (string) $_POST['assigned_to'] : $workflowFormValues['assigned_to'];
+            $workflowFormValues['due_at'] = isset($_POST['due_at']) ? (string) $_POST['due_at'] : $workflowFormValues['due_at'];
+            $workflowFormValues['description'] = isset($_POST['description']) ? (string) $_POST['description'] : $workflowFormValues['description'];
         }
 
         switch ($action) {
@@ -1130,6 +1191,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $checklistRepository->removeChecklist((int) $checklistId);
                 $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'checklist_removed', ['checklist_id' => (int) $checklistId]);
                 break;
+                case 'workflow-create-task':
+                $title = InputValidator::requireString($_POST, 'title', 191);
+                $stage = strtolower(InputValidator::requireString($_POST, 'stage', 64));
+                if (!isset($workflowStages[$stage])) {
+                    throw new ValidationException(['stage' => 'Wybierz poprawną fazę procesu.']);
+                }
+                $priorityInput = strtolower(InputValidator::requireString($_POST, 'priority', 32));
+                if (!isset($workflowPriorities[$priorityInput])) {
+                    throw new ValidationException(['priority' => 'Nieobsługiwany priorytet.']);
+                }
+                $assignedTo = InputValidator::optionalString($_POST, 'assigned_to', 120);
+                $dueAtRaw = InputValidator::optionalString($_POST, 'due_at', 32);
+                $dueAt = null;
+                if ($dueAtRaw !== '') {
+                    $dueDate = date_create_immutable($dueAtRaw);
+                    if (!$dueDate instanceof \DateTimeImmutable) {
+                        throw new ValidationException(['due_at' => 'Podaj poprawną datę.']);
+                    }
+                    $dueAt = $dueDate->format('Y-m-d H:i:s');
+                }
+                $description = InputValidator::optionalString($_POST, 'description', 2000);
+                $newTaskId = $workflowRepository->create(
+                    (int) $caseId,
+                    $title,
+                    $stage,
+                    'todo',
+                    $priorityInput,
+                    $assignedTo !== '' ? $assignedTo : null,
+                    $dueAt,
+                    $description !== '' ? $description : null
+                );
+                $workflowFormValues = $workflowFormDefaults;
+                $auditLogger->log(
+                    (int) $caseId,
+                    Auth::id(),
+                    Auth::username(),
+                    'workflow_task_created',
+                    ['task_id' => $newTaskId, 'title' => $title, 'stage' => $stage]
+                );
+                break;
+            case 'workflow-update-task':
+                $taskId = filter_var($_POST['task_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$taskId) {
+                    throw new ValidationException(['task_id' => 'Nie znaleziono zadania.']);
+                }
+                $status = strtolower(InputValidator::requireString($_POST, 'status', 32));
+                if (!isset($workflowStatuses[$status])) {
+                    throw new ValidationException(['status' => 'Nieobsługiwany status.']);
+                }
+                $stageUpdate = strtolower(InputValidator::requireString($_POST, 'stage', 64));
+                if (!isset($workflowStages[$stageUpdate])) {
+                    throw new ValidationException(['stage' => 'Nieobsługiwana faza procesu.']);
+                }
+                $blockedReason = InputValidator::optionalString($_POST, 'blocked_reason', 500);
+                $workflowRepository->moveToStage((int) $taskId, $stageUpdate);
+                $workflowRepository->updateStatus((int) $taskId, $status, $blockedReason !== '' ? $blockedReason : null);
+                $auditLogger->log(
+                    (int) $caseId,
+                    Auth::id(),
+                    Auth::username(),
+                    'workflow_task_updated',
+                    ['task_id' => (int) $taskId, 'status' => $status, 'stage' => $stageUpdate]
+                );
+                break;
+            case 'workflow-delete-task':
+                $taskId = filter_var($_POST['task_id'] ?? null, FILTER_VALIDATE_INT);
+                if (!$taskId) {
+                    throw new ValidationException(['task_id' => 'Nie znaleziono zadania.']);
+                }
+                $workflowRepository->delete((int) $taskId);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'workflow_task_deleted', ['task_id' => (int) $taskId]);
+                break;
+            case 'workflow-apply-template':
+                $templateKey = strtolower(InputValidator::requireString($_POST, 'template', 64));
+                if (!isset($workflowTemplates[$templateKey])) {
+                    throw new ValidationException(['template' => 'Nieznany szablon.']);
+                }
+                $createdTasks = 0;
+                foreach ($workflowTemplates[$templateKey]['tasks'] as $templateTask) {
+                    $stageKey = isset($workflowStages[$templateTask['stage']]) ? $templateTask['stage'] : 'intake';
+                    $priorityKey = isset($workflowPriorities[$templateTask['priority']]) ? $templateTask['priority'] : 'normal';
+                    $workflowRepository->create(
+                        (int) $caseId,
+                        $templateTask['title'],
+                        $stageKey,
+                        'todo',
+                        $priorityKey,
+                        null,
+                        null,
+                        $templateTask['description']
+                    );
+                    $createdTasks++;
+                }
+                $auditLogger->log(
+                    (int) $caseId,
+                    Auth::id(),
+                    Auth::username(),
+                    'workflow_template_applied',
+                    ['template' => $templateKey, 'tasks_created' => $createdTasks]
+                );
+                break;
 
                 case 'update-case-meta':
                 $priorityRaw = InputValidator::optionalString($_POST, 'priority', 32);
@@ -1211,6 +1373,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($currentAction === 'create-appointment') {
             $appointmentFormErrors = $validationErrors;
             $shouldOpenAppointmentModal = true;
+        } elseif ($currentAction === 'workflow-create-task' || $currentAction === 'workflow-apply-template') {
+            $workflowErrors = $validationErrors;
+        } elseif ($currentAction === 'workflow-update-task' || $currentAction === 'workflow-delete-task') {
+            $taskId = filter_var($_POST['task_id'] ?? null, FILTER_VALIDATE_INT);
+            if ($taskId) {
+                $workflowTaskErrors[(int) $taskId] = $validationErrors;
+            } else {
+                $workflowErrors = array_merge($workflowErrors, $validationErrors);
+            }
         } else {
             $errors = array_merge($errors, $validationErrors);
         }
@@ -1410,6 +1581,75 @@ $checklistQuickActions = [
         ],
     ],
 ];
+$workflowTasks = $workflowRepository->forCase((int) $caseId);
+$workflowBoard = [];
+foreach (array_keys($workflowStages) as $stageKey) {
+    $workflowBoard[$stageKey] = [];
+}
+$workflowStatusTotals = [];
+foreach (array_keys($workflowStatuses) as $statusKey) {
+    $workflowStatusTotals[$statusKey] = 0;
+}
+$workflowTotals = [
+    'total' => count($workflowTasks),
+    'active' => 0,
+    'blocked' => 0,
+    'overdue' => 0,
+];
+$priorityWeights = [
+    'critical' => 0,
+    'high' => 1,
+    'normal' => 2,
+    'low' => 3,
+];
+foreach ($workflowTasks as $taskRow) {
+    $stageKey = isset($workflowStages[$taskRow['stage']]) ? (string) $taskRow['stage'] : array_key_first($workflowStages);
+    if (!isset($workflowBoard[$stageKey])) {
+        $workflowBoard[$stageKey] = [];
+    }
+    $workflowBoard[$stageKey][] = $taskRow;
+
+    $statusKey = isset($workflowStatuses[$taskRow['status']]) ? (string) $taskRow['status'] : 'todo';
+    if (!isset($workflowStatusTotals[$statusKey])) {
+        $workflowStatusTotals[$statusKey] = 0;
+    }
+    $workflowStatusTotals[$statusKey]++;
+
+    if ($statusKey === 'in_progress') {
+        $workflowTotals['active']++;
+    }
+    if ($statusKey === 'blocked') {
+        $workflowTotals['blocked']++;
+    }
+
+    if (!empty($taskRow['due_at']) && $statusKey !== 'done') {
+        $dueTimestamp = strtotime((string) $taskRow['due_at']);
+        if ($dueTimestamp !== false && $dueTimestamp < time()) {
+            $workflowTotals['overdue']++;
+        }
+    }
+}
+foreach ($workflowBoard as &$stageTasks) {
+    usort(
+        $stageTasks,
+        static function (array $left, array $right) use ($priorityWeights): int {
+            $leftPriority = $priorityWeights[strtolower((string) ($left['priority'] ?? 'normal'))] ?? 5;
+            $rightPriority = $priorityWeights[strtolower((string) ($right['priority'] ?? 'normal'))] ?? 5;
+            if ($leftPriority !== $rightPriority) {
+                return $leftPriority <=> $rightPriority;
+            }
+
+            $leftDue = !empty($left['due_at']) ? strtotime((string) $left['due_at']) : null;
+            $rightDue = !empty($right['due_at']) ? strtotime((string) $right['due_at']) : null;
+            if ($leftDue !== $rightDue) {
+                return ($leftDue ?? PHP_INT_MAX) <=> ($rightDue ?? PHP_INT_MAX);
+            }
+
+            return ((int) ($left['id'] ?? 0)) <=> ((int) ($right['id'] ?? 0));
+        }
+    );
+}
+unset($stageTasks);
 $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN);
 ?>
 <!DOCTYPE html>
@@ -2441,6 +2681,214 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
           </div>
         <?php endforeach; ?>
       <?php endif; ?>
+    </section>
+
+    <section class="repair-workflow" id="repair-workflow">
+      <header class="repair-workflow__header">
+        <div>
+          <p class="repair-workflow__eyebrow">Proces naprawczy</p>
+          <h2>Tablica zadań naprawy</h2>
+          <p class="muted">Monitoruj pełny cykl pracy: od diagnozy, przez montaż, po przekazanie urządzenia.</p>
+        </div>
+        <dl class="repair-workflow__stats">
+          <div>
+            <dt>Łącznie</dt>
+            <dd><?= (int) $workflowTotals['total'] ?></dd>
+          </div>
+          <div>
+            <dt>Aktywne</dt>
+            <dd><?= (int) $workflowTotals['active'] ?></dd>
+          </div>
+          <div>
+            <dt>Zablokowane</dt>
+            <dd><?= (int) $workflowTotals['blocked'] ?></dd>
+          </div>
+          <div>
+            <dt>Po terminie</dt>
+            <dd><?= (int) $workflowTotals['overdue'] ?></dd>
+          </div>
+        </dl>
+      </header>
+      <div class="repair-workflow__layout">
+        <aside class="workflow-planner">
+          <div class="workflow-planner__header">
+            <h3>Nowe zadanie</h3>
+            <p class="muted">Zaplanuj pracę, ustaw etap i priorytet lub skorzystaj z gotowego szablonu.</p>
+          </div>
+          <?php if (!empty($workflowErrors['general'])): ?>
+            <?php $workflowGeneral = is_array($workflowErrors['general']) ? implode(' ', array_map('strval', $workflowErrors['general'])) : (string) $workflowErrors['general']; ?>
+            <div class="alert alert--error"><?= htmlspecialchars($workflowGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+          <?php endif; ?>
+          <form method="POST" class="workflow-form" novalidate>
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="workflow-create-task">
+            <label class="form-field">
+              <span class="form-field__label">Tytuł zadania</span>
+              <input type="text" name="title" maxlength="191" value="<?= htmlspecialchars($workflowFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
+              <?php if (!empty($workflowErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['title']) ? implode(' ', array_map('strval', $workflowErrors['title'])) : (string) $workflowErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Etap procesu</span>
+              <select name="stage" required>
+                <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
+                  <option value="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['stage'] === $stageKey ? 'selected' : '' ?>><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php if (!empty($workflowErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['stage']) ? implode(' ', array_map('strval', $workflowErrors['stage'])) : (string) $workflowErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Priorytet</span>
+              <select name="priority" required>
+                <?php foreach ($workflowPriorities as $priorityKey => $priorityLabel): ?>
+                  <option value="<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['priority'] === $priorityKey ? 'selected' : '' ?>><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php if (!empty($workflowErrors['priority'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['priority']) ? implode(' ', array_map('strval', $workflowErrors['priority'])) : (string) $workflowErrors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Przydzielony</span>
+              <input type="text" name="assigned_to" maxlength="120" placeholder="Technik / zespół" value="<?= htmlspecialchars($workflowFormValues['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <?php if (!empty($workflowErrors['assigned_to'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['assigned_to']) ? implode(' ', array_map('strval', $workflowErrors['assigned_to'])) : (string) $workflowErrors['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Termin</span>
+              <input type="datetime-local" name="due_at" value="<?= htmlspecialchars($workflowFormValues['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <?php if (!empty($workflowErrors['due_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['due_at']) ? implode(' ', array_map('strval', $workflowErrors['due_at'])) : (string) $workflowErrors['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Opis (opcjonalnie)</span>
+              <textarea name="description" rows="3" placeholder="Kroki do wykonania, oczekiwany wynik"><?= htmlspecialchars($workflowFormValues['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <?php if (!empty($workflowErrors['description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['description']) ? implode(' ', array_map('strval', $workflowErrors['description'])) : (string) $workflowErrors['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <button type="submit" class="btn btn--primary btn--full">Dodaj zadanie</button>
+          </form>
+          <div class="workflow-templates">
+            <h4>Szablony procesu</h4>
+            <p class="muted">Jednym kliknięciem dodaj komplet kroków dla typowych scenariuszy.</p>
+            <?php if (!empty($workflowErrors['template'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['template']) ? implode(' ', array_map('strval', $workflowErrors['template'])) : (string) $workflowErrors['template'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            <?php foreach ($workflowTemplates as $templateKey => $template): ?>
+              <form method="POST" class="workflow-template" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="workflow-apply-template">
+                <input type="hidden" name="template" value="<?= htmlspecialchars($templateKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <div>
+                  <h5><?= htmlspecialchars((string) ($template['label'] ?? 'Szablon'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h5>
+                  <p class="muted"><?= htmlspecialchars((string) ($template['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <p class="workflow-template__count"><?= count($template['tasks']) ?> kroków</p>
+                </div>
+                <button type="submit" class="btn btn--ghost btn--small">Dodaj</button>
+              </form>
+            <?php endforeach; ?>
+          </div>
+        </aside>
+        <div class="workflow-board" role="region" aria-label="Tablica procesu naprawczego">
+          <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
+            <?php $stageTasks = $workflowBoard[$stageKey] ?? []; ?>
+            <section class="workflow-column" aria-labelledby="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <header class="workflow-column__header">
+                <h3 id="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                <span class="workflow-column__count"><?= count($stageTasks) ?></span>
+              </header>
+              <?php if ($stageTasks === []): ?>
+                <p class="workflow-column__empty muted">Brak zadań w tej fazie.</p>
+              <?php else: ?>
+                <?php foreach ($stageTasks as $workflowTask): ?>
+                  <?php
+                    $taskId = (int) ($workflowTask['id'] ?? 0);
+                    $currentStage = isset($workflowStages[$workflowTask['stage']]) ? (string) $workflowTask['stage'] : $stageKey;
+                    $taskStatusKey = isset($workflowStatuses[$workflowTask['status']]) ? (string) $workflowTask['status'] : 'todo';
+                    $taskStatusLabel = $workflowStatuses[$taskStatusKey] ?? ucfirst($taskStatusKey);
+                    $priorityKey = strtolower((string) ($workflowTask['priority'] ?? 'normal'));
+                    $priorityLabel = $workflowPriorities[$priorityKey] ?? ucfirst($priorityKey);
+                    $taskAssigned = trim((string) ($workflowTask['assigned_to'] ?? ''));
+                    $taskDueLabel = !empty($workflowTask['due_at']) ? date('d-m-Y H:i', strtotime((string) $workflowTask['due_at'])) : null;
+                    $taskBlockedReason = trim((string) ($workflowTask['blocked_reason'] ?? ''));
+                    $taskErrors = $workflowTaskErrors[$taskId] ?? [];
+                  ?>
+                  <article class="workflow-card workflow-card--status-<?= htmlspecialchars($taskStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> workflow-card--priority-<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    <header class="workflow-card__header">
+                      <span class="workflow-card__status"><?= htmlspecialchars($taskStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <span class="workflow-card__priority"><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    </header>
+                    <div class="workflow-card__body">
+                      <h4><?= htmlspecialchars((string) ($workflowTask['title'] ?? 'Zadanie'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+                      <?php if (!empty($workflowTask['description'])): ?>
+                        <p class="workflow-card__description"><?= nl2br(htmlspecialchars((string) $workflowTask['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                      <?php endif; ?>
+                      <dl class="workflow-card__meta">
+                        <?php if ($taskAssigned !== ''): ?>
+                          <div>
+                            <dt>Przydzielony</dt>
+                            <dd><?= htmlspecialchars($taskAssigned, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                          </div>
+                        <?php endif; ?>
+                        <?php if ($taskDueLabel !== null): ?>
+                          <div>
+                            <dt>Termin</dt>
+                            <dd><?= htmlspecialchars($taskDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                          </div>
+                        <?php endif; ?>
+                        <?php if (!empty($workflowTask['started_at'])): ?>
+                          <div>
+                            <dt>Start</dt>
+                            <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['started_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                          </div>
+                        <?php endif; ?>
+                        <?php if (!empty($workflowTask['completed_at'])): ?>
+                          <div>
+                            <dt>Zakończono</dt>
+                            <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                          </div>
+                        <?php endif; ?>
+                      </dl>
+                      <?php if ($taskStatusKey === 'blocked' && $taskBlockedReason !== ''): ?>
+                        <p class="workflow-card__blocked-reason">Blokada: <?= nl2br(htmlspecialchars($taskBlockedReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                      <?php endif; ?>
+                    </div>
+                    <footer class="workflow-card__footer">
+                      <form method="POST" class="workflow-card__form" novalidate>
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                        <input type="hidden" name="action" value="workflow-update-task">
+                        <input type="hidden" name="task_id" value="<?= $taskId ?>">
+                        <label>
+                          <span>Etap</span>
+                          <select name="stage">
+                            <?php foreach ($workflowStages as $optionKey => $optionLabel): ?>
+                              <option value="<?= htmlspecialchars($optionKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $optionKey === $currentStage ? 'selected' : '' ?>><?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </label>
+                        <?php if (!empty($taskErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['stage']) ? implode(' ', array_map('strval', $taskErrors['stage'])) : (string) $taskErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                        <label>
+                          <span>Status</span>
+                          <select name="status">
+                            <?php foreach ($workflowStatuses as $statusKey => $statusLabel): ?>
+                              <option value="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $statusKey === $taskStatusKey ? 'selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </label>
+                        <?php if (!empty($taskErrors['status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['status']) ? implode(' ', array_map('strval', $taskErrors['status'])) : (string) $taskErrors['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                        <label>
+                          <span>Powód blokady (opcjonalnie)</span>
+                          <textarea name="blocked_reason" rows="2" placeholder="Opis przeszkody"><?= htmlspecialchars($taskBlockedReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                        </label>
+                        <?php if (!empty($taskErrors['blocked_reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['blocked_reason']) ? implode(' ', array_map('strval', $taskErrors['blocked_reason'])) : (string) $taskErrors['blocked_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                        <button type="submit" class="btn btn--ghost btn--small">Zapisz zmiany</button>
+                      </form>
+                      <form method="POST" class="workflow-card__delete" onsubmit="return confirm('Usunąć zadanie?');">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                        <input type="hidden" name="action" value="workflow-delete-task">
+                        <input type="hidden" name="task_id" value="<?= $taskId ?>">
+                        <button type="submit" class="btn btn--ghost btn--small">Usuń</button>
+                      </form>
+                    </footer>
+                  </article>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </section>
+          <?php endforeach; ?>
+        </div>
+      </div>
     </section>
 
     <section class="notes-section">

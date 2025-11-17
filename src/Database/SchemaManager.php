@@ -38,6 +38,7 @@ final class SchemaManager
         self::ensureDataRecoveryTable($pdo);
         self::ensureNotificationTable($pdo);
         self::ensureCaseChecklistsTables($pdo);
+        self::ensureRepairWorkflowTables($pdo);
         self::ensureCaseAuditLogTable($pdo);
         self::ensureDocumentsTable($pdo);
         self::ensureDeviceEnhancements($pdo);
@@ -2829,6 +2830,85 @@ final class SchemaManager
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_checklist_items_checklist (checklist_id),
                 CONSTRAINT fk_case_checklist_items_checklist FOREIGN KEY (checklist_id) REFERENCES case_checklists(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        SQL);
+    }
+
+    private static function ensureRepairWorkflowTables(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_workflow_tasks (
+                    id SERIAL PRIMARY KEY,
+                    case_id INT NOT NULL,
+                    title VARCHAR(191) NOT NULL,
+                    stage VARCHAR(64) NOT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'todo',
+                    priority VARCHAR(32) NOT NULL DEFAULT 'normal',
+                    assigned_to VARCHAR(120) NULL,
+                    due_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    description TEXT NULL,
+                    blocked_reason TEXT NULL,
+                    started_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    completed_at TIMESTAMP WITHOUT TIME ZONE NULL,
+                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT fk_workflow_tasks_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
+                )
+            SQL);
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(<<<SQL
+                CREATE TABLE IF NOT EXISTS case_workflow_tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    stage TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'todo',
+                    priority TEXT NOT NULL DEFAULT 'normal',
+                    assigned_to TEXT NULL,
+                    due_at TEXT NULL,
+                    description TEXT NULL,
+                    blocked_reason TEXT NULL,
+                    started_at TEXT NULL,
+                    completed_at TEXT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            SQL);
+
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_workflow_tasks_case ON case_workflow_tasks(case_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_workflow_tasks_stage ON case_workflow_tasks(stage)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_workflow_tasks_status ON case_workflow_tasks(status)');
+
+            return;
+        }
+
+        $pdo->exec(<<<SQL
+            CREATE TABLE IF NOT EXISTS case_workflow_tasks (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                case_id INT UNSIGNED NOT NULL,
+                title VARCHAR(191) NOT NULL,
+                stage VARCHAR(64) NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'todo',
+                priority VARCHAR(32) NOT NULL DEFAULT 'normal',
+                assigned_to VARCHAR(120) NULL,
+                due_at DATETIME NULL,
+                description TEXT NULL,
+                blocked_reason TEXT NULL,
+                started_at DATETIME NULL,
+                completed_at DATETIME NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_workflow_tasks_case (case_id),
+                INDEX idx_workflow_tasks_stage (stage),
+                INDEX idx_workflow_tasks_status (status),
+                CONSTRAINT fk_case_workflow_tasks_case FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         SQL);
     }

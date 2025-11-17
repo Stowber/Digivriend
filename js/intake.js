@@ -293,6 +293,8 @@
       button.type = 'button';
       button.className = 'customer-picker__result';
       button.setAttribute('role', 'option');
+      const textWrapper = document.createElement('span');
+      textWrapper.className = 'customer-picker__result-text';
       const name = document.createElement('strong');
       name.textContent = entry.name || translations.unknown;
       const meta = document.createElement('span');
@@ -306,8 +308,9 @@
         metaParts.push(entry.phone);
       }
       meta.textContent = metaParts.join(' • ');
-      button.appendChild(name);
-      button.appendChild(meta);
+      textWrapper.appendChild(name);
+      textWrapper.appendChild(meta);
+      button.appendChild(textWrapper);
       if (entry.suspicious && entry.suspicious.active) {
         const badge = document.createElement('span');
         badge.className = 'customer-picker__result-badge';
