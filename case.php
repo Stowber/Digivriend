@@ -1651,6 +1651,150 @@ foreach ($workflowBoard as &$stageTasks) {
 }
 unset($stageTasks);
 $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN);
+
+$priorityOptions = [
+    '' => 'Domyślny',
+    'low' => 'Niski',
+    'normal' => 'Normalny',
+    'high' => 'Wysoki',
+    'critical' => 'Krytyczny',
+];
+
+$caseStatusKey = strtolower((string) ($caseRecord['status'] ?? ''));
+$statusClassMap = [
+    'opgehaald' => 'case-badge--success',
+    'gesloten' => 'case-badge--success',
+    'geannuleerd' => 'case-badge--danger',
+    'vertraagd' => 'case-badge--warning',
+    'gepland' => 'case-badge--info',
+    'intake' => 'case-badge--info',
+    'in_behandeling' => 'case-badge--info',
+];
+$statusBadgeClass = $statusClassMap[$caseStatusKey] ?? 'case-badge--muted';
+$caseStatusLabel = $caseRecord['status'] !== null ? ucfirst((string) $caseRecord['status']) : 'Onbekend';
+
+$priorityKey = strtolower((string) $priorityValue);
+$priorityBadgeMap = [
+    'critical' => 'case-badge--danger',
+    'high' => 'case-badge--warning',
+    'normal' => 'case-badge--info',
+    'low' => 'case-badge--muted',
+    '' => 'case-badge--muted',
+];
+$priorityBadgeClass = $priorityBadgeMap[$priorityKey] ?? 'case-badge--muted';
+$priorityLabel = $priorityOptions[$priorityKey] ?? $priorityOptions[''];
+
+$caseLastUpdatedLabel = !empty($caseRecord['updated_at'])
+    ? date('d-m-Y H:i', strtotime((string) $caseRecord['updated_at']))
+    : '—';
+$referenceCode = trim((string) ($caseRecord['reference_code'] ?? ''));
+if ($referenceCode === '') {
+    $referenceCode = 'Brak kodu';
+}
+
+$slaDueTimestamp = !empty($caseRecord['sla_due_at']) ? strtotime((string) $caseRecord['sla_due_at']) : false;
+$slaDueLabel = $slaDueTimestamp ? date('d-m-Y H:i', $slaDueTimestamp) : 'Brak terminu';
+$slaBadgeClass = $slaDueTimestamp && $slaDueTimestamp < time() ? 'case-badge--warning' : 'case-badge--info';
+
+$contactParts = [];
+if (!empty($caseRecord['phone'])) {
+    $contactParts[] = trim((string) $caseRecord['phone']);
+}
+if (!empty($caseRecord['email'])) {
+    $contactParts[] = trim((string) $caseRecord['email']);
+}
+$primaryContactLabel = $contactParts !== [] ? implode(' · ', $contactParts) : 'Brak danych';
+
+$caseDeviceSummaryParts = array_filter([
+    isset($caseRecord['device_brand']) ? trim((string) $caseRecord['device_brand']) : null,
+    isset($caseRecord['device_model']) ? trim((string) $caseRecord['device_model']) : null,
+]);
+$caseDeviceSummary = $caseDeviceSummaryParts !== [] ? implode(' · ', $caseDeviceSummaryParts) : 'Urządzenie nieznane';
+
+$caseProblemSummary = 'Brak opisu awarii.';
+if (isset($caseDetails['problem_description'])) {
+    $rawSummary = trim((string) $caseDetails['problem_description']);
+    if ($rawSummary !== '') {
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            $caseProblemSummary = mb_strlen($rawSummary, 'UTF-8') > 160
+                ? mb_substr($rawSummary, 0, 157, 'UTF-8') . '…'
+                : $rawSummary;
+        } else {
+            $caseProblemSummary = strlen($rawSummary) > 160
+                ? substr($rawSummary, 0, 157) . '…'
+                : $rawSummary;
+        }
+    }
+}
+
+$caseTypeLabel = trim((string) ($caseRecord['type'] ?? 'Case'));
+if ($caseTypeLabel === '') {
+    $caseTypeLabel = 'Case';
+}
+$caseCustomerName = trim((string) ($caseRecord['full_name'] ?? 'Onbekende klant'));
+if ($caseCustomerName === '') {
+    $caseCustomerName = 'Onbekende klant';
+}
+
+$nowTimestamp = time();
+$nextAppointment = null;
+$nextAppointmentTimestamp = null;
+foreach ($caseAppointments as $appointment) {
+    $startRaw = $appointment['start_at'] ?? null;
+    if ($startRaw === null || $startRaw === '') {
+        continue;
+    }
+    $startTimestamp = strtotime((string) $startRaw);
+    if ($startTimestamp === false) {
+        continue;
+    }
+
+    if ($startTimestamp < $nowTimestamp) {
+        if ($nextAppointment === null && $nextAppointmentTimestamp === null) {
+            $nextAppointment = $appointment;
+            $nextAppointmentTimestamp = $startTimestamp;
+        }
+        continue;
+    }
+
+    if ($nextAppointmentTimestamp === null || $startTimestamp < $nextAppointmentTimestamp) {
+        $nextAppointment = $appointment;
+        $nextAppointmentTimestamp = $startTimestamp;
+    }
+}
+
+if ($nextAppointment === null && $caseAppointments !== []) {
+    $fallbackAppointment = $caseAppointments[0];
+    $fallbackTimestamp = isset($fallbackAppointment['start_at'])
+        ? strtotime((string) $fallbackAppointment['start_at'])
+        : null;
+    $nextAppointment = $fallbackAppointment;
+    $nextAppointmentTimestamp = $fallbackTimestamp ?: null;
+}
+
+$nextAppointmentLabel = $nextAppointmentTimestamp ? date('d-m-Y H:i', $nextAppointmentTimestamp) : 'Brak wizyt';
+$nextAppointmentTitle = $nextAppointment !== null
+    ? (string) ($nextAppointment['title'] ?? 'Zaplanowana wizyta')
+    : 'Brak wizyt w kalendarzu';
+$nextAppointmentStatus = $nextAppointment !== null ? (string) ($nextAppointment['status'] ?? '') : '';
+
+$caseHeroStats = [
+    [
+        'label' => 'Zespół',
+        'value' => count($activeCaseAssignments),
+        'hint' => 'aktywni technicy',
+    ],
+    [
+        'label' => 'Magazyn',
+        'value' => $warehouseSummary['total'],
+        'hint' => 'powiązanych pozycji',
+    ],
+    [
+        'label' => 'Workflow',
+        'value' => $workflowTotals['total'],
+        'hint' => 'zadania w toku',
+    ],
+];
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -1775,508 +1919,75 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
               </div>
             </form>
           </div>
-        </div>
+          </div>
       </div>
     <?php endif; ?>
-    <section class="case-overview">
-      <div>
-        <h1>Case #<?= (int) $caseId ?> · <?= htmlspecialchars((string) $caseRecord['type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
-        <?php
-          $statusKey = strtolower((string) $caseRecord['status']);
-          $statusClassMap = [
-              'opgehaald' => 'status-pill--picked',
-              'gesloten' => 'status-pill--picked',
-              'geannuleerd' => 'status-pill--geannuleerd',
-              'vertraagd' => 'status-pill--vertraagd',
-              'gepland' => 'status-pill--gepland',
-              'intake' => 'status-pill--intake',
-              'open' => 'status-pill--open',
-              'in_behandeling' => 'status-pill--in_behandeling',
-          ];
-          $statusClass = $statusClassMap[$statusKey] ?? 'status-pill--ready';
-        ?>
-        <p class="muted">Status: <span class="status-pill <?= htmlspecialchars($statusClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(ucfirst((string) $caseRecord['status']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></p>
-      </div>
-      <div class="case-meta">
-        <p>Laatst bijgewerkt: <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $caseRecord['updated_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-        <p>Referentie: <?= htmlspecialchars((string) $caseRecord['reference_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-      </div>
-    </section>
-
-    <section class="case-staff">
-      <article class="info-card info-card--wide">
-        <div class="case-self-assign">
-          <h2>Werkvoorbereiding</h2>
-          <p class="muted">Neem dit dossier in behandeling zodat het zichtbaar wordt in jouw werkoverzicht.</p>
-          <form method="post" class="case-self-assign__form">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="self-assign">
-            <button type="submit" class="btn btn--primary" <?= ($userAlreadyAssigned || $currentEmployeeId === null) ? 'disabled' : '' ?>>
-              <?= $currentEmployeeId === null ? 'Koppel medewerkerprofiel' : ($userAlreadyAssigned ? 'Reeds toegewezen' : 'Przyjmij zlecenie') ?>
-            </button>
-          </form>
-          <?php if ($currentEmployeeId === null): ?>
-            <p class="form-error">Er is geen medewerkerprofiel gekoppeld aan dit account. Vraag een beheerder om jouw gegevens te koppelen.</p>
-          <?php endif; ?>
+    <section class="case-hero" data-case-status="<?= htmlspecialchars($caseStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+      <div class="case-hero__content">
+        <p class="case-hero__eyebrow">Case #<?= (int) $caseId ?> · <?= htmlspecialchars($caseTypeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <h1><?= htmlspecialchars($caseCustomerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+        <p class="case-hero__subtitle">
+          <?= htmlspecialchars($caseDeviceSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+          <span>· <?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        </p>
+        <div class="case-hero__badges">
+          <span class="case-badge <?= htmlspecialchars($statusBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Status: <?= htmlspecialchars($caseStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="case-badge <?= htmlspecialchars($priorityBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Priorytet: <?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="case-badge <?= htmlspecialchars($slaBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">SLA: <?= htmlspecialchars($slaDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
-      </article>
-      <article class="info-card info-card--wide">
-        <h2>Zespół i priorytety</h2>
-        <form method="post" class="case-meta-form">
-          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-          <input type="hidden" name="action" value="update-case-meta">
-          <div class="form-grid">
-            <label class="form-field">
-              <span class="form-field__label">Priorytet</span>
-              <select name="priority">
-                <?php $priorityOptions = ['' => 'Domyślny', 'low' => 'Niski', 'normal' => 'Normalny', 'high' => 'Wysoki', 'critical' => 'Krytyczny']; ?>
-                <?php foreach ($priorityOptions as $key => $label): ?>
-                  <option value="<?= htmlspecialchars($key, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $priorityValue === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($errors['priority'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Termin SLA</span>
-              <input type="datetime-local" name="sla_due_at" value="<?= htmlspecialchars($slaDueInputValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-              <?php if (!empty($errors['sla_due_at'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['sla_due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Główny technik</span>
-              <select name="primary_employee_id">
-                <option value="">—</option>
-                <?php foreach ($activeEmployees as $employee): ?>
-                  <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
-                  <option value="<?= $employeeId ?>"<?= $primaryEmployeeValue === $employeeId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-              <?php if (!empty($errors['primary_employee_id'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['primary_employee_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-          </div>
-
-          <div class="assignments-editor">
-            <h3>Przypisani pracownicy</h3>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Pracownik</th>
-                  <th>Rola</th>
-                  <th>Notatki</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php $assignmentRowsCount = max(count($activeCaseAssignments) + 1, 3); ?>
-                <?php for ($i = 0; $i < $assignmentRowsCount; $i++): ?>
-                  <?php $rowData = $activeCaseAssignments[$i] ?? ['employee_id' => '', 'assignment_type' => 'primary', 'notes' => '']; ?>
-                  <tr>
-                    <td>
-                      <select name="assignments[<?= $i ?>][employee_id]">
-                        <option value="">—</option>
-                        <?php foreach ($activeEmployees as $employee): ?>
-                          <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
-                          <option value="<?= $employeeId ?>"<?= (int) ($rowData['employee_id'] ?? 0) === $employeeId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                        <?php endforeach; ?>
-                      </select>
-                    </td>
-                    <td>
-                      <?php $assignmentType = (string) ($rowData['assignment_type'] ?? 'primary'); ?>
-                      <select name="assignments[<?= $i ?>][type]">
-                        <option value="primary"<?= $assignmentType === 'primary' ? ' selected' : '' ?>>Główny</option>
-                        <option value="assistant"<?= $assignmentType === 'assistant' ? ' selected' : '' ?>>Wsparcie</option>
-                        <option value="observer"<?= $assignmentType === 'observer' ? ' selected' : '' ?>>Obserwator</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input type="text" name="assignments[<?= $i ?>][notes]" value="<?= htmlspecialchars((string) ($rowData['notes'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="191" placeholder="Uwagi">
-                    </td>
-                  </tr>
-                <?php endfor; ?>
-              </tbody>
-            </table>
-          </div>
-          <button type="submit" class="btn btn--primary">Zapisz zespół</button>
-        </form>
-      </article>
-
-      <article class="info-card info-card--wide">
-        <h2>Odbiór urządzenia</h2>
-        <p class="muted">Overzicht van ophaalbevestigingen en afsluiting van dit dossier.</p>
-        <?php if ($pickupConfirmations === []): ?>
-          <p class="muted">Er zijn nog geen ophaalbevestigingen gekoppeld aan deze case.</p>
-        <?php else: ?>
-          <div class="table-wrapper">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Datum gereed</th>
-                  <th>Status</th>
-                  <th>Laatst bijgewerkt</th>
-                  <th>Acties</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($pickupConfirmations as $confirmation): ?>
-                  <?php
-                    $confirmationId = (int) ($confirmation['id'] ?? 0);
-                    $confirmationCode = (string) ($confirmation['ophaalcode'] ?? '');
-                    $confirmationStatus = (string) ($confirmation['status'] ?? '');
-                    $statusClass = $confirmationStatus === 'opgehaald' ? 'status-pill--picked' : 'status-pill--ready';
-                    $statusLabel = $confirmationStatus !== '' ? ucfirst($confirmationStatus) : 'Onbekend';
-                    $readyDateLabel = (string) ($confirmation['datumgereed'] ?? '');
-                    $updatedAtRaw = $confirmation['updated_at'] ?? $confirmation['pickup_signed_at'] ?? $confirmation['created_at'] ?? null;
-                    $updatedLabel = $updatedAtRaw ? date('d-m-Y H:i', strtotime((string) $updatedAtRaw)) : '—';
-                    $hasSignature = !empty($confirmation['pickup_signature']);
-                  ?>
-                  <tr>
-                    <td><?= htmlspecialchars($confirmationCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                    <td><?= htmlspecialchars($readyDateLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                    <td><span class="status-pill <?= htmlspecialchars($statusClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
-                    <td><?= htmlspecialchars($updatedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                    <td>
-                      <div class="button-row">
-                        <a class="btn btn--ghost btn--small" href="generate-apparaat-opgehaald.php?id=<?= $confirmationId ?>" target="_blank" rel="noopener">PDF</a>
-                        <?php if (!$hasSignature && $confirmationStatus === 'klaar'): ?>
-                          <a class="btn btn--ghost btn--small" href="pickup-sign.php?id=<?= $confirmationId ?>">Handtekening</a>
-                        <?php endif; ?>
-                      </div>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
-        <div class="button-row">
-          <button class="btn btn--primary" type="button" data-modal-target="case-close-modal">Zamknij case i wystaw potwierdzenie</button>
-          <?php if ($latestPickupConfirmation !== null): ?>
-            <a class="btn btn--ghost" href="generate-apparaat-opgehaald.php?id=<?= (int) ($latestPickupConfirmation['id'] ?? 0) ?>" target="_blank" rel="noopener">Laatste bevestiging</a>
-          <?php endif; ?>
-        </div>
-      </article>
-
-      <article class="info-card info-card--wide">
-        <h2>Wizyty dla case #<?= (int) $caseId ?></h2>
-        <?php if ($caseAppointments === []): ?>
-          <p class="muted">Brak zaplanowanych wizyt dla tego zlecenia.</p>
-        <?php else: ?>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Termin</th>
-                <th>Tytuł</th>
-                <th>Pracownicy</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($caseAppointments as $appointment): ?>
-                <tr>
-                  <td><?= htmlspecialchars((string) ($appointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                  <td><?= htmlspecialchars((string) ($appointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                  <td>
-                    <?php if (empty($appointment['attendees'])): ?>
-                      <span class="muted">—</span>
-                    <?php else: ?>
-                      <ul class="attendee-list">
-                        <?php foreach ($appointment['attendees'] as $attendee): ?>
-                          <li><?= htmlspecialchars((string) ($attendee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
-                        <?php endforeach; ?>
-                      </ul>
-                    <?php endif; ?>
-                  </td>
-                  <td><?= htmlspecialchars((string) ($appointment['status'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        <?php endif; ?>
-        <button class="btn btn--ghost" type="button" data-modal-target="case-appointment-modal">Zaplanuj wizytę</button>
-      </article>
-    </section>
-
-    <div
-      class="modal appointment-modal"
-      id="case-appointment-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-hidden="true"
-      aria-labelledby="case-appointment-modal-title"
-      data-case-appointment-modal
-      <?= $shouldOpenAppointmentModal ? ' data-open-on-load="true"' : '' ?>
-    >
-      <div class="modal__panel" role="document">
-        <header class="modal__header">
+        <dl class="case-hero__meta">
           <div>
-            <p class="modal__eyebrow">Nowa wizyta</p>
-            <h2 id="case-appointment-modal-title">Zaplanuj wizytę dla case #<?= (int) $caseId ?></h2>
+            <dt>Referencja</dt>
+            <dd><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
           </div>
-          <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
-        </header>
-        <form method="post" class="appointment-form" novalidate>
-          <div class="modal__body">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="create-appointment">
-            <?php if (!empty($appointmentFormErrors['general'])): ?>
-              <?php $appointmentGeneral = is_array($appointmentFormErrors['general']) ? implode(' ', array_map('strval', $appointmentFormErrors['general'])) : (string) $appointmentFormErrors['general']; ?>
-              <div class="alert alert--danger"><?= htmlspecialchars($appointmentGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-            <?php endif; ?>
-            <section class="appointment-modal__layout">
-              <div class="appointment-modal__types">
-                <h3>Rodzaj wizyty</h3>
-                <p class="appointment-modal__intro">Wybierz scenariusz, a my dopasujemy domyślne ustawienia do jego charakteru.</p>
-                <div class="appointment-type-list">
-                  <?php foreach ($appointmentTypePresets as $typeKey => $preset): ?>
-                    <?php
-                      $isSelectedType = $appointmentFormValues['appointment_type'] === $typeKey;
-                      $presetTitle = (string) ($preset['default_title'] ?? '');
-                      $presetDuration = (int) ($preset['default_duration'] ?? 60);
-                      $presetStatus = (string) ($preset['status'] ?? 'scheduled');
-                      $presetColor = (string) ($preset['color'] ?? '');
-                      $presetConfirmationMethod = (string) ($preset['confirmation_method'] ?? '');
-                      $presetConfirmationStatus = (string) ($preset['confirmation_status'] ?? '');
-                    ?>
-                    <label class="appointment-type-card<?= $isSelectedType ? ' appointment-type-card--active' : '' ?>">
-                      <input
-                        type="radio"
-                        name="appointment_type"
-                        value="<?= htmlspecialchars($typeKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        <?= $isSelectedType ? 'checked' : '' ?>
-                        data-default-title="<?= htmlspecialchars($presetTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-default-duration="<?= $presetDuration ?>"
-                        data-default-status="<?= htmlspecialchars($presetStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-default-color="<?= htmlspecialchars($presetColor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-default-confirmation-method="<?= htmlspecialchars($presetConfirmationMethod, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-default-confirmation-status="<?= htmlspecialchars($presetConfirmationStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                      >
-                      <span class="appointment-type-card__content">
-                        <span class="appointment-type-card__label"><?= htmlspecialchars((string) ($preset['label'] ?? ucfirst($typeKey)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                        <?php if (!empty($preset['description'])): ?>
-                          <span class="appointment-type-card__description"><?= htmlspecialchars((string) $preset['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                        <?php endif; ?>
-                      </span>
-                    </label>
-                  <?php endforeach; ?>
-                </div>
-                <?php if (!empty($appointmentFormErrors['appointment_type'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['appointment_type']) ? implode(' ', array_map('strval', $appointmentFormErrors['appointment_type'])) : (string) $appointmentFormErrors['appointment_type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-              </div>
-              <div class="appointment-modal__details">
-                <label class="form-field" for="appointment-title">
-                  <span class="form-field__label">Tytuł wizyty</span>
-                  <input
-                    id="appointment-title"
-                    type="text"
-                    name="title"
-                    value="<?= htmlspecialchars($appointmentFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                    maxlength="191"
-                    required
-                    data-field="title"
-                  >
-                  <?php if (!empty($appointmentFormErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['title']) ? implode(' ', array_map('strval', $appointmentFormErrors['title'])) : (string) $appointmentFormErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <div class="appointment-form__datetime">
-                  <label class="form-field" for="appointment-start">
-                    <span class="form-field__label">Data i godzina rozpoczęcia</span>
-                    <input
-                      id="appointment-start"
-                      type="datetime-local"
-                      name="start_at"
-                      value="<?= htmlspecialchars($appointmentFormValues['start_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                      required
-                      data-autofocus
-                    >
-                    <?php if (!empty($appointmentFormErrors['start_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['start_at']) ? implode(' ', array_map('strval', $appointmentFormErrors['start_at'])) : (string) $appointmentFormErrors['start_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                  </label>
-                  <label class="form-field" for="appointment-duration">
-                    <span class="form-field__label">Czas trwania</span>
-                    <select id="appointment-duration" name="duration" data-field="duration">
-                      <?php foreach ($appointmentDurationOptions as $durationOption): ?>
-                        <?php $durationSelected = (int) $appointmentFormValues['duration'] === (int) $durationOption; ?>
-                        <option value="<?= (int) $durationOption ?>"<?= $durationSelected ? ' selected' : '' ?>><?= (int) $durationOption ?> minut</option>
-                      <?php endforeach; ?>
-                    </select>
-                    <?php if (!empty($appointmentFormErrors['duration'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['duration']) ? implode(' ', array_map('strval', $appointmentFormErrors['duration'])) : (string) $appointmentFormErrors['duration'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                  </label>
-                </div>
-                <label class="form-field" for="appointment-location">
-                  <span class="form-field__label">Lokalizacja</span>
-                  <input
-                    id="appointment-location"
-                    type="text"
-                    name="location"
-                    maxlength="191"
-                    value="<?= htmlspecialchars($appointmentFormValues['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                    placeholder="Serwis, adres klienta lub opis miejsca"
-                  >
-                  <?php if (!empty($appointmentFormErrors['location'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['location']) ? implode(' ', array_map('strval', $appointmentFormErrors['location'])) : (string) $appointmentFormErrors['location'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field" for="appointment-status">
-                  <span class="form-field__label">Status wizyty</span>
-                  <select id="appointment-status" name="status" data-field="status">
-                    <?php foreach ($appointmentStatusOptions as $statusKey => $statusLabel): ?>
-                      <option value="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $appointmentFormValues['status'] === $statusKey ? ' selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                  <?php if (!empty($appointmentFormErrors['status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['status']) ? implode(' ', array_map('strval', $appointmentFormErrors['status'])) : (string) $appointmentFormErrors['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <div class="appointment-form__color">
-                  <label class="form-field" for="appointment-color">
-                    <span class="form-field__label">Kolor w kalendarzu</span>
-                    <div class="appointment-color-picker">
-                      <?php $colorValue = $appointmentFormValues['color'] !== '' ? $appointmentFormValues['color'] : '#2563EB'; ?>
-                      <input
-                        id="appointment-color"
-                        type="color"
-                        name="color"
-                        value="<?= htmlspecialchars($colorValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                        data-field="color"
-                      >
-                      <span class="appointment-color-preview" data-color-preview style="--appointment-color: <?= htmlspecialchars($colorValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-color-value="<?= htmlspecialchars(strtoupper($colorValue), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(strtoupper($colorValue), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                    </div>
-                    <?php if (!empty($appointmentFormErrors['color'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['color']) ? implode(' ', array_map('strval', $appointmentFormErrors['color'])) : (string) $appointmentFormErrors['color'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                  </label>
-                </div>
-                <div class="appointment-form__confirmation">
-                  <label class="form-field" for="appointment-confirmation-method">
-                    <span class="form-field__label">Sposób potwierdzenia</span>
-                    <select id="appointment-confirmation-method" name="confirmation_method" data-field="confirmation-method">
-                      <?php foreach ($appointmentConfirmationMethods as $methodValue => $methodLabel): ?>
-                        <option value="<?= htmlspecialchars($methodValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $appointmentFormValues['confirmation_method'] === $methodValue ? ' selected' : '' ?>><?= htmlspecialchars($methodLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                    <?php if (!empty($appointmentFormErrors['confirmation_method'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['confirmation_method']) ? implode(' ', array_map('strval', $appointmentFormErrors['confirmation_method'])) : (string) $appointmentFormErrors['confirmation_method'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                  </label>
-                  <label class="form-field" for="appointment-confirmation-status">
-                    <span class="form-field__label">Status potwierdzenia</span>
-                    <select id="appointment-confirmation-status" name="confirmation_status" data-field="confirmation-status">
-                      <?php foreach ($appointmentConfirmationStatuses as $confirmationValue => $confirmationLabel): ?>
-                        <option value="<?= htmlspecialchars($confirmationValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $appointmentFormValues['confirmation_status'] === $confirmationValue ? ' selected' : '' ?>><?= htmlspecialchars($confirmationLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                    <?php if (!empty($appointmentFormErrors['confirmation_status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['confirmation_status']) ? implode(' ', array_map('strval', $appointmentFormErrors['confirmation_status'])) : (string) $appointmentFormErrors['confirmation_status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                  </label>
-                </div>
-                <label class="form-field" for="appointment-notes">
-                  <span class="form-field__label">Notatki do wizyty</span>
-                  <textarea
-                    id="appointment-notes"
-                    name="notes"
-                    rows="3"
-                    placeholder="Najważniejsze informacje dla zespołu lub klienta."
-                  ><?= htmlspecialchars($appointmentFormValues['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-                  <?php if (!empty($appointmentFormErrors['notes'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['notes']) ? implode(' ', array_map('strval', $appointmentFormErrors['notes'])) : (string) $appointmentFormErrors['notes'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field" for="appointment-resources">
-                  <span class="form-field__label">Zasoby (typ|nazwa|szczegóły)</span>
-                  <textarea
-                    id="appointment-resources"
-                    name="resources"
-                    rows="3"
-                    placeholder="samochód|Bus 1&#10;stanowisko|Serwis 2"
-                  ><?= htmlspecialchars($appointmentFormValues['resources'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-                  <?php if (!empty($appointmentFormErrors['resources'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['resources']) ? implode(' ', array_map('strval', $appointmentFormErrors['resources'])) : (string) $appointmentFormErrors['resources'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-              </div>
-            </section>
-            <fieldset class="form-field appointment-form__employees">
-              <legend class="form-field__label">Pracownicy</legend>
-              <?php if ($activeEmployees === []): ?>
-                <p class="muted">Brak dostępnych pracowników. Uzupełnij listę w panelu pracowników.</p>
-              <?php else: ?>
-                <div class="appointment-employee-grid">
-                  <?php foreach ($activeEmployees as $employee): ?>
-                    <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
-                    <label class="appointment-employee">
-                      <input
-                        type="checkbox"
-                        name="employees[]"
-                        value="<?= $employeeId ?>"
-                        <?= in_array((string) $employeeId, $appointmentFormValues['employees'], true) ? 'checked' : '' ?>
-                      >
-                      <span class="appointment-employee__name"><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                    </label>
-                  <?php endforeach; ?>
-                </div>
+          <div>
+            <dt>Ostatnia aktualizacja</dt>
+            <dd><?= htmlspecialchars($caseLastUpdatedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div>
+            <dt>Kontakt</dt>
+            <dd><?= htmlspecialchars($primaryContactLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+        </dl>
+      </div>
+      <div class="case-hero__panel">
+        <h3>Najbliższe kroki</h3>
+        <dl class="case-hero__panel-meta">
+          <div>
+            <dt>Następna wizyta</dt>
+            <dd>
+              <strong><?= htmlspecialchars($nextAppointmentLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+              <span><?= htmlspecialchars($nextAppointmentTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <?php if ($nextAppointmentStatus !== ''): ?>
+                <span class="case-hero__panel-status"><?= htmlspecialchars(ucfirst($nextAppointmentStatus), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               <?php endif; ?>
-              <?php if (!empty($appointmentFormErrors['employees'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['employees']) ? implode(' ', array_map('strval', $appointmentFormErrors['employees'])) : (string) $appointmentFormErrors['employees'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </fieldset>
+            </dd>
           </div>
-          <footer class="modal__footer">
-            <button type="button" class="btn btn--ghost" data-modal-close>Anuluj</button>
-            <button type="submit" class="btn btn--primary">Zapisz wizytę</button>
-          </footer>
-        </form>
-      </div>
-    </div>
-
-    <div
-      class="modal"
-      id="case-close-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-hidden="true"
-      aria-labelledby="case-close-modal-title"
-      data-case-close-modal
-      <?= $shouldOpenCaseCloseModal ? ' data-open-on-load="true"' : '' ?>
-    >
-      <div class="modal__panel" role="document">
-        <header class="modal__header">
           <div>
-            <p class="modal__eyebrow">Case afsluiting</p>
-            <h2 id="case-close-modal-title">Zamknij case #<?= (int) $caseId ?></h2>
+            <dt>Opis</dt>
+            <dd><?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
           </div>
-          <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
-        </header>
-        <form method="post" class="case-close-form" novalidate>
-          <div class="modal__body">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="close-case">
-            <?php if (!empty($closeCaseErrors['general'])): ?>
-              <?php $closeGeneral = is_array($closeCaseErrors['general']) ? implode(' ', array_map('strval', $closeCaseErrors['general'])) : (string) $closeCaseErrors['general']; ?>
-              <div class="alert alert--danger"><?= htmlspecialchars($closeGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-            <?php endif; ?>
-            <div class="form-grid">
-              <label class="form-field">
-                <span class="form-field__label">Ophaalcode</span>
-                <input type="text" name="pickup_code" value="<?= htmlspecialchars($closeCaseFormValues['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="32" placeholder="Automatisch genereren">
-                <small class="muted">Laat leeg om automatisch een unieke code te genereren.</small>
-                <?php if (!empty($closeCaseErrors['pickup_code'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['pickup_code']) ? implode(' ', array_map('strval', $closeCaseErrors['pickup_code'])) : (string) $closeCaseErrors['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-              </label>
-              <label class="form-field">
-                <span class="form-field__label">Datum afgifte</span>
-                <input type="date" name="ready_date" value="<?= htmlspecialchars($closeCaseFormValues['ready_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <?php if (!empty($closeCaseErrors['ready_date'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['ready_date']) ? implode(' ', array_map('strval', $closeCaseErrors['ready_date'])) : (string) $closeCaseErrors['ready_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-              </label>
-            </div>
-            <label class="form-field">
-              <span class="form-field__label">Opmerkingen voor bevestiging</span>
-              <textarea name="remarks" rows="3" placeholder="Bijvoorbeeld: apparaat opgehaald door klant"><?= htmlspecialchars($closeCaseFormValues['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-              <?php if (!empty($closeCaseErrors['remarks'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['remarks']) ? implode(' ', array_map('strval', $closeCaseErrors['remarks'])) : (string) $closeCaseErrors['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Notitie voor het dossier</span>
-              <textarea name="closing_note" rows="3" placeholder="Deze notitie wordt toegevoegd aan de case"><?= htmlspecialchars($closeCaseFormValues['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-              <?php if (!empty($closeCaseErrors['closing_note'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['closing_note']) ? implode(' ', array_map('strval', $closeCaseErrors['closing_note'])) : (string) $closeCaseErrors['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <fieldset class="form-field">
-              <legend class="form-field__label">Automatische meldingen</legend>
-              <label>
-                <input type="checkbox" name="notify_email" value="1" <?= $closeCaseFormValues['notify_email'] === '1' ? 'checked' : '' ?> <?= $caseCustomerEmail === '' ? 'disabled' : '' ?>>
-                <span>E-mail naar <?= $caseCustomerEmail !== '' ? htmlspecialchars($caseCustomerEmail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'geen e-mailadres beschikbaar' ?></span>
-              </label>
-              <label>
-                <input type="checkbox" name="notify_sms" value="1" <?= $closeCaseFormValues['notify_sms'] === '1' ? 'checked' : '' ?> <?= $caseCustomerPhone === '' ? 'disabled' : '' ?>>
-                <span>SMS naar <?= $caseCustomerPhone !== '' ? htmlspecialchars($caseCustomerPhone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'geen telefoonnummer beschikbaar' ?></span>
-              </label>
-            </fieldset>
-          </div>
-          <footer class="modal__footer">
-            <button type="button" class="btn btn--ghost" data-modal-close>Annuleer</button>
-            <button type="submit" class="btn btn--primary">Case sluiten</button>
-          </footer>
-        </form>
+        </dl>
+        <div class="case-hero__actions">
+          <button type="button" class="btn btn--primary" data-modal-target="case-appointment-modal">Zaplanuj wizytę</button>
+          <button type="button" class="btn btn--ghost" data-modal-target="case-close-modal">Zamknij case</button>
+          <a class="btn btn--ghost" href="magazyn.php?case=<?= (int) $caseId ?>">Magazyn</a>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <section class="case-hero__stats" aria-label="Kluczowe wskaźniki sprawy">
+      <?php foreach ($caseHeroStats as $heroStat): ?>
+        <article class="hero-stat-card">
+          <span class="hero-stat-card__value"><?= (int) ($heroStat['value'] ?? 0) ?></span>
+          <span class="hero-stat-card__label"><?= htmlspecialchars((string) ($heroStat['label'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <p class="hero-stat-card__hint"><?= htmlspecialchars((string) ($heroStat['hint'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        </article>
+      <?php endforeach; ?>
+    </section>
+
+    <div class="case-layout__grid">
+      <div class="case-layout__primary">
 
     <section class="case-grid">
       <article class="info-card">
@@ -2985,6 +2696,380 @@ $assignmentSuccess = filter_input(INPUT_GET, 'assigned', FILTER_VALIDATE_BOOLEAN
         </div>
       </div>
     </section>
+    </div>
+      <aside class="case-layout__secondary">
+        <section class="case-sidebar" aria-label="Panel sterowania sprawą">
+          <article class="case-sidebar__card case-sidebar__card--accent">
+            <p class="case-sidebar__eyebrow">Zespół</p>
+            <h2>Przejmij sprawę</h2>
+            <p class="muted">Przypisz się do sprawy, aby pojawiła się w Twojej liście zadań.</p>
+            <form method="post" class="case-self-assign__form">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="self-assign">
+              <button type="submit" class="btn btn--primary btn--full" <?= ($userAlreadyAssigned || $currentEmployeeId === null) ? 'disabled' : '' ?>>
+                <?= $currentEmployeeId === null ? 'Koppel medewerkerprofiel' : ($userAlreadyAssigned ? 'Reeds toegewezen' : 'Przyjmij zlecenie') ?>
+              </button>
+            </form>
+            <?php if ($currentEmployeeId === null): ?>
+              <p class="form-error">Er is geen medewerkerprofiel gekoppeld aan dit account. Vraag een beheerder om jouw gegevens te koppelen.</p>
+            <?php endif; ?>
+          </article>
+
+          <article class="case-sidebar__card">
+            <h2>Priorytety i zespół</h2>
+            <form method="post" class="case-meta-form">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="update-case-meta">
+              <div class="form-grid">
+                <label class="form-field">
+                  <span class="form-field__label">Priorytet</span>
+                  <select name="priority">
+                    <?php foreach ($priorityOptions as $key => $label): ?>
+                      <option value="<?= htmlspecialchars((string) $key, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"<?= $priorityValue === $key ? ' selected' : '' ?>><?= htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                  <?php if (!empty($errors['priority'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <label class="form-field">
+                  <span class="form-field__label">Termin SLA</span>
+                  <input type="datetime-local" name="sla_due_at" value="<?= htmlspecialchars($slaDueInputValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <?php if (!empty($errors['sla_due_at'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['sla_due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <label class="form-field">
+                  <span class="form-field__label">Główny technik</span>
+                  <select name="primary_employee_id">
+                    <option value="">—</option>
+                    <?php foreach ($activeEmployees as $employee): ?>
+                      <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
+                      <option value="<?= $employeeId ?>"<?= $primaryEmployeeValue === $employeeId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                  <?php if (!empty($errors['primary_employee_id'])): ?><small class="form-error"><?= htmlspecialchars((string) $errors['primary_employee_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+              </div>
+
+              <div class="assignments-editor">
+                <h3>Przypisani pracownicy</h3>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Pracownik</th>
+                      <th>Rola</th>
+                      <th>Notatki</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php $assignmentRowsCount = max(count($activeCaseAssignments) + 1, 3); ?>
+                    <?php for ($i = 0; $i < $assignmentRowsCount; $i++): ?>
+                      <?php $rowData = $activeCaseAssignments[$i] ?? ['employee_id' => '', 'assignment_type' => 'primary', 'notes' => '']; ?>
+                      <tr>
+                        <td>
+                          <select name="assignments[<?= $i ?>][employee_id]">
+                            <option value="">—</option>
+                            <?php foreach ($activeEmployees as $employee): ?>
+                              <?php $employeeId = (int) ($employee['id'] ?? 0); ?>
+                              <option value="<?= $employeeId ?>"<?= (int) ($rowData['employee_id'] ?? 0) === $employeeId ? ' selected' : '' ?>><?= htmlspecialchars((string) ($employee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </td>
+                        <td>
+                          <?php $assignmentType = (string) ($rowData['assignment_type'] ?? 'primary'); ?>
+                          <select name="assignments[<?= $i ?>][type]">
+                            <option value="primary"<?= $assignmentType === 'primary' ? ' selected' : '' ?>>Główny</option>
+                            <option value="assistant"<?= $assignmentType === 'assistant' ? ' selected' : '' ?>>Wsparcie</option>
+                            <option value="observer"<?= $assignmentType === 'observer' ? ' selected' : '' ?>>Obserwator</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input type="text" name="assignments[<?= $i ?>][notes]" value="<?= htmlspecialchars((string) ($rowData['notes'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="191" placeholder="Uwagi">
+                        </td>
+                      </tr>
+                    <?php endfor; ?>
+                  </tbody>
+                </table>
+              </div>
+              <button type="submit" class="btn btn--primary btn--full">Zapisz zespół</button>
+            </form>
+          </article>
+
+          <article class="case-sidebar__card">
+            <div class="case-sidebar__header">
+              <h2>Odbiór urządzenia</h2>
+              <p class="muted">Monitoruj potwierdzenia wydania i finalizację sprawy.</p>
+            </div>
+            <?php if ($pickupConfirmations === []): ?>
+              <p class="muted">Er zijn nog geen ophaalbevestigingen gekoppeld aan deze case.</p>
+            <?php else: ?>
+              <div class="table-wrapper">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Datum gereed</th>
+                      <th>Status</th>
+                      <th>Laatst bijgewerkt</th>
+                      <th>Acties</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($pickupConfirmations as $confirmation): ?>
+                      <?php
+                        $confirmationId = (int) ($confirmation['id'] ?? 0);
+                        $confirmationCode = (string) ($confirmation['ophaalcode'] ?? '');
+                        $confirmationStatus = (string) ($confirmation['status'] ?? '');
+                        $pickupStatusClass = $confirmationStatus === 'opgehaald' ? 'status-pill--picked' : 'status-pill--ready';
+                        $statusLabel = $confirmationStatus !== '' ? ucfirst($confirmationStatus) : 'Onbekend';
+                        $readyDateLabel = (string) ($confirmation['datumgereed'] ?? '');
+                        $updatedAtRaw = $confirmation['updated_at'] ?? $confirmation['pickup_signed_at'] ?? $confirmation['created_at'] ?? null;
+                        $updatedLabel = $updatedAtRaw ? date('d-m-Y H:i', strtotime((string) $updatedAtRaw)) : '—';
+                        $hasSignature = !empty($confirmation['pickup_signature']);
+                      ?>
+                      <tr>
+                        <td><?= htmlspecialchars($confirmationCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                        <td><?= htmlspecialchars($readyDateLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                        <td><span class="status-pill <?= htmlspecialchars($pickupStatusClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
+                        <td><?= htmlspecialchars($updatedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                        <td>
+                          <div class="button-row">
+                            <a class="btn btn--ghost btn--small" href="generate-apparaat-opgehaald.php?id=<?= $confirmationId ?>" target="_blank" rel="noopener">PDF</a>
+                            <?php if (!$hasSignature && $confirmationStatus === 'klaar'): ?>
+                              <a class="btn btn--ghost btn--small" href="pickup-sign.php?id=<?= $confirmationId ?>">Handtekening</a>
+                            <?php endif; ?>
+                          </div>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+            <div class="button-row">
+              <button class="btn btn--primary" type="button" data-modal-target="case-close-modal">Zamknij case i wystaw potwierdzenie</button>
+              <?php if ($latestPickupConfirmation !== null): ?>
+                <a class="btn btn--ghost" href="generate-apparaat-opgehaald.php?id=<?= (int) ($latestPickupConfirmation['id'] ?? 0) ?>" target="_blank" rel="noopener">Laatste bevestiging</a>
+              <?php endif; ?>
+            </div>
+          </article>
+
+          <article class="case-sidebar__card">
+            <h2>Plan wizyt</h2>
+            <?php if ($caseAppointments === []): ?>
+              <p class="muted">Brak zaplanowanych wizyt dla tego zlecenia.</p>
+            <?php else: ?>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Termin</th>
+                    <th>Tytuł</th>
+                    <th>Pracownicy</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($caseAppointments as $appointment): ?>
+                    <tr>
+                      <td><?= htmlspecialchars((string) ($appointment['start_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                      <td><?= htmlspecialchars((string) ($appointment['title'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                      <td>
+                        <?php if (empty($appointment['attendees'])): ?>
+                          <span class="muted">—</span>
+                        <?php else: ?>
+                          <ul class="attendee-list">
+                            <?php foreach ($appointment['attendees'] as $attendee): ?>
+                              <li><?= htmlspecialchars((string) ($attendee['full_name'] ?? 'Pracownik'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+                            <?php endforeach; ?>
+                          </ul>
+                        <?php endif; ?>
+                      </td>
+                      <td><?= htmlspecialchars((string) ($appointment['status'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            <?php endif; ?>
+            <button class="btn btn--ghost btn--full" type="button" data-modal-target="case-appointment-modal">Zaplanuj wizytę</button>
+          </article>
+        </section>
+      </aside>
+    </div>
+
+    <div
+      class="modal"
+      id="case-close-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="case-close-modal-title"
+      data-case-close-modal
+      <?= $shouldOpenCaseCloseModal ? ' data-open-on-load="true"' : '' ?>
+    >
+      <div class="modal__panel" role="document">
+        <header class="modal__header">
+          <div>
+            <p class="modal__eyebrow">Case afsluiting</p>
+            <h2 id="case-close-modal-title">Zamknij case #<?= (int) $caseId ?></h2>
+          </div>
+          <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
+        </header>
+        <form method="post" class="case-close-form" novalidate>
+          <div class="modal__body">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="close-case">
+            <?php if (!empty($closeCaseErrors['general'])): ?>
+              <?php $closeGeneral = is_array($closeCaseErrors['general']) ? implode(' ', array_map('strval', $closeCaseErrors['general'])) : (string) $closeCaseErrors['general']; ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($closeGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <div class="form-grid">
+              <label class="form-field">
+                <span class="form-field__label">Ophaalcode</span>
+                <input type="text" name="pickup_code" value="<?= htmlspecialchars($closeCaseFormValues['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" maxlength="32" placeholder="Automatisch genereren">
+                <small class="muted">Laat leeg om automatisch een unieke code te genereren.</small>
+                <?php if (!empty($closeCaseErrors['pickup_code'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['pickup_code']) ? implode(' ', array_map('strval', $closeCaseErrors['pickup_code'])) : (string) $closeCaseErrors['pickup_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+              <label class="form-field">
+                <span class="form-field__label">Datum afgifte</span>
+                <input type="date" name="ready_date" value="<?= htmlspecialchars($closeCaseFormValues['ready_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <?php if (!empty($closeCaseErrors['ready_date'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['ready_date']) ? implode(' ', array_map('strval', $closeCaseErrors['ready_date'])) : (string) $closeCaseErrors['ready_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="form-field__label">Opmerkingen voor bevestiging</span>
+              <textarea name="remarks" rows="3" placeholder="Bijvoorbeeld: apparaat opgehaald door klant"><?= htmlspecialchars($closeCaseFormValues['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <?php if (!empty($closeCaseErrors['remarks'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['remarks']) ? implode(' ', array_map('strval', $closeCaseErrors['remarks'])) : (string) $closeCaseErrors['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Notitie voor het dossier</span>
+              <textarea name="closing_note" rows="3" placeholder="Deze notitie wordt toegevoegd aan de case"><?= htmlspecialchars($closeCaseFormValues['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <?php if (!empty($closeCaseErrors['closing_note'])): ?><small class="form-error"><?= htmlspecialchars(is_array($closeCaseErrors['closing_note']) ? implode(' ', array_map('strval', $closeCaseErrors['closing_note'])) : (string) $closeCaseErrors['closing_note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <fieldset class="form-field">
+              <legend class="form-field__label">Automatische meldingen</legend>
+              <label>
+                <input type="checkbox" name="notify_email" value="1" <?= $closeCaseFormValues['notify_email'] === '1' ? 'checked' : '' ?> <?= $caseCustomerEmail === '' ? 'disabled' : '' ?>>
+                <span>E-mail naar <?= $caseCustomerEmail !== '' ? htmlspecialchars($caseCustomerEmail, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'geen e-mailadres beschikbaar' ?></span>
+              </label>
+              <label>
+                <input type="checkbox" name="notify_sms" value="1" <?= $closeCaseFormValues['notify_sms'] === '1' ? 'checked' : '' ?> <?= $caseCustomerPhone === '' ? 'disabled' : '' ?>>
+                <span>SMS naar <?= $caseCustomerPhone !== '' ? htmlspecialchars($caseCustomerPhone, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : 'geen telefoonnummer beschikbaar' ?></span>
+              </label>
+            </fieldset>
+          </div>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-modal-close>Annuleer</button>
+            <button type="submit" class="btn btn--primary">Case sluiten</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+
+    <div
+      class="modal appointment-modal"
+      id="case-appointment-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="case-appointment-modal-title"
+      data-case-appointment-modal
+      <?= $shouldOpenAppointmentModal ? ' data-open-on-load="true"' : '' ?>
+    >
+      <div class="modal__panel" role="document">
+        <header class="modal__header">
+          <div>
+            <p class="modal__eyebrow">Nowa wizyta</p>
+            <h2 id="case-appointment-modal-title">Zaplanuj wizytę dla case #<?= (int) $caseId ?></h2>
+          </div>
+          <button type="button" class="modal__close" data-modal-close aria-label="Zamknij okno">&times;</button>
+        </header>
+        <form method="post" class="appointment-form" novalidate>
+          <div class="modal__body">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="create-appointment">
+            <?php if (!empty($appointmentFormErrors['general'])): ?>
+              <?php $appointmentGeneral = is_array($appointmentFormErrors['general']) ? implode(' ', array_map('strval', $appointmentFormErrors['general'])) : (string) $appointmentFormErrors['general']; ?>
+              <div class="alert alert--danger"><?= htmlspecialchars($appointmentGeneral, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            <?php endif; ?>
+            <section class="appointment-modal__layout">
+              <div class="appointment-modal__types">
+                <h3>Rodzaj wizyty</h3>
+                <p class="appointment-modal__intro">Wybierz scenariusz, a my dopasujemy domyślne ustawienia do jego charakteru.</p>
+                <div class="appointment-type-list">
+                  <?php foreach ($appointmentTypePresets as $typeKey => $preset): ?>
+                    <?php
+                      $isSelectedType = $appointmentFormValues['appointment_type'] === $typeKey;
+                      $presetTitle = (string) ($preset['default_title'] ?? '');
+                      $presetDuration = (int) ($preset['default_duration'] ?? 60);
+                      $presetStatus = (string) ($preset['status'] ?? 'scheduled');
+                      $presetColor = (string) ($preset['color'] ?? '');
+                      $presetConfirmationMethod = (string) ($preset['confirmation_method'] ?? '');
+                      $presetConfirmationStatus = (string) ($preset['confirmation_status'] ?? '');
+                    ?>
+                    <label class="appointment-type-card<?= $isSelectedType ? ' appointment-type-card--active' : '' ?>">
+                      <input
+                        type="radio"
+                        name="appointment_type"
+                        value="<?= htmlspecialchars($typeKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        <?= $isSelectedType ? 'checked' : '' ?>
+                        data-default-title="<?= htmlspecialchars($presetTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-duration="<?= $presetDuration ?>"
+                        data-default-status="<?= htmlspecialchars($presetStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-color="<?= htmlspecialchars($presetColor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-confirmation-method="<?= htmlspecialchars($presetConfirmationMethod, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        data-default-confirmation-status="<?= htmlspecialchars($presetConfirmationStatus, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      >
+                      <span class="appointment-type-card__content">
+                        <span class="appointment-type-card__label"><?= htmlspecialchars((string) ($preset['label'] ?? ucfirst($typeKey)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <?php if (!empty($preset['description'])): ?>
+                          <span class="appointment-type-card__description"><?= htmlspecialchars((string) $preset['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                        <?php endif; ?>
+                      </span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+                <?php if (!empty($appointmentFormErrors['appointment_type'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['appointment_type']) ? implode(' ', array_map('strval', $appointmentFormErrors['appointment_type'])) : (string) $appointmentFormErrors['appointment_type'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+              </div>
+              <div class="appointment-modal__details">
+                <label class="form-field" for="appointment-title">
+                  <span class="form-field__label">Tytuł wizyty</span>
+                  <input
+                    id="appointment-title"
+                    type="text"
+                    name="title"
+                    value="<?= htmlspecialchars($appointmentFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    maxlength="191"
+                    required
+                    data-field="title"
+                  >
+                  <?php if (!empty($appointmentFormErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['title']) ? implode(' ', array_map('strval', $appointmentFormErrors['title'])) : (string) $appointmentFormErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <div class="appointment-form__datetime">
+                  <label class="form-field" for="appointment-start">
+                    <span class="form-field__label">Data i godzina rozpoczęcia</span>
+                    <input
+                      id="appointment-start"
+                      type="datetime-local"
+                      name="start_at"
+                      value="<?= htmlspecialchars($appointmentFormValues['start_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                      required
+                      data-autofocus
+                    >
+                    <?php if (!empty($appointmentFormErrors['start_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['start_at']) ? implode(' ', array_map('strval', $appointmentFormErrors['start_at'])) : (string) $appointmentFormErrors['start_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                  <label class="form-field" for="appointment-duration">
+                    <span class="form-field__label">Czas trwania</span>
+                    <select id="appointment-duration" name="duration" data-field="duration">
+                      <?php foreach ($appointmentDurationOptions as $durationOption): ?>
+                        <?php $durationSelected = (int) $appointmentFormValues['duration'] === (int) $durationOption; ?>
+                        <option value="<?= (int) $durationOption ?>"<?= $durationSelected ? ' selected' : '' ?>><?= (int) $durationOption ?> minut</option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($appointmentFormErrors['duration'])): ?><small class="form-error"><?= htmlspecialchars(is_array($appointmentFormErrors['duration']) ? implode(' ', array_map('strval', $appointmentFormErrors['duration'])) : (string) $appointmentFormErrors['duration'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                </div>
+                <label class="form-field" for="appointment-location">
+                  <span class="form-field__label">Lokalizacja</span>
+                  <input
+                    id="appointment-location"
+                    type="text"
   </main>
 
   <footer class="main-footer">

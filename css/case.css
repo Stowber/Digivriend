@@ -1,42 +1,317 @@
 .case-view {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  padding-top: 32px;
-  padding-bottom: 48px;
+  gap: 2.5rem;
+  padding: 2rem 0 4rem;
 }
 
 body.detail-modal-open {
   overflow: hidden;
 }
 
-.case-overview {
+.case-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: 2rem;
+  padding: 2.5rem;
+  border-radius: 32px;
+  background: radial-gradient(circle at top left, #eef2ff 0%, #e0f2fe 35%, #f8fafc 100%);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.case-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.15), transparent 40%);
+  pointer-events: none;
+}
+
+.case-hero__content,
+.case-hero__panel {
+  position: relative;
+  z-index: 1;
+}
+
+.case-hero__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #2563eb;
+  margin: 0 0 0.5rem;
+}
+
+.case-hero__content h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.8rem, 2.8vw, 2.6rem);
+  color: #0f172a;
+}
+
+.case-hero__subtitle {
+  margin: 0 0 1.5rem;
+  color: #475569;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+.case-hero__subtitle span {
+  color: #94a3b8;
+}
+
+.case-hero__badges {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
-.case-overview h1 {
-  margin: 0 0 8px;
+.case-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
 }
 
-.case-meta {
-  text-align: right;
-  color: #64748b;
+.case-badge--success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.case-badge--danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.case-badge--warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+.case-badge--info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.case-badge--muted {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.case-hero__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.case-hero__meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.case-hero__meta dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.case-hero__meta dd {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.case-hero__panel {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 24px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.25);
+}
+
+.case-hero__panel h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.case-hero__panel-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+}
+
+.case-hero__panel-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.case-hero__panel-meta strong {
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.case-hero__panel-meta span {
+  color: #475569;
+}
+
+.case-hero__panel-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.case-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.case-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.hero-stat-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.25rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hero-stat-card__value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.hero-stat-card__label {
+  font-weight: 600;
+  color: #475569;
+}
+
+.hero-stat-card__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.case-layout__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 0.9fr);
+  gap: 2rem;
+}
+
+.case-layout__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.case-layout__secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.case-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.case-sidebar__card {
+  background: #fff;
+  border-radius: 22px;
+  padding: 1.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.case-sidebar__card--accent {
+  background: linear-gradient(135deg, #ecfccb, #fef3c7);
+  border-color: rgba(190, 242, 100, 0.5);
+}
+
+.case-sidebar__eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #0f172a;
+}
+
+.case-sidebar__header h2 {
+  margin: 0;
+}
+
+.case-sidebar__header .muted {
+  margin: 0.25rem 0 0;
+}
+
+.case-self-assign__form {
+  width: 100%;
+}
+
+.case-self-assign .btn[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.case-hero__panel-meta dt,
+.case-sidebar__eyebrow,
+.case-sidebar__header h2 {
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .case-hero,
+  .case-layout__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .case-grid {
   display: grid;
-  gap: 24px;
+  gap: 1.5rem;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .info-card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  padding: 1.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.06);
 }
 
 .info-card h2 {
