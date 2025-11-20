@@ -12,7 +12,7 @@ require_once __DIR__ . '/templates/partials/main-nav.php';
 $csrfToken = Csrf::token();
 
 $logoAriaLabel = __('dashboard.header.logo_aria');
-$logoSubtitle = __('dashboard.header.subtitle');
+$logoSubtitle = platform_subtitle();
 $appName = __('app.name');
 
 $heroTitle = __('intake.header.title');
@@ -139,7 +139,7 @@ $feedbackUnknown = __('intake.feedback.unknown');
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/intake.css">
 </head>
-<body>
+<body<?= platform_body_attributes(); ?>>
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo" aria-label="<?= htmlspecialchars($logoAriaLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">

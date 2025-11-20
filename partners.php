@@ -102,14 +102,14 @@ $isAdmin = Auth::role() === 'admin';
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/partners.css">
 </head>
-<body>
+<body<?= platform_body_attributes(); ?>>
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo" aria-label="<?= htmlspecialchars(__('dashboard.header.logo_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <span class="logo__mark" aria-hidden="true">DV</span>
         <span class="logo__text">
           <span class="logo__title"><?= htmlspecialchars(__('app.name'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="logo__subtitle"><?= htmlspecialchars(__('dashboard.header.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="logo__subtitle"><?= htmlspecialchars(platform_subtitle(), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?></span>
         </span>
       </a>
       <nav class="main-nav" aria-label="<?= htmlspecialchars(__('nav.aria.main'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">

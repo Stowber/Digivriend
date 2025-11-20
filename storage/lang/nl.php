@@ -7,6 +7,7 @@ return [
     'nav' => [
         'dashboard' => 'Dashboard',
         'intake' => 'Intake',
+        'device_register' => 'Apparaatregistratie',
         'customers' => 'Klanten',
         'devices' => 'Klanten & apparaten',
         'archive' => 'Archief',
@@ -1017,6 +1018,7 @@ return [
         'header' => [
             'logo_aria' => 'Digivriend dashboard',
             'subtitle' => 'Serviceplatform',
+            'subtitle_partner' => 'Partnerplatform',
         ],
         'hero' => [
             'badge' => 'Realtime overzicht',

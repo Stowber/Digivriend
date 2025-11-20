@@ -37,14 +37,14 @@ $nextPage = $currentPage < $totalPages ? $currentPage + 1 : null;
   <link rel="stylesheet" href="css/pc-builder.css">
   <script src="js/pc-builder.js" defer></script>
 </head>
-<body>
+<body<?= platform_body_attributes(); ?>>
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo" aria-label="Digivriend dashboard">
         <span class="logo__mark" aria-hidden="true">DV</span>
         <span class="logo__text">
           <span class="logo__title">Digivriend</span>
-          <span class="logo__subtitle">Serviceplatform</span>
+          <span class="logo__subtitle"><?= htmlspecialchars(platform_subtitle(), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?></span>
         </span>
       </a>
       <nav class="main-nav" aria-label="Hoofd navigatie">

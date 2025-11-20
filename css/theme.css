@@ -1,7 +1,8 @@
 :root {
+  --color-primary-rgb: 240, 90, 40;
   --color-primary: #F05A28;
   --color-primary-dark: #d94f20;
-  --color-primary-soft: rgba(240, 90, 40, 0.14);
+  --color-primary-soft: rgba(var(--color-primary-rgb), 0.14);
   --color-surface: #ffffff;
   --color-surface-alt: #f7f9fc;
   --color-background: #f3f4f8;
@@ -15,7 +16,7 @@
   --radius-md: 12px;
   --radius-lg: 18px;
   --shadow-soft: 0 18px 40px -24px rgba(15, 23, 42, 0.45);
-  --shadow-strong: 0 32px 60px -28px rgba(240, 90, 40, 0.45);
+  --shadow-strong: 0 32px 60px -28px rgba(var(--color-primary-rgb), 0.45);
   --font-sans: "Inter", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -218,8 +219,8 @@ main {
 .main-nav a:not(.btn):hover,
 .main-nav a:not(.btn):focus {
   color: var(--color-primary);
-  background: rgba(240, 90, 40, 0.08);
-  border-color: rgba(240, 90, 40, 0.16);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.16);
 }
 
 .main-nav a.nav-link--danger:not(.btn):hover,
@@ -236,7 +237,7 @@ main {
 
 .main-nav a[aria-current="page"]:not(.btn) {
   color: var(--color-primary);
-  background: rgba(240, 90, 40, 0.12);
+  background: rgba(var(--color-primary-rgb), 0.12);
   border-color: transparent;
 }
 
@@ -301,7 +302,7 @@ main {
 .field-help:focus,
 .field-help:hover {
   outline: none;
-  background: rgba(240, 90, 40, 0.9);
+  background: rgba(var(--color-primary-rgb), 0.9);
   transform: translateY(-1px);
 }
 
@@ -408,8 +409,8 @@ main {
 }
 
 .employees__list li.is-active a {
-  border-color: rgba(240, 90, 40, 0.35);
-  background: rgba(240, 90, 40, 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .employees__details {
@@ -523,8 +524,8 @@ main {
 
 .tabs input[type="radio"]:checked + label {
   color: var(--color-primary);
-  border-color: rgba(240, 90, 40, 0.35);
-  background: rgba(240, 90, 40, 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .tab-panel {
@@ -553,7 +554,7 @@ input[type="submit"],
   font-size: 0.95rem;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 14px 34px -18px rgba(240, 90, 40, 0.9);
+  box-shadow: 0 14px 34px -18px rgba(var(--color-primary-rgb), 0.9);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -582,14 +583,14 @@ input[type="submit"]:focus,
 }
 
 .btn--ghost {
-  background: rgba(240, 90, 40, 0.12);
+  background: rgba(var(--color-primary-rgb), 0.12);
   color: var(--color-primary);
   box-shadow: none;
 }
 
 .btn--ghost:hover,
 .btn--ghost:focus {
-  background: rgba(240, 90, 40, 0.18);
+  background: rgba(var(--color-primary-rgb), 0.18);
   color: var(--color-primary-dark);
 }
 
@@ -630,8 +631,8 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: rgba(240, 90, 40, 0.65);
-  box-shadow: 0 0 0 3px rgba(240, 90, 40, 0.18);
+  border-color: rgba(var(--color-primary-rgb), 0.65);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.18);
 }
 
 label {
@@ -657,7 +658,7 @@ label {
   inset: auto -30% -60% 65%;
   width: 260px;
   height: 260px;
-  background: radial-gradient(circle, rgba(240, 90, 40, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.12) 0%, transparent 70%);
   pointer-events: none;
   transform: rotate(-6deg);
 }
@@ -759,7 +760,7 @@ tbody tr:last-child td {
 }
 
 .status-pill--ready {
-  background: rgba(240, 90, 40, 0.14);
+  background: rgba(var(--color-primary-rgb), 0.14);
   color: var(--color-primary-dark);
 }
 
@@ -846,6 +847,14 @@ tbody tr:last-child td {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+body.theme--partner {
+  --color-primary-rgb: 37, 99, 235;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-primary-soft: rgba(var(--color-primary-rgb), 0.16);
+  --shadow-strong: 0 32px 60px -28px rgba(var(--color-primary-rgb), 0.45);
 }
 
 @media (max-width: 900px) {

@@ -242,7 +242,7 @@ $selectedEmployeeStatus = $selectedEmployee['status'] ?? null;
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/management-ui.css">
 </head>
-<body class="page--employees">
+<body<?= platform_body_attributes('page--employees'); ?>>
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo">Digivriend</a>

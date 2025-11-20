@@ -37,7 +37,7 @@ sort($types);
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/documents.css">
 </head>
-<body>
+<body<?= platform_body_attributes(); ?>>
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo">Digivriend</a>

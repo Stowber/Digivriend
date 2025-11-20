@@ -168,7 +168,7 @@ $driverName = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
     }
   </style>
 </head>
-<body class="page--dumpdatabase">
+<body<?= platform_body_attributes('page--dumpdatabase'); ?>>
   <header class="main-header">
     <div class="container">
       <a href="index.php" class="logo">Digivriend</a>

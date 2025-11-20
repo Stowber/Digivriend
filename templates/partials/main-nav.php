@@ -7,24 +7,61 @@ use App\Security\Csrf;
 use App\Support\Lang\Translator;
 
 if (!function_exists('render_main_nav')) {
+    function platform_is_partner(): bool
+    {
+        return Auth::role() === 'partner';
+    }
+
+    function platform_subtitle(): string
+    {
+        return platform_is_partner()
+            ? __('dashboard.header.subtitle_partner')
+            : __('dashboard.header.subtitle');
+    }
+
+    function platform_theme_class(): string
+    {
+        return platform_is_partner() ? 'theme--partner' : '';
+    }
+
+    function platform_body_attributes(string $additionalClasses = ''): string
+    {
+        $classes = array_filter([
+            trim($additionalClasses),
+            platform_theme_class(),
+        ], static fn (string $value): bool => $value !== '');
+
+        if ($classes === []) {
+            return '';
+        }
+
+        return ' class="' . htmlspecialchars(implode(' ', $classes), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+    }
     function render_main_nav(string $currentKey): void
     {
-        $items = [
-            'dashboard' => ['label' => __('nav.dashboard'), 'href' => 'index.php'],
-            'intake' => ['label' => __('nav.intake'), 'href' => 'intake.php'],
-            'customers' => ['label' => __('nav.customers'), 'href' => 'customers.php'],
-            'devices' => ['label' => __('nav.devices'), 'href' => 'devices.php'],
-            'archive' => ['label' => __('nav.archive'), 'href' => 'archive.php'],
-            'data_recovery' => ['label' => __('nav.data_recovery'), 'href' => 'data-recovery.php'],
-            'calendar' => ['label' => __('nav.calendar'), 'href' => 'calendar.php'],
-            'documents' => ['label' => __('nav.documents'), 'href' => 'documents.php'],
-            'inventory' => ['label' => __('nav.inventory'), 'href' => 'magazyn.php'],
-            'pc_builder' => ['label' => __('nav.pc_builder'), 'href' => 'pc-builder.php'],
-            'partners' => ['label' => __('nav.partners'), 'href' => 'partners.php'],
-            'employees' => ['label' => __('nav.employees'), 'href' => 'employees.php'],
-        ];
+        $isPartner = platform_is_partner();
 
-        if (Auth::role() === 'admin') {
+        $items = $isPartner
+            ? [
+                'intake' => ['label' => __('nav.intake'), 'href' => 'intake.php'],
+                'device_register' => ['label' => __('nav.device_register'), 'href' => 'device-intake.php'],
+            ]
+            : [
+                'dashboard' => ['label' => __('nav.dashboard'), 'href' => 'index.php'],
+                'intake' => ['label' => __('nav.intake'), 'href' => 'intake.php'],
+                'customers' => ['label' => __('nav.customers'), 'href' => 'customers.php'],
+                'devices' => ['label' => __('nav.devices'), 'href' => 'devices.php'],
+                'archive' => ['label' => __('nav.archive'), 'href' => 'archive.php'],
+                'data_recovery' => ['label' => __('nav.data_recovery'), 'href' => 'data-recovery.php'],
+                'calendar' => ['label' => __('nav.calendar'), 'href' => 'calendar.php'],
+                'documents' => ['label' => __('nav.documents'), 'href' => 'documents.php'],
+                'inventory' => ['label' => __('nav.inventory'), 'href' => 'magazyn.php'],
+                'pc_builder' => ['label' => __('nav.pc_builder'), 'href' => 'pc-builder.php'],
+                'partners' => ['label' => __('nav.partners'), 'href' => 'partners.php'],
+                'employees' => ['label' => __('nav.employees'), 'href' => 'employees.php'],
+            ];
+
+        if (!$isPartner && Auth::role() === 'admin') {
             $items['dump_database'] = [
                 'label' => __('nav.dump_database'),
                 'href' => 'dumpdatabase.php',
