@@ -122,6 +122,44 @@ final class CaseRepository
     /**
      * @return array<int, array<string, mixed>>
      */
+    public function forPartner(int $partnerId, int $limit = 50): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT c.*, cust.full_name AS customer_name, cust.phone AS customer_phone, cust.email AS customer_email
+             FROM cases c
+             INNER JOIN customers cust ON cust.id = c.customer_id
+             WHERE c.details LIKE :partner_pattern
+             ORDER BY c.updated_at DESC
+             LIMIT :limit'
+        );
+        $statement->bindValue(':partner_pattern', '%"partner_id":' . $partnerId . '%');
+        $statement->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+        $statement->execute();
+
+        $cases = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($cases as &$case) {
+            $decodedDetails = [];
+            if (!empty($case['details'])) {
+                $parsed = json_decode((string) $case['details'], true);
+                if (is_array($parsed)) {
+                    $decodedDetails = $parsed;
+                }
+            }
+
+            $case['details'] = $decodedDetails;
+            $case['partner_assigned_at'] = isset($decodedDetails['partner_assigned_at'])
+                ? (string) $decodedDetails['partner_assigned_at']
+                : null;
+        }
+        unset($case);
+
+        return $cases;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     public function findOpenPickups(): array
     {
         $statement = $this->pdo->prepare('SELECT * FROM cases WHERE type = :type AND status = :status ORDER BY updated_at DESC');

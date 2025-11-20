@@ -17,6 +17,7 @@ return [
         'inventory' => 'Magazyn',
         'pc_builder' => 'Budowa PC',
         'partners' => 'Partnerzy',
+        'partner_cases' => 'Zlecenia',
         'employees' => 'Pracownicy',
         'logout' => 'Wyloguj',
         'dump_database' => 'Eksport bazy danych',
@@ -50,6 +51,31 @@ return [
     ],
     'messages' => [
         'session_expired' => 'Sesja wygasła. Odśwież stronę i spróbuj ponownie.',
+    ],
+    'partner_cases' => [
+        'meta' => [
+            'title' => 'Zlecenia partnera - Digivriend',
+        ],
+        'hero' => [
+            'eyebrow' => 'Panel partnera',
+            'title' => 'Twoje zlecenia',
+            'description' => 'Sprawdź zlecenia przekazane Twojej firmie i przejdź do szczegółów.',
+        ],
+        'table' => [
+            'summary_label' => 'Łącznie zleceń',
+            'reference' => 'Referencja',
+            'reference_fallback' => 'Zlecenie #:id',
+            'type' => 'Typ',
+            'status' => 'Status',
+            'summary' => 'Podsumowanie',
+            'customer' => 'Klient',
+            'hidden_customer' => 'Ukryte do akceptacji danych',
+            'updated' => 'Aktualizacja',
+            'assigned' => 'Przydzielono',
+            'actions' => 'Akcje',
+            'view' => 'Otwórz zlecenie',
+            'empty' => 'Brak zleceń przekazanych Twojej firmie.',
+        ],
     ],
     'employees' => [
         'meta' => [

@@ -45,6 +45,7 @@ if (!function_exists('render_main_nav')) {
             ? [
                 'intake' => ['label' => __('nav.intake'), 'href' => 'intake.php'],
                 'device_register' => ['label' => __('nav.device_register'), 'href' => 'device-intake.php'],
+                'partner_cases' => ['label' => __('nav.partner_cases'), 'href' => 'partner-cases.php'],
             ]
             : [
                 'dashboard' => ['label' => __('nav.dashboard'), 'href' => 'index.php'],

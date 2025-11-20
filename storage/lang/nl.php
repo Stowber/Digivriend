@@ -17,6 +17,7 @@ return [
         'inventory' => 'Magazijn',
         'pc_builder' => 'PC-bouw',
         'partners' => 'Partners',
+        'partner_cases' => 'Zaken',
         'employees' => 'Medewerkers',
         'logout' => 'Afmelden',
         'dump_database' => 'Database export',
@@ -50,6 +51,31 @@ return [
     ],
     'messages' => [
         'session_expired' => 'Sessie verlopen. Vernieuw de pagina en probeer het opnieuw.',
+    ],
+    'partner_cases' => [
+        'meta' => [
+            'title' => 'Partnerzaken - Digivriend',
+        ],
+        'hero' => [
+            'eyebrow' => 'Partneromgeving',
+            'title' => 'Jouw toegewezen zaken',
+            'description' => 'Bekijk de zaken die met jouw bedrijf zijn gedeeld en open de juiste dossiers.',
+        ],
+        'table' => [
+            'summary_label' => 'Totaal zaken',
+            'reference' => 'Referentie',
+            'reference_fallback' => 'Zaak #:id',
+            'type' => 'Type',
+            'status' => 'Status',
+            'summary' => 'Samenvatting',
+            'customer' => 'Klant',
+            'hidden_customer' => 'Verborgen tot goedkeuring',
+            'updated' => 'Bijgewerkt',
+            'assigned' => 'Toegewezen',
+            'actions' => 'Acties',
+            'view' => 'Open zaak',
+            'empty' => 'Er zijn nog geen zaken met jouw bedrijf gedeeld.',
+        ],
     ],
     'employees' => [
         'meta' => [

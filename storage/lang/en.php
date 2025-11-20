@@ -17,6 +17,7 @@ return [
         'inventory' => 'Warehouse',
         'pc_builder' => 'PC build',
         'partners' => 'Partners',
+        'partner_cases' => 'Cases',
         'employees' => 'Employees',
         'logout' => 'Log out',
         'dump_database' => 'Database export',
@@ -50,6 +51,31 @@ return [
     ],
     'messages' => [
         'session_expired' => 'Session expired. Refresh the page and try again.',
+    ],
+    'partner_cases' => [
+        'meta' => [
+            'title' => 'Partner cases - Digivriend',
+        ],
+        'hero' => [
+            'eyebrow' => 'Partner hub',
+            'title' => 'Your assigned cases',
+            'description' => 'Review the cases shared with your company and open the details you need.',
+        ],
+        'table' => [
+            'summary_label' => 'Total cases',
+            'reference' => 'Reference',
+            'reference_fallback' => 'Case #:id',
+            'type' => 'Type',
+            'status' => 'Status',
+            'summary' => 'Summary',
+            'customer' => 'Customer',
+            'hidden_customer' => 'Hidden until data approval',
+            'updated' => 'Updated',
+            'assigned' => 'Assigned',
+            'actions' => 'Actions',
+            'view' => 'Open case',
+            'empty' => 'No cases have been shared with your company yet.',
+        ],
     ],
     'employees' => [
         'meta' => [
