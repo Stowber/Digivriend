@@ -16,6 +16,7 @@ use App\Support\Repositories\AppointmentRepository;
 use App\Support\Repositories\CaseRepository;
 use App\Support\Repositories\EmployeeRepository;
 use App\Support\Repositories\NoteRepository;
+use App\Support\Repositories\PartnerRepository;
 use App\Support\Repositories\WarehouseRepository;
 use App\Support\Workflow\RepairWorkflowRepository;
 use App\Validation\InputValidator;
@@ -39,6 +40,7 @@ $checklistRepository = new ChecklistRepository($pdo);
 $auditLogger = new AuditLogger($pdo);
 $warehouseRepository = new WarehouseRepository($pdo);
 $employeeRepository = new EmployeeRepository($pdo);
+$partnerRepository = new PartnerRepository($pdo);
 $appointmentRepository = new AppointmentRepository($pdo);
 $notificationService = new NotificationService($pdo);
 $documentRepository = new DocumentRepository($pdo);
@@ -461,6 +463,9 @@ $errors = [];
 $checklistErrors = [];
 $noteEditErrors = [];
 $noteEditValues = [];
+$partnerAssignErrors = [];
+$partnerRequestErrors = [];
+$partnerResponseErrors = [];
 $currentAction = null;
 $attendanceErrors = [];
 $attendanceFormValues = [
@@ -1345,6 +1350,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'assignments' => array_map(static fn (array $row): array => ['employee_id' => $row['employee_id'], 'type' => $row['type']], $assignmentRows),
                 ]);
                 break;
+                case 'assign-partner':
+                if ($isPartnerUser) {
+                    throw new ValidationException(['general' => 'Partners kunnen deze actie niet uitvoeren.']);
+                }
+
+                $selectedPartnerId = filter_var($_POST['partner_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+                if ($selectedPartnerId !== null && !$partnerRepository->find((int) $selectedPartnerId)) {
+                    throw new ValidationException(['partner_id' => 'Geen geldige partner geselecteerd.']);
+                }
+
+                $consentForPartner = isset($_POST['partner_contact_consent']);
+                $updatedDetails = $caseDetails;
+
+                if ($selectedPartnerId !== null) {
+                    $updatedDetails['partner_id'] = (int) $selectedPartnerId;
+                    $updatedDetails['partner_assigned_at'] = Clock::nowFormatted();
+                } else {
+                    unset($updatedDetails['partner_id'], $updatedDetails['partner_assigned_at']);
+                }
+
+                $updatedDetails['partner_contact_consent'] = $consentForPartner;
+                unset($updatedDetails['partner_data_request']);
+
+                $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'partner_assigned', [
+                    'partner_id' => $selectedPartnerId,
+                    'consent' => $consentForPartner,
+                ]);
+                $caseDetails = $updatedDetails;
+                break;
+            case 'request-customer-data':
+                if (!$partnerViewingOwnCase) {
+                    throw new ValidationException(['general' => 'Tylko przypisany partner może poprosić o dane klienta.']);
+                }
+
+                $requestReason = InputValidator::requireString($_POST, 'reason', 500);
+
+                $updatedDetails = $caseDetails;
+                $updatedDetails['partner_data_request'] = [
+                    'status' => 'pending',
+                    'reason' => $requestReason,
+                    'requested_by' => Auth::username(),
+                    'requested_at' => Clock::nowFormatted(),
+                ];
+                $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'partner_requested_data', [
+                    'reason' => $requestReason,
+                ]);
+                $caseDetails = $updatedDetails;
+                break;
+            case 'respond-customer-data-request':
+                if ($isPartnerUser) {
+                    throw new ValidationException(['general' => 'Partner kan deze aanvraag niet beoordelen.']);
+                }
+
+                if (($partnerDataRequest['status'] ?? '') !== 'pending') {
+                    throw new ValidationException(['general' => 'Er is geen lopend verzoek om te beoordelen.']);
+                }
+
+                $decision = strtolower(InputValidator::requireString($_POST, 'decision', 16));
+                if (!in_array($decision, ['approve', 'decline'], true)) {
+                    throw new ValidationException(['decision' => 'Maak een keuze voor toestaan of weigeren.']);
+                }
+                $responseNote = InputValidator::optionalString($_POST, 'response_note', 500);
+
+                $updatedDetails = $caseDetails;
+                $updatedDetails['partner_data_request'] = array_merge($partnerDataRequest, [
+                    'status' => $decision === 'approve' ? 'approved' : 'declined',
+                    'responded_at' => Clock::nowFormatted(),
+                    'responded_by' => Auth::username(),
+                    'response_note' => $responseNote !== '' ? $responseNote : null,
+                ]);
+
+                $caseRepository->updateDetails((int) $caseId, $updatedDetails);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'partner_request_' . ($decision === 'approve' ? 'approved' : 'declined'), [
+                    'response_note' => $responseNote,
+                ]);
+                $caseDetails = $updatedDetails;
+                break;
             default:
                 throw new ValidationException(['general' => 'Onbekende actie.']);
         }
@@ -1382,6 +1466,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $workflowErrors = array_merge($workflowErrors, $validationErrors);
             }
+        } elseif ($currentAction === 'assign-partner') {
+            $partnerAssignErrors = $validationErrors;
+        } elseif ($currentAction === 'request-customer-data') {
+            $partnerRequestErrors = $validationErrors;
+        } elseif ($currentAction === 'respond-customer-data-request') {
+            $partnerResponseErrors = $validationErrors;
         } else {
             $errors = array_merge($errors, $validationErrors);
         }
@@ -1697,11 +1787,11 @@ $slaDueLabel = $slaDueTimestamp ? date('d-m-Y H:i', $slaDueTimestamp) : 'Brak te
 $slaBadgeClass = $slaDueTimestamp && $slaDueTimestamp < time() ? 'case-badge--warning' : 'case-badge--info';
 
 $contactParts = [];
-if (!empty($caseRecord['phone'])) {
-    $contactParts[] = trim((string) $caseRecord['phone']);
+if ($customerDisplay['phone'] !== '') {
+    $contactParts[] = $customerDisplay['phone'];
 }
-if (!empty($caseRecord['email'])) {
-    $contactParts[] = trim((string) $caseRecord['email']);
+if ($customerDisplay['email'] !== '') {
+    $contactParts[] = $customerDisplay['email'];
 }
 $primaryContactLabel = $contactParts !== [] ? implode(' · ', $contactParts) : 'Brak danych';
 
@@ -1735,6 +1825,54 @@ $caseCustomerName = trim((string) ($caseRecord['full_name'] ?? 'Onbekende klant'
 if ($caseCustomerName === '') {
     $caseCustomerName = 'Onbekende klant';
 }
+
+$isPartnerUser = Auth::role() === 'partner';
+$assignedPartnerId = isset($caseDetails['partner_id']) ? (int) $caseDetails['partner_id'] : null;
+$assignedPartner = $assignedPartnerId ? $partnerRepository->find($assignedPartnerId) : null;
+$partnerContactConsent = !empty($caseDetails['partner_contact_consent']);
+$partnerDataRequest = [];
+if (isset($caseDetails['partner_data_request']) && is_array($caseDetails['partner_data_request'])) {
+    $partnerDataRequest = $caseDetails['partner_data_request'];
+}
+$partnerRequestStatus = strtolower((string) ($partnerDataRequest['status'] ?? ''));
+$partnerAccessApproved = $partnerRequestStatus === 'approved';
+$partnerViewingOwnCase = $isPartnerUser && $assignedPartnerId !== null && $assignedPartnerId === Auth::id();
+$partnerMaskValue = static function (?string $value): string {
+    $clean = trim((string) $value);
+    if ($clean === '') {
+        return '***';
+    }
+
+    if (function_exists('mb_strlen')) {
+        $length = (int) mb_strlen($clean, 'UTF-8');
+    } else {
+        $length = strlen($clean);
+    }
+
+    return str_repeat('*', max(3, min(12, $length)));
+};
+$customerDisplay = [
+    'name' => $caseCustomerName,
+    'email' => trim((string) ($caseRecord['email'] ?? '')),
+    'phone' => trim((string) ($caseRecord['phone'] ?? '')),
+    'address' => trim((string) ($caseRecord['address'] ?? '')),
+    'postal_code' => trim((string) ($caseRecord['postal_code'] ?? '')),
+    'city' => trim((string) ($caseRecord['city'] ?? '')),
+];
+$partnerMaskingActive = $isPartnerUser && !$partnerAccessApproved;
+$partnerPartialAllowed = $partnerMaskingActive && $partnerContactConsent && $partnerViewingOwnCase;
+if ($partnerMaskingActive) {
+    $customerDisplay['email'] = $partnerMaskValue($customerDisplay['email']);
+    $customerDisplay['address'] = $partnerMaskValue($customerDisplay['address']);
+    $customerDisplay['postal_code'] = $partnerMaskValue($customerDisplay['postal_code']);
+    $customerDisplay['city'] = $partnerMaskValue($customerDisplay['city']);
+
+    if (!$partnerPartialAllowed) {
+        $customerDisplay['name'] = $partnerMaskValue($customerDisplay['name']);
+        $customerDisplay['phone'] = $partnerMaskValue($customerDisplay['phone']);
+    }
+}
+$caseCustomerName = $customerDisplay['name'];
 
 $nowTimestamp = time();
 $nextAppointment = null;
@@ -1795,6 +1933,11 @@ $caseHeroStats = [
         'hint' => 'zadania w toku',
     ],
 ];
+$partners = $partnerRepository->all('all');
+$assignedPartnerName = $assignedPartner !== null
+    ? (string) ($assignedPartner['company_name'] ?? ($assignedPartner['full_name'] ?? 'Partner'))
+    : 'Geen partner gekoppeld';
+$partnerRequestPending = $partnerRequestStatus === 'pending';
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -1989,19 +2132,70 @@ $caseHeroStats = [
     <div class="case-layout__grid">
       <div class="case-layout__primary">
 
+      <article class="info-card info-card--wide">
+        <h2>Partner</h2>
+        <?php if ($isPartnerUser): ?>
+          <p class="muted"><?= htmlspecialchars($assignedPartnerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <?php if ($partnerViewingOwnCase): ?>
+            <p>Gegevens klienta są ukryte. <?= $partnerContactConsent ? 'Klient wyraził zgodę na kontakt telefoniczny.' : 'Brak zgody na udostępnienie danych.' ?></p>
+            <div class="card-actions">
+              <button type="button" class="btn btn--primary" data-modal-target="partner-request-modal">Poproś o dane klienta</button>
+            </div>
+            <?php if ($partnerRequestStatus === 'pending'): ?>
+              <p class="muted">Twoje żądanie oczekuje na akceptację pracownika.</p>
+            <?php elseif ($partnerRequestStatus === 'declined'): ?>
+              <p class="alert alert--danger">Odmowa udostępnienia danych.</p>
+            <?php elseif ($partnerRequestStatus === 'approved'): ?>
+              <p class="alert alert--success">Dostęp do pełnych danych został przyznany.</p>
+            <?php endif; ?>
+          <?php else: ?>
+            <p class="muted">Case nie jest powiązana z Twoim kontem partnera.</p>
+          <?php endif; ?>
+        <?php else: ?>
+          <form method="post" class="form-grid" novalidate>
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="assign-partner">
+            <label class="form-field">
+              <span class="form-field__label">Partner</span>
+              <select name="partner_id">
+                <option value="">— Geen —</option>
+                <?php foreach ($partners as $partner): ?>
+                  <?php $pid = (int) ($partner['id'] ?? 0); ?>
+                  <option value="<?= $pid ?>" <?= $assignedPartnerId === $pid ? 'selected' : '' ?>><?= htmlspecialchars((string) ($partner['company_name'] ?? $partner['full_name'] ?? 'Partner'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <?php if (!empty($partnerAssignErrors['partner_id'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerAssignErrors['partner_id']) ? implode(' ', array_map('strval', $partnerAssignErrors['partner_id'])) : (string) $partnerAssignErrors['partner_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field form-field--checkbox">
+              <input type="checkbox" name="partner_contact_consent" value="1" <?= $partnerContactConsent ? 'checked' : '' ?>>
+              <span>Klient zgadza się na kontakt telefoniczny przez partnera.</span>
+            </label>
+            <?php if (!empty($partnerAssignErrors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerAssignErrors['general']) ? implode(' ', array_map('strval', $partnerAssignErrors['general'])) : (string) $partnerAssignErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+            <div class="form-actions">
+              <button type="submit" class="btn btn--primary">Opslaan</button>
+            </div>
+            <p class="muted">Bij het delen met partner worden klantgegevens verborgen. Po zaakceptowaniu zgody widoczne będą tylko imię, nazwisko i telefon. Reszta wymaga zatwierdzenia przez pracownika.</p>
+            <?php if ($partnerRequestPending): ?>
+              <div class="alert alert--info">Partner prosi o dodatkowe dane klienta.</div>
+              <button type="button" class="btn btn--ghost" data-modal-target="partner-response-modal">Otwórz zgłoszenie</button>
+            <?php endif; ?>
+          </form>
+        <?php endif; ?>
+      </article>
+
     <section class="case-grid">
       <article class="info-card">
         <h2>Klantgegevens</h2>
         <ul>
-          <li><strong>Naam:</strong> <?= htmlspecialchars((string) $caseRecord['full_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
-          <li><strong>E-mail:</strong> <?= htmlspecialchars((string) $caseRecord['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
-          <li><strong>Telefoon:</strong> <?= htmlspecialchars((string) $caseRecord['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
-          <li><strong>Adres:</strong> <?= htmlspecialchars((string) ($caseRecord['address'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
-          <?php if (!empty($caseRecord['postal_code'])): ?>
-            <li><strong>Postcode:</strong> <?= htmlspecialchars((string) $caseRecord['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <li><strong>Naam:</strong> <?= htmlspecialchars((string) $customerDisplay['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <li><strong>E-mail:</strong> <?= htmlspecialchars((string) $customerDisplay['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <li><strong>Telefoon:</strong> <?= htmlspecialchars((string) $customerDisplay['phone'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <li><strong>Adres:</strong> <?= htmlspecialchars((string) $customerDisplay['address'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <?php if ($customerDisplay['postal_code'] !== ''): ?>
+            <li><strong>Postcode:</strong> <?= htmlspecialchars((string) $customerDisplay['postal_code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
           <?php endif; ?>
-          <?php if (!empty($caseRecord['city'])): ?>
-            <li><strong>Plaats:</strong> <?= htmlspecialchars((string) $caseRecord['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          <?php if ($customerDisplay['city'] !== ''): ?>
+            <li><strong>Plaats:</strong> <?= htmlspecialchars((string) $customerDisplay['city'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
           <?php endif; ?>
         </ul>
       </article>
@@ -2938,6 +3132,77 @@ $caseHeroStats = [
           </article>
         </section>
       </aside>
+    </div>
+
+    <div
+      class="modal"
+      id="partner-request-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="partner-request-modal-title"
+      <?= $partnerRequestErrors !== [] ? ' data-open-on-load="true"' : '' ?>
+    >
+      <div class="modal__panel" role="document">
+        <header class="modal__header">
+          <div>
+            <p class="modal__eyebrow">Partner</p>
+            <h2 id="partner-request-modal-title">Poproś o pełne dane klienta</h2>
+          </div>
+          <button type="button" class="modal__close" data-modal-close aria-label="Sluit">&times;</button>
+        </header>
+        <form method="post" class="modal__body" novalidate>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="action" value="request-customer-data">
+          <label class="form-field">
+            <span class="form-field__label">Uzasadnienie</span>
+            <textarea name="reason" rows="4" maxlength="500" required placeholder="Opisz, dlaczego potrzebujesz dodatkowych danych."></textarea>
+            <?php if (!empty($partnerRequestErrors['reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerRequestErrors['reason']) ? implode(' ', array_map('strval', $partnerRequestErrors['reason'])) : (string) $partnerRequestErrors['reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            <?php if (!empty($partnerRequestErrors['general'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerRequestErrors['general']) ? implode(' ', array_map('strval', $partnerRequestErrors['general'])) : (string) $partnerRequestErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+          </label>
+          <div class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-modal-close>Anuluj</button>
+            <button type="submit" class="btn btn--primary">Wyślij prośbę</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      class="modal"
+      id="partner-response-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+      aria-labelledby="partner-response-modal-title"
+      <?= $partnerResponseErrors !== [] ? ' data-open-on-load="true"' : '' ?>
+    >
+      <div class="modal__panel" role="document">
+        <header class="modal__header">
+          <div>
+            <p class="modal__eyebrow">Partner</p>
+            <h2 id="partner-response-modal-title">Wniosek o dane klienta</h2>
+          </div>
+          <button type="button" class="modal__close" data-modal-close aria-label="Sluit">&times;</button>
+        </header>
+        <form method="post" class="modal__body" novalidate>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="action" value="respond-customer-data-request">
+          <?php if (!empty($partnerDataRequest['reason'])): ?>
+            <p><strong>Uzasadnienie partnera:</strong><br><?= nl2br(htmlspecialchars((string) $partnerDataRequest['reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+          <?php endif; ?>
+          <label class="form-field">
+            <span class="form-field__label">Notatka zwrotna</span>
+            <textarea name="response_note" rows="3" maxlength="500" placeholder="Opcjonalnie podaj uzasadnienie decyzji."></textarea>
+          </label>
+          <?php if (!empty($partnerResponseErrors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerResponseErrors['general']) ? implode(' ', array_map('strval', $partnerResponseErrors['general'])) : (string) $partnerResponseErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+          <?php if (!empty($partnerResponseErrors['decision'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerResponseErrors['decision']) ? implode(' ', array_map('strval', $partnerResponseErrors['decision'])) : (string) $partnerResponseErrors['decision'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+          <div class="modal__footer">
+            <button type="submit" name="decision" value="approve" class="btn btn--primary">Zatwierdź</button>
+            <button type="submit" name="decision" value="decline" class="btn btn--ghost">Odmów</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div
