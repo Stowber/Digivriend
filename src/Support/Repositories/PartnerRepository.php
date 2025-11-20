@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
-use App\Exception\ValidationException;
-
 namespace App\Support\Repositories;
+
+use App\Exception\ValidationException;
 
 use DateTimeImmutable;
 use PDO;

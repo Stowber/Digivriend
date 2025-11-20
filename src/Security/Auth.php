@@ -6,6 +6,7 @@ namespace App\Security;
 
 use App\Support\Lang\Translator;
 use App\Support\Repositories\EmployeeRepository;
+use App\Support\Repositories\PartnerRepository;
 use PDO;
 
 final class Auth
@@ -16,33 +17,24 @@ final class Auth
         $statement->execute(['username' => $username]);
         $user = $statement->fetch();
 
-        if ($user === false) {
-            return false;
-        }
-
-        if (!password_verify($password, (string) $user['password_hash'])) {
-            return false;
-        }
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
-
-        $_SESSION['user_id'] = (int) $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['language'] = self::resolveLanguage($pdo, $user['username'], (string) ($user['language'] ?? ''));
+        if ($user !== false && password_verify($password, (string) $user['password_hash'])) {
+            self::startSession();
+            $_SESSION['user_id'] = (int) $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['language'] = self::resolveLanguage($pdo, $user['username'], (string) ($user['language'] ?? ''));
 
         Translator::setLocale($_SESSION['language']);
 
         return true;
+        }
+
+        return self::attemptPartnerLogin($pdo, $username, $password);
     }
 
     public static function logout(): void
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
+        self::startSession();
 
         $_SESSION = [];
         session_regenerate_id(true);
@@ -50,9 +42,7 @@ final class Auth
 
     public static function check(): bool
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
+        self::startSession();
 
         return isset($_SESSION['user_id']);
     }
@@ -105,6 +95,40 @@ final class Auth
         return $locale !== '' ? $locale : Translator::locale();
     }
 
+    private static function attemptPartnerLogin(PDO $pdo, string $username, string $password): bool
+    {
+        $statement = $pdo->prepare('SELECT * FROM partners WHERE partner_code = :code LIMIT 1');
+        $statement->execute(['code' => $username]);
+        $partner = $statement->fetch();
+
+        if ($partner === false) {
+            return false;
+        }
+
+        if (($partner['status'] ?? '') !== PartnerRepository::STATUS_ACTIVE) {
+            return false;
+        }
+
+        $passwordHash = (string) ($partner['password_hash'] ?? '');
+
+        if ($passwordHash === '' || !password_verify($password, $passwordHash)) {
+            return false;
+        }
+
+        self::startSession();
+
+        $_SESSION['user_id'] = (int) $partner['id'];
+        $_SESSION['partner_id'] = (int) $partner['id'];
+        $_SESSION['username'] = (string) ($partner['partner_code'] ?? '');
+        $_SESSION['role'] = 'partner';
+        $_SESSION['language'] = Translator::locale();
+
+        Translator::setLocale($_SESSION['language']);
+
+        return true;
+    }
+
+
     private static function resolveLanguage(PDO $pdo, string $username, string $userLanguage): string
     {
         $preferred = strtolower(trim($userLanguage));
@@ -124,5 +148,12 @@ final class Auth
         }
 
         return Translator::locale();
+    }
+
+    private static function startSession(): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
     }
 }
