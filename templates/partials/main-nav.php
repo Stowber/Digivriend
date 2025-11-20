@@ -20,6 +20,7 @@ if (!function_exists('render_main_nav')) {
             'documents' => ['label' => __('nav.documents'), 'href' => 'documents.php'],
             'inventory' => ['label' => __('nav.inventory'), 'href' => 'magazyn.php'],
             'pc_builder' => ['label' => __('nav.pc_builder'), 'href' => 'pc-builder.php'],
+            'partners' => ['label' => __('nav.partners'), 'href' => 'partners.php'],
             'employees' => ['label' => __('nav.employees'), 'href' => 'employees.php'],
         ];
 

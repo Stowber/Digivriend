@@ -46,6 +46,7 @@ final class SchemaManager
         self::ensureEmployeeTables($pdo);
         self::ensureCaseEnhancements($pdo);
         self::ensureCalendarTables($pdo);
+        self::ensurePartnerTables($pdo);
 
         self::ensureOphaalbevestigingColumns($pdo);
         self::ensureReparatieOnderzoekColumns($pdo);
@@ -1843,6 +1844,106 @@ final class SchemaManager
         self::ensureAppointmentAttendeesTable($pdo);
         self::ensureAppointmentResourcesTable($pdo);
         self::ensureAppointmentNotificationsTable($pdo);
+    }
+
+    private static function ensurePartnerTables(PDO $pdo): void
+    {
+        self::ensurePartnersTable($pdo);
+    }
+
+    private static function ensurePartnersTable(PDO $pdo): void
+    {
+        $driver = self::databaseDriver($pdo);
+
+        if ($driver === 'sqlite') {
+            $pdo->exec(
+                <<<SQL
+                CREATE TABLE IF NOT EXISTS partners (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_code TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    company_name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    phone TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    vat_number TEXT NOT NULL,
+                    kvk_number TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending_activation',
+                    activation_token TEXT NULL,
+                    activation_expires DATETIME NULL,
+                    password_hash TEXT NULL,
+                    activated_at DATETIME NULL,
+                    approved_at DATETIME NULL,
+                    approved_by INTEGER NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+                SQL
+            );
+
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_partners_code ON partners(partner_code)');
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_partners_email ON partners(email)');
+
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                <<<SQL
+                CREATE TABLE IF NOT EXISTS partners (
+                    id SERIAL PRIMARY KEY,
+                    partner_code VARCHAR(32) NOT NULL,
+                    full_name VARCHAR(191) NOT NULL,
+                    company_name VARCHAR(191) NOT NULL,
+                    email VARCHAR(191) NOT NULL,
+                    phone VARCHAR(64) NOT NULL,
+                    address VARCHAR(255) NOT NULL,
+                    vat_number VARCHAR(64) NOT NULL,
+                    kvk_number VARCHAR(64) NOT NULL,
+                    status VARCHAR(32) NOT NULL DEFAULT 'pending_activation',
+                    activation_token VARCHAR(64) NULL,
+                    activation_expires TIMESTAMP(0) NULL DEFAULT NULL,
+                    password_hash VARCHAR(255) NULL,
+                    activated_at TIMESTAMP(0) NULL DEFAULT NULL,
+                    approved_at TIMESTAMP(0) NULL DEFAULT NULL,
+                    approved_by INT NULL,
+                    created_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (partner_code),
+                    UNIQUE (email)
+                )
+                SQL
+            );
+
+            return;
+        }
+
+        $pdo->exec(
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS partners (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                partner_code VARCHAR(32) NOT NULL,
+                full_name VARCHAR(191) NOT NULL,
+                company_name VARCHAR(191) NOT NULL,
+                email VARCHAR(191) NOT NULL,
+                phone VARCHAR(64) NOT NULL,
+                address VARCHAR(255) NOT NULL,
+                vat_number VARCHAR(64) NOT NULL,
+                kvk_number VARCHAR(64) NOT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'pending_activation',
+                activation_token VARCHAR(64) NULL,
+                activation_expires DATETIME NULL,
+                password_hash VARCHAR(255) NULL,
+                activated_at DATETIME NULL,
+                approved_at DATETIME NULL,
+                approved_by INT UNSIGNED NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_partners_code (partner_code),
+                UNIQUE KEY uniq_partners_email (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            SQL
+        );
     }
 
     private static function mysqlBaseStatements(): array

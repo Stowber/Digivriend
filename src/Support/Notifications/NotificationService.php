@@ -113,6 +113,62 @@ final class NotificationService
         ];
     }
 
+    public function sendPartnerActivation(array $partner, string $activationLink): array
+    {
+        $recipient = (string) ($partner['email'] ?? '');
+        if ($recipient === '') {
+            return ['success' => false, 'status' => 'failed', 'error' => 'Ontbrekend e-mailadres'];
+        }
+
+        $subject = __('partners.email.activation_subject');
+        $introParagraphs = [
+            __('partners.email.intro', ['name' => (string) ($partner['full_name'] ?? '')]),
+            __('partners.email.intro_followup'),
+        ];
+
+        $detailRows = [
+            ['label' => __('partners.email.labels.name'), 'value' => (string) ($partner['full_name'] ?? '')],
+            ['label' => __('partners.email.labels.company'), 'value' => (string) ($partner['company_name'] ?? '')],
+            ['label' => __('partners.email.labels.code'), 'value' => (string) ($partner['partner_code'] ?? '')],
+            ['label' => __('partners.email.labels.activation_link'), 'value' => $activationLink],
+        ];
+
+        $plainBody = implode("\n\n", [
+            $subject,
+            $introParagraphs[0],
+            $introParagraphs[1],
+            __('partners.email.text_code', ['code' => (string) ($partner['partner_code'] ?? '')]),
+            __('partners.email.text_link'),
+            $activationLink,
+        ]);
+
+        $bodyHtml = $this->emailLayout->renderEmailLayout(
+            __('partners.email.preheader'),
+            __('partners.email.headline'),
+            $introParagraphs,
+            $detailRows,
+            ['label' => __('partners.email.cta_label'), 'url' => $activationLink, 'subtext' => __('partners.email.cta_hint')],
+            [__('partners.email.footer_notice')],
+            [
+                'brand' => 'Digivriend',
+                'email' => (string) Env::get('MAIL_FROM_ADDRESS', 'no-reply@digivriend.local'),
+            ]
+        );
+
+        $result = $this->sendEmail($recipient, $subject, $bodyHtml, $plainBody);
+        $status = $result['success'] ? 'sent' : 'failed';
+        $error = $result['error'] ?? null;
+        $sentAt = $result['success'] ? Clock::nowFormatted() : null;
+
+        $this->recordNotification(null, null, 'email', $recipient, $subject, $bodyHtml, $status, $error, $sentAt);
+
+        return [
+            'success' => $result['success'],
+            'status' => $status,
+            'error' => $error,
+        ];
+    }
+
     public function sendIntakeRescheduled(
         ?int $caseId,
         ?int $customerId,

@@ -2568,7 +2568,10 @@ $caseHeroStats = [
                         $taskPriorityKey = strtolower((string) ($workflowTask['priority'] ?? 'normal'));
                         $priorityLabel = $workflowPriorities[$taskPriorityKey] ?? ucfirst($taskPriorityKey);
                           $taskAssigned = trim((string) ($workflowTask['assigned_to'] ?? ''));
-                          $taskDueLabel = !empty($workflowTask['due_at']) ? date('d-m-Y H:i', strtotime((string) $workflowTask['due_at'])) : null;
+                          $taskDueRaw = $formatDateTime($workflowTask['due_at'] ?? null);
+                          $taskDueLabel = $taskDueRaw !== '' ? $taskDueRaw : null;
+                          $taskStartedLabel = $formatDateTime($workflowTask['started_at'] ?? null);
+                          $taskCompletedLabel = $formatDateTime($workflowTask['completed_at'] ?? null);
                           $taskBlockedReason = trim((string) ($workflowTask['blocked_reason'] ?? ''));
                           $taskErrors = $workflowTaskErrors[$taskId] ?? [];
                           $hasErrors = $taskErrors !== [];
@@ -2584,7 +2587,7 @@ $caseHeroStats = [
                           <div class="workflow-card__chips">
                               <span class="workflow-chip workflow-chip--status"><?= htmlspecialchars($taskStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                               <span class="workflow-chip workflow-chip--priority"><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                              <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['started_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                              <dd><?= htmlspecialchars($taskStartedLabel !== '' ? $taskStartedLabel : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
                             </div>
                             </header>
                           <dl class="workflow-card__meta">
@@ -2603,13 +2606,13 @@ $caseHeroStats = [
                             <?php if (!empty($workflowTask['started_at'])): ?>
                               <div>
                                 <dt>Start</dt>
-                                <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['started_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                                <dd><?= htmlspecialchars($taskStartedLabel !== '' ? $taskStartedLabel : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
                               </div>
                             <?php endif; ?>
                             <?php if (!empty($workflowTask['completed_at'])): ?>
                               <div>
                                 <dt>Zakończono</dt>
-                                <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                                <dd><?= htmlspecialchars($taskCompletedLabel !== '' ? $taskCompletedLabel : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
                               </div>
                             <?php endif; ?>
                           </dl>
