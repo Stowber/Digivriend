@@ -1786,37 +1786,6 @@ $slaDueTimestamp = !empty($caseRecord['sla_due_at']) ? strtotime((string) $caseR
 $slaDueLabel = $slaDueTimestamp ? date('d-m-Y H:i', $slaDueTimestamp) : 'Brak terminu';
 $slaBadgeClass = $slaDueTimestamp && $slaDueTimestamp < time() ? 'case-badge--warning' : 'case-badge--info';
 
-$contactParts = [];
-if ($customerDisplay['phone'] !== '') {
-    $contactParts[] = $customerDisplay['phone'];
-}
-if ($customerDisplay['email'] !== '') {
-    $contactParts[] = $customerDisplay['email'];
-}
-$primaryContactLabel = $contactParts !== [] ? implode(' · ', $contactParts) : 'Brak danych';
-
-$caseDeviceSummaryParts = array_filter([
-    isset($caseRecord['device_brand']) ? trim((string) $caseRecord['device_brand']) : null,
-    isset($caseRecord['device_model']) ? trim((string) $caseRecord['device_model']) : null,
-]);
-$caseDeviceSummary = $caseDeviceSummaryParts !== [] ? implode(' · ', $caseDeviceSummaryParts) : 'Urządzenie nieznane';
-
-$caseProblemSummary = 'Brak opisu awarii.';
-if (isset($caseDetails['problem_description'])) {
-    $rawSummary = trim((string) $caseDetails['problem_description']);
-    if ($rawSummary !== '') {
-        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
-            $caseProblemSummary = mb_strlen($rawSummary, 'UTF-8') > 160
-                ? mb_substr($rawSummary, 0, 157, 'UTF-8') . '…'
-                : $rawSummary;
-        } else {
-            $caseProblemSummary = strlen($rawSummary) > 160
-                ? substr($rawSummary, 0, 157) . '…'
-                : $rawSummary;
-        }
-    }
-}
-
 $caseTypeLabel = trim((string) ($caseRecord['type'] ?? 'Case'));
 if ($caseTypeLabel === '') {
     $caseTypeLabel = 'Case';
@@ -1873,6 +1842,37 @@ if ($partnerMaskingActive) {
     }
 }
 $caseCustomerName = $customerDisplay['name'];
+
+$contactParts = [];
+if ($customerDisplay['phone'] !== '') {
+    $contactParts[] = $customerDisplay['phone'];
+}
+if ($customerDisplay['email'] !== '') {
+    $contactParts[] = $customerDisplay['email'];
+}
+$primaryContactLabel = $contactParts !== [] ? implode(' · ', $contactParts) : 'Brak danych';
+
+$caseDeviceSummaryParts = array_filter([
+    isset($caseRecord['device_brand']) ? trim((string) $caseRecord['device_brand']) : null,
+    isset($caseRecord['device_model']) ? trim((string) $caseRecord['device_model']) : null,
+]);
+$caseDeviceSummary = $caseDeviceSummaryParts !== [] ? implode(' · ', $caseDeviceSummaryParts) : 'Urządzenie nieznane';
+
+$caseProblemSummary = 'Brak opisu awarii.';
+if (isset($caseDetails['problem_description'])) {
+    $rawSummary = trim((string) $caseDetails['problem_description']);
+    if ($rawSummary !== '') {
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            $caseProblemSummary = mb_strlen($rawSummary, 'UTF-8') > 160
+                ? mb_substr($rawSummary, 0, 157, 'UTF-8') . '…'
+                : $rawSummary;
+        } else {
+            $caseProblemSummary = strlen($rawSummary) > 160
+                ? substr($rawSummary, 0, 157) . '…'
+                : $rawSummary;
+        }
+    }
+}
 
 $nowTimestamp = time();
 $nextAppointment = null;
