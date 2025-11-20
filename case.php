@@ -2396,39 +2396,46 @@ $caseHeroStats = [
 
     <section class="repair-workflow" id="repair-workflow">
       <div class="workflow-shell">
-        <header class="workflow-shell__header">
-          <div>
-            <p class="repair-workflow__eyebrow">Proces naprawczy</p>
+         <header class="workflow-hero">
+          <div class="workflow-hero__content">
+            <p class="workflow-hero__eyebrow">Proces naprawczy</p>
             <h2>Tablica zadań naprawy</h2>
-            <p class="muted">Monitoruj pełny cykl pracy i szybko przesuwaj zadania między fazami.</p>
+            <p>Zebraliśmy wszystkie kroki naprawy w jednym miejscu – widzisz kontekst, priorytety i statusy zanim przekażesz zadanie dalej.</p>
+            <div class="workflow-hero__chips">
+              <span class="workflow-chip workflow-chip--inline">Śledzenie etapów</span>
+              <span class="workflow-chip workflow-chip--inline">Automatyczne szablony</span>
+            </div>
           </div>
-          <ul class="workflow-kpis" role="list">
-            <li>
-              <span class="workflow-kpis__label">Łącznie</span>
-              <span class="workflow-kpis__value"><?= (int) $workflowTotals['total'] ?></span>
+          <ul class="workflow-hero__stats" role="list">
+            <li class="workflow-stat workflow-stat--total">
+              <span class="workflow-stat__label">Łącznie</span>
+              <span class="workflow-stat__value"><?= (int) $workflowTotals['total'] ?></span>
+              <span class="workflow-stat__hint">wszystkie zadania</span>
             </li>
-            <li>
-              <span class="workflow-kpis__label">Aktywne</span>
-              <span class="workflow-kpis__value"><?= (int) $workflowTotals['active'] ?></span>
+            <li class="workflow-stat workflow-stat--active">
+              <span class="workflow-stat__label">Aktywne</span>
+              <span class="workflow-stat__value"><?= (int) $workflowTotals['active'] ?></span>
+              <span class="workflow-stat__hint">w toku</span>
             </li>
-            <li>
-              <span class="workflow-kpis__label">Zablokowane</span>
-              <span class="workflow-kpis__value"><?= (int) $workflowTotals['blocked'] ?></span>
+            <li class="workflow-stat workflow-stat--blocked">
+              <span class="workflow-stat__label">Zablokowane</span>
+              <span class="workflow-stat__value"><?= (int) $workflowTotals['blocked'] ?></span>
+              <span class="workflow-stat__hint">wymagają decyzji</span>
             </li>
-            <li>
-              <span class="workflow-kpis__label">Po terminie</span>
-              <span class="workflow-kpis__value"><?= (int) $workflowTotals['overdue'] ?></span>
+            <li class="workflow-stat workflow-stat--overdue">
+              <span class="workflow-stat__label">Po terminie</span>
+              <span class="workflow-stat__value"><?= (int) $workflowTotals['overdue'] ?></span>
+              <span class="workflow-stat__hint">konieczna reakcja</span>
             </li>
           </ul>
         </header>
-
-        <div class="workflow-shell__layout">
-          <aside class="workflow-sidebar">
-            <div class="workflow-sidebar__card">
-              <div class="workflow-sidebar__header">
-                <p class="workflow-sidebar__eyebrow">Planowanie</p>
+        <div class="workflow-grid">
+          <aside class="workflow-panels">
+            <article class="workflow-panel workflow-panel--primary">
+              <div class="workflow-panel__header">
+                <p class="workflow-panel__eyebrow">Planowanie</p>
                 <h3>Nowe zadanie</h3>
-                <p class="muted">Twórz zadania bez opuszczania tablicy i przypisuj je do właściwego etapu.</p>
+                <p>Wprowadź najważniejsze informacje, aby od razu przypisać pracę do odpowiedniej osoby.</p>
               </div>
               <?php if (!empty($workflowErrors['general'])): ?>
                 <?php $workflowGeneral = is_array($workflowErrors['general']) ? implode(' ', array_map('strval', $workflowErrors['general'])) : (string) $workflowErrors['general']; ?>
@@ -2437,52 +2444,78 @@ $caseHeroStats = [
               <form method="POST" class="workflow-form" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <input type="hidden" name="action" value="workflow-create-task">
-                <label class="form-field form-field--wide">
-                  <span class="form-field__label">Tytuł zadania</span>
-                  <input type="text" name="title" maxlength="191" value="<?= htmlspecialchars($workflowFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
+                <div class="form-field form-field--wide">
+                  <label>Temat zadania
+                    <input type="text" name="title" maxlength="191" value="<?= htmlspecialchars($workflowFormValues['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" required>
+                  </label>
                   <?php if (!empty($workflowErrors['title'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['title']) ? implode(' ', array_map('strval', $workflowErrors['title'])) : (string) $workflowErrors['title'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field">
-                  <span class="form-field__label">Etap procesu</span>
-                  <select name="stage" required>
-                    <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
-                      <option value="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['stage'] === $stageKey ? 'selected' : '' ?>><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Etap procesu
+                    <select name="stage" required>
+                      <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
+                        <option value="<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['stage'] === $stageKey ? 'selected' : '' ?>><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
                   <?php if (!empty($workflowErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['stage']) ? implode(' ', array_map('strval', $workflowErrors['stage'])) : (string) $workflowErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field">
-                  <span class="form-field__label">Priorytet</span>
-                  <select name="priority" required>
-                    <?php foreach ($workflowPriorities as $priorityKey => $priorityLabel): ?>
-                      <option value="<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['priority'] === $priorityKey ? 'selected' : '' ?>><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                    <?php endforeach; ?>
-                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Priorytet
+                    <select name="priority" required>
+                      <?php foreach ($workflowPriorities as $priorityKey => $priorityLabel): ?>
+                        <option value="<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $workflowFormValues['priority'] === $priorityKey ? 'selected' : '' ?>><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </label>
                   <?php if (!empty($workflowErrors['priority'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['priority']) ? implode(' ', array_map('strval', $workflowErrors['priority'])) : (string) $workflowErrors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field">
-                  <span class="form-field__label">Przydzielony</span>
-                  <input type="text" name="assigned_to" maxlength="120" placeholder="Technik / zespół" value="<?= htmlspecialchars($workflowFormValues['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                </div>
+                <div class="form-field">
+                  <label>Przydzielony technik
+                    <input type="text" name="assigned_to" maxlength="120" placeholder="Technik / zespół" value="<?= htmlspecialchars($workflowFormValues['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  </label>
                   <?php if (!empty($workflowErrors['assigned_to'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['assigned_to']) ? implode(' ', array_map('strval', $workflowErrors['assigned_to'])) : (string) $workflowErrors['assigned_to'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field">
-                  <span class="form-field__label">Termin</span>
-                  <input type="datetime-local" name="due_at" value="<?= htmlspecialchars($workflowFormValues['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                </div>
+                <div class="form-field">
+                  <label>Termin wykonania
+                    <input type="datetime-local" name="due_at" value="<?= htmlspecialchars($workflowFormValues['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  </label>
                   <?php if (!empty($workflowErrors['due_at'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['due_at']) ? implode(' ', array_map('strval', $workflowErrors['due_at'])) : (string) $workflowErrors['due_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field form-field--wide">
-                  <span class="form-field__label">Opis (opcjonalnie)</span>
-                  <textarea name="description" rows="3" placeholder="Kroki do wykonania, oczekiwany wynik"><?= htmlspecialchars($workflowFormValues['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                </div>
+                <div class="form-field form-field--wide">
+                  <label>Szczegóły zadania
+                    <textarea name="description" rows="3" placeholder="Kroki do wykonania, oczekiwany wynik"><?= htmlspecialchars($workflowFormValues['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  </label>
                   <?php if (!empty($workflowErrors['description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['description']) ? implode(' ', array_map('strval', $workflowErrors['description'])) : (string) $workflowErrors['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <button type="submit" class="btn btn--primary btn--full">Dodaj zadanie</button>
+                </div>
+                <div class="form-field form-field--wide">
+                  <button type="submit" class="btn btn--full">Dodaj zadanie</button>
+                </div>
               </form>
-            </div>
-            <div class="workflow-sidebar__card workflow-sidebar__card--templates">
-              <div class="workflow-sidebar__header">
-                <p class="workflow-sidebar__eyebrow">Automatyzacja</p>
-                <h4>Szablony procesu</h4>
-                <p class="muted">Dodaj gotowy zestaw kroków dla powtarzalnych zleceń.</p>
+            </article>
+            <article class="workflow-panel">
+              <div class="workflow-panel__header">
+                <p class="workflow-panel__eyebrow">Statusy</p>
+                <h3>Stan pracy</h3>
+                <p>Natychmiastowa widoczność, które karty wymagają uwagi.</p>
+              </div>
+              <ul class="workflow-status-list" role="list">
+                <?php foreach ($workflowStatuses as $statusKey => $statusLabel): ?>
+                  <li>
+                    <div>
+                      <span class="workflow-status-list__label"><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                      <span class="workflow-status-list__value"><?= (int) ($workflowStatusTotals[$statusKey] ?? 0) ?></span>
+                    </div>
+                    <span class="workflow-status-list__code"><?= htmlspecialchars(strtoupper($statusKey), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            </article>
+            <article class="workflow-panel workflow-panel--templates">
+              <div class="workflow-panel__header">
+                <p class="workflow-panel__eyebrow">Automatyzacja</p>
+                <h3>Szablony kroków</h3>
+                <p>Jednym kliknięciem dodaj pełny zestaw czynności.</p>
               </div>
               <?php if (!empty($workflowErrors['template'])): ?><small class="form-error"><?= htmlspecialchars(is_array($workflowErrors['template']) ? implode(' ', array_map('strval', $workflowErrors['template'])) : (string) $workflowErrors['template'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
               <div class="workflow-templates">
@@ -2492,144 +2525,155 @@ $caseHeroStats = [
                     <input type="hidden" name="action" value="workflow-apply-template">
                     <input type="hidden" name="template" value="<?= htmlspecialchars($templateKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                     <div>
-                      <h5><?= htmlspecialchars((string) ($template['label'] ?? 'Szablon'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h5>
-                      <p class="muted"><?= htmlspecialchars((string) ($template['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                      <p class="workflow-template__eyebrow"><?= htmlspecialchars((string) ($template['eyebrow'] ?? 'Szablon'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                      <h4><?= htmlspecialchars((string) $template['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+                      <p><?= htmlspecialchars((string) $template['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                       <p class="workflow-template__count"><?= count($template['tasks']) ?> kroków</p>
                     </div>
                     <button type="submit" class="btn btn--ghost btn--small">Dodaj</button>
                   </form>
                 <?php endforeach; ?>
               </div>
+              </article>
+          </aside>
+          <div class="workflow-board" role="region" aria-label="Tablica procesu naprawczego">
+            <div class="workflow-board__header">
+              <div>
+                <p class="workflow-board__eyebrow">Aktualne zadania</p>
+                <h3>Mapa etapów</h3>
+              </div>
+              <p class="workflow-board__description">Kolumny automatycznie dopasowują się do szerokości ekranu, a karty zachowują pełny kontekst zadania.</p>
             </div>
-            </aside>
-        <div class="workflow-stageboard" role="region" aria-label="Tablica procesu naprawczego">
-          <div class="workflow-stageboard__toolbar">
-            <div>
-              <p class="workflow-stageboard__eyebrow">Postęp</p>
-              <h3>Aktualne zadania</h3>
-            </div>
-            <p class="muted">Karty są kompaktowe i przewijane niezależnie, dzięki czemu cała tablica jest czytelna nawet przy wielu zleceniach.</p>
-          </div>
-        <div class="workflow-stageboard__grid">
-            <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
-              <?php $stageTasks = $workflowBoard[$stageKey] ?? []; ?>
-              <section class="workflow-stage" aria-labelledby="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <header class="workflow-stage__header">
-                  <div>
-                    <p class="workflow-stage__eyebrow">Etap procesu</p>
-                    <h3 id="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
-                  </div>
-                  <span class="workflow-stage__count" aria-label="Liczba zadań w kolumnie"><?= count($stageTasks) ?></span>
-                </header>
-                <div class="workflow-stage__list">
-                  <?php if ($stageTasks === []): ?>
-                    <p class="workflow-column__empty muted">Brak zadań w tej fazie.</p>
-                  <?php else: ?>
-                    <?php foreach ($stageTasks as $workflowTask): ?>
-                      <?php
-                        $taskId = (int) ($workflowTask['id'] ?? 0);
-                        $currentStage = isset($workflowStages[$workflowTask['stage']]) ? (string) $workflowTask['stage'] : $stageKey;
-                        $taskStatusKey = isset($workflowStatuses[$workflowTask['status']]) ? (string) $workflowTask['status'] : 'todo';
-                        $taskStatusLabel = $workflowStatuses[$taskStatusKey] ?? ucfirst($taskStatusKey);
-                        $priorityKey = strtolower((string) ($workflowTask['priority'] ?? 'normal'));
-                        $priorityLabel = $workflowPriorities[$priorityKey] ?? ucfirst($priorityKey);
-                        $taskAssigned = trim((string) ($workflowTask['assigned_to'] ?? ''));
-                        $taskDueLabel = !empty($workflowTask['due_at']) ? date('d-m-Y H:i', strtotime((string) $workflowTask['due_at'])) : null;
-                        $taskBlockedReason = trim((string) ($workflowTask['blocked_reason'] ?? ''));
-                        $taskErrors = $workflowTaskErrors[$taskId] ?? [];
-                        $hasErrors = $taskErrors !== [];
-                      ?>
-                      <article class="workflow-card workflow-card--status-<?= htmlspecialchars($taskStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> workflow-card--priority-<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                        <header class="workflow-card__header">
-                          <div>
-                            <h4><?= htmlspecialchars((string) ($workflowTask['title'] ?? 'Zadanie'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
-                            <?php if (!empty($workflowTask['description'])): ?>
-                              <p class="workflow-card__description"><?= nl2br(htmlspecialchars((string) $workflowTask['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
-                            <?php endif; ?>
-                          </div>
-                        <div class="workflow-card__chips">
-                            <span class="workflow-chip workflow-chip--status"><?= htmlspecialchars($taskStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                            <span class="workflow-chip workflow-chip--priority"><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                          </div>
-                          </header>
-                        <dl class="workflow-card__meta">
-                          <?php if ($taskAssigned !== ''): ?>
+            <div class="workflow-board__lanes">
+              <?php foreach ($workflowStages as $stageKey => $stageLabel): ?>
+                <?php $stageTasks = $workflowBoard[$stageKey] ?? []; ?>
+                <section class="workflow-stage" aria-labelledby="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <header class="workflow-stage__header">
+                    <div>
+                      <p class="workflow-stage__eyebrow">Etap procesu</p>
+                      <h3 id="workflow-stage-<?= htmlspecialchars($stageKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($stageLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
+                    </div>
+                    <span class="workflow-stage__count" aria-label="Liczba zadań w kolumnie"><?= count($stageTasks) ?></span>
+                  </header>
+                  <div class="workflow-stage__list">
+                    <?php if ($stageTasks === []): ?>
+                      <p class="workflow-column__empty muted">Brak zadań w tej fazie.</p>
+                    <?php else: ?>
+                      <?php foreach ($stageTasks as $workflowTask): ?>
+                        <?php
+                          $taskId = (int) ($workflowTask['id'] ?? 0);
+                          $currentStage = isset($workflowStages[$workflowTask['stage']]) ? (string) $workflowTask['stage'] : $stageKey;
+                          $taskStatusKey = isset($workflowStatuses[$workflowTask['status']]) ? (string) $workflowTask['status'] : 'todo';
+                          $taskStatusLabel = $workflowStatuses[$taskStatusKey] ?? ucfirst($taskStatusKey);
+                        $taskPriorityKey = strtolower((string) ($workflowTask['priority'] ?? 'normal'));
+                        $priorityLabel = $workflowPriorities[$taskPriorityKey] ?? ucfirst($taskPriorityKey);
+                          $taskAssigned = trim((string) ($workflowTask['assigned_to'] ?? ''));
+                          $taskDueLabel = !empty($workflowTask['due_at']) ? date('d-m-Y H:i', strtotime((string) $workflowTask['due_at'])) : null;
+                          $taskBlockedReason = trim((string) ($workflowTask['blocked_reason'] ?? ''));
+                          $taskErrors = $workflowTaskErrors[$taskId] ?? [];
+                          $hasErrors = $taskErrors !== [];
+                        ?>
+                        <article class="workflow-card workflow-card--status-<?= htmlspecialchars($taskStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> workflow-card--priority-<?= htmlspecialchars($taskPriorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                          <header class="workflow-card__header">
                             <div>
-                              <dt>Przydzielony</dt>
-                              <dd><?= htmlspecialchars($taskAssigned, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                              <h4><?= htmlspecialchars((string) ($workflowTask['title'] ?? 'Zadanie'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h4>
+                              <?php if (!empty($workflowTask['description'])): ?>
+                                <p class="workflow-card__description"><?= nl2br(htmlspecialchars((string) $workflowTask['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                              <?php endif; ?>
                             </div>
-                          <?php endif; ?>
-                          <?php if ($taskDueLabel !== null): ?>
-                            <div>
-                              <dt>Termin</dt>
-                              <dd><?= htmlspecialchars($taskDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-                            </div>
-                          <?php endif; ?>
-                          <?php if (!empty($workflowTask['started_at'])): ?>
-                            <div>
-                              <dt>Start</dt>
+                          <div class="workflow-card__chips">
+                              <span class="workflow-chip workflow-chip--status"><?= htmlspecialchars($taskStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                              <span class="workflow-chip workflow-chip--priority"><?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                               <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['started_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
                             </div>
+                            </header>
+                          <dl class="workflow-card__meta">
+                            <?php if ($taskAssigned !== ''): ?>
+                              <div>
+                                <dt>Przydzielony</dt>
+                                <dd><?= htmlspecialchars($taskAssigned, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                              </div>
+                            <?php endif; ?>
+                            <?php if ($taskDueLabel !== null): ?>
+                              <div>
+                                <dt>Termin</dt>
+                                <dd><?= htmlspecialchars($taskDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                              </div>
+                            <?php endif; ?>
+                            <?php if (!empty($workflowTask['started_at'])): ?>
+                              <div>
+                                <dt>Start</dt>
+                                <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['started_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                              </div>
+                            <?php endif; ?>
+                            <?php if (!empty($workflowTask['completed_at'])): ?>
+                              <div>
+                                <dt>Zakończono</dt>
+                                <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                              </div>
+                            <?php endif; ?>
+                          </dl>
+                          <?php if ($taskStatusKey === 'blocked' && $taskBlockedReason !== ''): ?>
+                            <p class="workflow-card__blocked-reason">Blokada: <?= nl2br(htmlspecialchars($taskBlockedReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
                           <?php endif; ?>
-                          <?php if (!empty($workflowTask['completed_at'])): ?>
-                            <div>
-                              <dt>Zakończono</dt>
-                              <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $workflowTask['completed_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+                          <details class="workflow-card__controls" <?= $hasErrors ? 'open' : '' ?>>
+                            <summary>Aktualizuj zadanie</summary>
+                            <div class="workflow-card__actions">
+                              <form method="POST" class="workflow-card__form" novalidate>
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                                <input type="hidden" name="action" value="workflow-update-task">
+                                <input type="hidden" name="task_id" value="<?= $taskId ?>">
+                                <label>
+                                  <span>Etap</span>
+                                  <select name="stage">
+                                    <?php foreach ($workflowStages as $optionKey => $optionLabel): ?>
+                                      <option value="<?= htmlspecialchars($optionKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $optionKey === $currentStage ? 'selected' : '' ?>><?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                                    <?php endforeach; ?>
+                                  </select>
+                                </label>
+                                <?php if (!empty($taskErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['stage']) ? implode(' ', array_map('strval', $taskErrors['stage'])) : (string) $taskErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                                <label>
+                                  <span>Status</span>
+                                  <select name="status">
+                                    <?php foreach ($workflowStatuses as $statusKey => $statusLabel): ?>
+                                      <option value="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $statusKey === $taskStatusKey ? 'selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                                    <?php endforeach; ?>
+                                  </select>
+                                </label>
+                                <?php if (!empty($taskErrors['status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['status']) ? implode(' ', array_map('strval', $taskErrors['status'])) : (string) $taskErrors['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                                <label>
+                                  <span>Priorytet</span>
+                                  <select name="priority">
+                                    <?php foreach ($workflowPriorities as $priorityKey => $priorityOptionLabel): ?>
+                                      <option value="<?= htmlspecialchars($priorityKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $priorityKey === $taskPriorityKey ? 'selected' : '' ?>><?= htmlspecialchars($priorityOptionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                                    <?php endforeach; ?>
+                                  </select>
+                                </label>
+                                <?php if (!empty($taskErrors['priority'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['priority']) ? implode(' ', array_map('strval', $taskErrors['priority'])) : (string) $taskErrors['priority'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                                <label>
+                                  <span>Powód blokady</span>
+                                  <textarea name="blocked_reason" rows="2" placeholder="Opis przeszkody"><?= htmlspecialchars($workflowTask['blocked_reason'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                                </label>
+                                <?php if (!empty($taskErrors['blocked_reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['blocked_reason']) ? implode(' ', array_map('strval', $taskErrors['blocked_reason'])) : (string) $taskErrors['blocked_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                                <button type="submit" class="btn btn--small">Zapisz zmiany</button>
+                              </form>
+                              <form method="POST" class="workflow-card__delete" onsubmit="return confirm('Usunąć zadanie?');">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                                <input type="hidden" name="action" value="workflow-delete-task">
+                                <input type="hidden" name="task_id" value="<?= $taskId ?>">
+                                <button type="submit" class="btn btn--ghost btn--danger btn--small">Usuń zadanie</button>
+                              </form>
                             </div>
-                          <?php endif; ?>
-                        </dl>
-                        <?php if ($taskStatusKey === 'blocked' && $taskBlockedReason !== ''): ?>
-                          <p class="workflow-card__blocked-reason">Blokada: <?= nl2br(htmlspecialchars($taskBlockedReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
-                        <?php endif; ?>
-                        <details class="workflow-card__controls" <?= $hasErrors ? 'open' : '' ?>>
-                          <summary>Aktualizuj zadanie</summary>
-                          <div class="workflow-card__actions">
-                            <form method="POST" class="workflow-card__form" novalidate>
-                              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                              <input type="hidden" name="action" value="workflow-update-task">
-                              <input type="hidden" name="task_id" value="<?= $taskId ?>">
-                              <label>
-                                <span>Etap</span>
-                                <select name="stage">
-                                  <?php foreach ($workflowStages as $optionKey => $optionLabel): ?>
-                                    <option value="<?= htmlspecialchars($optionKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $optionKey === $currentStage ? 'selected' : '' ?>><?= htmlspecialchars($optionLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                                  <?php endforeach; ?>
-                                </select>
-                              </label>
-                              <?php if (!empty($taskErrors['stage'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['stage']) ? implode(' ', array_map('strval', $taskErrors['stage'])) : (string) $taskErrors['stage'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                              <label>
-                                <span>Status</span>
-                                <select name="status">
-                                  <?php foreach ($workflowStatuses as $statusKey => $statusLabel): ?>
-                                    <option value="<?= htmlspecialchars($statusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" <?= $statusKey === $taskStatusKey ? 'selected' : '' ?>><?= htmlspecialchars($statusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
-                                  <?php endforeach; ?>
-                                </select>
-                              </label>
-                              <?php if (!empty($taskErrors['status'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['status']) ? implode(' ', array_map('strval', $taskErrors['status'])) : (string) $taskErrors['status'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                              <label>
-                                <span>Powód blokady (opcjonalnie)</span>
-                                <textarea name="blocked_reason" rows="2" placeholder="Opis przeszkody"><?= htmlspecialchars($taskBlockedReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-                              </label>
-                              <?php if (!empty($taskErrors['blocked_reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($taskErrors['blocked_reason']) ? implode(' ', array_map('strval', $taskErrors['blocked_reason'])) : (string) $taskErrors['blocked_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                              <button type="submit" class="btn btn--ghost btn--small">Zapisz zmiany</button>
-                            </form>
-                            <form method="POST" class="workflow-card__delete" onsubmit="return confirm('Usunąć zadanie?');">
-                              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                              <input type="hidden" name="action" value="workflow-delete-task">
-                              <input type="hidden" name="task_id" value="<?= $taskId ?>">
-                              <button type="submit" class="btn btn--ghost btn--small">Usuń</button>
-                            </form>
-                          </div>
-                        </details>
-                      </article>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                </div>
-              </section>
-            <?php endforeach; ?>
+                          </details>
+                        </article>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                  </div>
+                </section>
+              <?php endforeach; ?>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </section>
 
