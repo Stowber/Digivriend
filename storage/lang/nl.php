@@ -1275,6 +1275,7 @@ return [
         'messages' => [
             'created' => 'Partner opgeslagen. Partnercode: :code. Activatiemail verzonden.',
             'creation_failed' => 'Partner kon niet worden aangemaakt.',
+            'email_exists' => 'Er bestaat al een partner met dit e-mailadres.',
             'not_authorized' => 'Alleen beheerders kunnen partneraccounts goedkeuren.',
             'not_found' => 'Partner niet gevonden.',
             'cannot_approve' => 'Alleen accounts die wachten op goedkeuring kunnen worden geaccepteerd.',

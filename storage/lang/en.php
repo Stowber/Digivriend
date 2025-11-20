@@ -1512,6 +1512,7 @@ return [
         'messages' => [
             'created' => 'Partner saved. Partner code: :code. Activation email sent.',
             'creation_failed' => 'Unable to create partner record.',
+            'email_exists' => 'A partner with this email already exists.',
             'not_authorized' => 'Only administrators can approve partner accounts.',
             'not_found' => 'Partner not found.',
             'cannot_approve' => 'Only accounts awaiting approval can be approved.',

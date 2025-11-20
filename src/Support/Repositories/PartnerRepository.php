@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Exception\ValidationException;
+
 namespace App\Support\Repositories;
 
 use DateTimeImmutable;
 use PDO;
+use function __;
 
 final class PartnerRepository
 {
@@ -76,6 +79,10 @@ final class PartnerRepository
         string $vatNumber,
         string $kvkNumber
     ): array {
+        if ($this->emailExists($email)) {
+            throw new ValidationException(['email' => __('partners.messages.email_exists')]);
+        }
+
         $partnerCode = $this->generatePartnerCode();
         $activationToken = bin2hex(random_bytes(20));
         $expiresAt = (new DateTimeImmutable('+3 days'))->format('Y-m-d H:i:s');
@@ -141,6 +148,19 @@ final class PartnerRepository
     {
         $statement = $this->pdo->prepare('SELECT COUNT(*) FROM partners WHERE partner_code = :code');
         $statement->execute(['code' => $code]);
+
+        return ((int) $statement->fetchColumn()) > 0;
+    }
+
+    private function emailExists(string $email): bool
+    {
+        $normalized = trim($email);
+        if ($normalized === '') {
+            return false;
+        }
+
+        $statement = $this->pdo->prepare('SELECT COUNT(*) FROM partners WHERE email = :email');
+        $statement->execute(['email' => $normalized]);
 
         return ((int) $statement->fetchColumn()) > 0;
     }

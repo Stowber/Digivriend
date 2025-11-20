@@ -1275,6 +1275,7 @@ return [
         'messages' => [
             'created' => 'Partner zapisany. Kod partnera: :code. Wysłano e-mail aktywacyjny.',
             'creation_failed' => 'Nie udało się utworzyć rekordu partnera.',
+            'email_exists' => 'Partner z tym adresem e-mail już istnieje.',
             'not_authorized' => 'Tylko administrator może zatwierdzać konta partnerów.',
             'not_found' => 'Nie znaleziono partnera.',
             'cannot_approve' => 'Można zatwierdzić tylko konta oczekujące na akceptację.',
