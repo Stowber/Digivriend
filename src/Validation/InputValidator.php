@@ -26,6 +26,28 @@ final class InputValidator
     }
 
     /**
+     * Validates that a string value is present without applying output encoding.
+     *
+     * This is useful for cases where the raw value must be preserved exactly as
+     * provided by the user, such as password verification.
+     *
+     * @param array<string, mixed> $source
+     */
+    public static function requireRawString(array $source, string $key, int $maxLength = 255): string
+    {
+        $value = trim((string) ($source[$key] ?? ''));
+        if ($value === '') {
+            throw new ValidationException([$key => 'Dit veld is verplicht.']);
+        }
+
+        if (mb_strlen($value) > $maxLength) {
+            throw new ValidationException([$key => sprintf('Dit veld mag maximaal %d tekens bevatten.', $maxLength)]);
+        }
+
+        return $value;
+    }
+
+    /**
      * @param array<string, mixed> $source
      */
     public static function optionalString(array $source, string $key, int $maxLength = 255): string

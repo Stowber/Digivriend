@@ -7,6 +7,7 @@ use App\Http\Response;
 use App\Security\Auth;
 use App\Security\Csrf;
 use App\Support\Lang\Translator;
+use App\Support\Env;
 use App\Validation\InputValidator;
 
 require __DIR__ . '/bootstrap.php';
@@ -25,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new ValidationException(['general' => __('auth.login.error.invalid_session')]);
         }
 
-        $username = InputValidator::requireString($_POST, 'username', 120);
-        $password = InputValidator::requireString($_POST, 'password', 120);
+        $username = InputValidator::requireRawString($_POST, 'username', 120);
+        $password = InputValidator::requireRawString($_POST, 'password', 120);
 
         if (!Auth::attempt($pdo, $username, $password)) {
             throw new ValidationException(['general' => __('auth.login.error.invalid_credentials')]);
@@ -39,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = Csrf::token();
+$defaultAdminUsername = (string) Env::get('APP_ADMIN_USER', 'admin');
+$defaultAdminPassword = (string) Env::get('APP_ADMIN_PASSWORD', 'changeme');
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
@@ -69,6 +72,14 @@ $csrfToken = Csrf::token();
         </div>
         <button type="submit" class="btn"><?= htmlspecialchars(__('auth.login.button'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
       </form>
+      <?php if ($appConfig->isDebug()): ?>
+        <div class="alert alert--info">
+          Domyślne dane logowania (dev):
+          <code><?= htmlspecialchars($defaultAdminUsername, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></code>
+          /
+          <code><?= htmlspecialchars($defaultAdminPassword, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></code>
+        </div>
+      <?php endif; ?>
       <p class="auth-footer"><?= htmlspecialchars(__('auth.login.footer'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
     </section>
   </main>
