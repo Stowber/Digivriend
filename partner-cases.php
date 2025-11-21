@@ -16,7 +16,37 @@ if (Auth::role() !== 'partner') {
 }
 
 $caseRepository = new CaseRepository($pdo);
-$partnerCases = $caseRepository->forPartner(Auth::id(), 100);
+$partnerCases = $caseRepository->forPartner(Auth::id(), 200);
+
+$statusLabels = [
+    'awaiting_acceptance' => 'Oczekuje na akceptację',
+    'diagnosis' => 'W trakcie diagnozy',
+    'estimate_submitted' => 'Wycena wysłana',
+    'counter_review' => 'Zmiana ceny',
+    'repair_ready' => 'Wycena zaakceptowana',
+    'repair_in_progress' => 'Naprawa',
+    'archived' => 'Archiwum',
+];
+
+$activeCases = [];
+$archivedCases = [];
+
+foreach ($partnerCases as $case) {
+    $workflow = $case['details']['partner_workflow'] ?? [];
+    if (!is_array($workflow)) {
+        $workflow = [];
+    }
+    $status = $workflow['status'] ?? 'awaiting_acceptance';
+
+    $case['partner_status'] = $status;
+    $case['partner_status_label'] = $statusLabels[$status] ?? ucfirst(str_replace('_', ' ', (string) $status));
+
+    if ($status === 'archived') {
+        $archivedCases[] = $case;
+    } else {
+        $activeCases[] = $case;
+    }
+}
 
 $formatDate = static function (?string $value): string {
     if (!is_string($value) || trim($value) === '') {
@@ -62,54 +92,82 @@ $formatDate = static function (?string $value): string {
     </div>
 
     <section class="table-shell partner-cases-card" aria-label="<?= htmlspecialchars(__('partner_cases.hero.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-      <?php if ($partnerCases === []): ?>
-        <p class="panel__empty"><?= htmlspecialchars(__('partner_cases.table.empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      <div class="partner-cases-meta">
+        <span class="summary-card__label">Aktywne</span>
+        <strong class="summary-card__value"><?= number_format(count($activeCases), 0, ',', '.') ?></strong>
+      </div>
+      <?php if ($activeCases === []): ?>
+        <p class="panel__empty">Brak aktywnych spraw.</p>
       <?php else: ?>
-        <div class="partner-cases-meta">
-          <span class="summary-card__label"><?= htmlspecialchars(__('partner_cases.table.summary_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <strong class="summary-card__value"><?= number_format(count($partnerCases), 0, ',', '.') ?></strong>
-        </div>
         <table class="partner-cases-table">
           <thead>
             <tr>
-              <th><?= htmlspecialchars(__('partner_cases.table.reference'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('partner_cases.table.type'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('partner_cases.table.status'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('partner_cases.table.summary'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('partner_cases.table.customer'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('partner_cases.table.updated'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th><?= htmlspecialchars(__('partner_cases.table.assigned'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
-              <th class="text-right"><?= htmlspecialchars(__('partner_cases.table.actions'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></th>
+              <th>Referencja</th>
+              <th>Status partnera</th>
+              <th>Opis</th>
+              <th>Ostatnia aktualizacja</th>
+              <th class="text-right">Akcje</th>
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($partnerCases as $case): ?>
+            <?php foreach ($activeCases as $case): ?>
               <?php
                 $caseId = (int) ($case['id'] ?? 0);
                 $reference = trim((string) ($case['reference_code'] ?? ''));
                 $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
-                $status = (string) ($case['status'] ?? '');
-                $type = (string) ($case['type'] ?? '');
                 $summary = trim((string) ($case['summary'] ?? ''));
-                $details = is_array($case['details'] ?? null) ? $case['details'] : [];
-                $assignedAt = isset($case['partner_assigned_at']) ? (string) $case['partner_assigned_at'] : ($details['partner_assigned_at'] ?? null);
-                $customerVisible = !empty($details['partner_contact_consent']);
-                $customerName = $customerVisible
-                    ? (string) ($case['customer_name'] ?? __('partner_cases.table.hidden_customer'))
-                    : __('partner_cases.table.hidden_customer');
+                $partnerStatusLabel = (string) ($case['partner_status_label'] ?? '—');
               ?>
               <tr>
                 <td><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars($type !== '' ? $type : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($status !== '' ? $status : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
+                <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
                 <td><?= htmlspecialchars($summary !== '' ? $summary : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars($formatDate($case['updated_at'] ?? null), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars($formatDate($assignedAt), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                 <td class="text-right">
-                  <a class="btn btn--ghost" href="case.php?id=<?= $caseId ?>">
-                    <?= htmlspecialchars(__('partner_cases.table.view'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                  </a>
+                  <a class="btn btn--ghost" href="partner-case.php?id=<?= $caseId ?>">Zarządzaj</a>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      <?php endif; ?>
+    </section>
+
+    <section class="table-shell partner-cases-card" aria-label="Archiwum partnera">
+      <div class="partner-cases-meta">
+        <span class="summary-card__label">Archiwum</span>
+        <strong class="summary-card__value"><?= number_format(count($archivedCases), 0, ',', '.') ?></strong>
+      </div>
+      <?php if ($archivedCases === []): ?>
+        <p class="panel__empty">Brak zarchiwizowanych spraw.</p>
+      <?php else: ?>
+        <table class="partner-cases-table">
+          <thead>
+            <tr>
+              <th>Referencja</th>
+              <th>Status partnera</th>
+              <th>Opis</th>
+              <th>Zarchiwizowano</th>
+              <th class="text-right">Podgląd</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($archivedCases as $case): ?>
+              <?php
+                $caseId = (int) ($case['id'] ?? 0);
+                $reference = trim((string) ($case['reference_code'] ?? ''));
+                $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
+                $summary = trim((string) ($case['summary'] ?? ''));
+                $partnerStatusLabel = (string) ($case['partner_status_label'] ?? 'Archiwum');
+                $archivedAt = $case['details']['partner_workflow']['archived_at'] ?? null;
+              ?>
+              <tr>
+                <td><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
+                <td><?= htmlspecialchars($summary !== '' ? $summary : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars($formatDate($archivedAt ?? $case['updated_at'] ?? null), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                <td class="text-right">
+                  <a class="btn btn--ghost" href="partner-case.php?id=<?= $caseId ?>">Podgląd</a>
                 </td>
               </tr>
             <?php endforeach; ?>
