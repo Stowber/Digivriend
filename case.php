@@ -526,6 +526,10 @@ $workflowFormValues = $workflowFormDefaults;
 $workflowErrors = [];
 $workflowTaskErrors = [];
 
+$isPartnerUser = Auth::role() === 'partner';
+$assignedPartnerId = isset($caseDetails['partner_id']) ? (int) $caseDetails['partner_id'] : null;
+$partnerViewingOwnCase = $isPartnerUser && $assignedPartnerId !== null && $assignedPartnerId === Auth::id();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
@@ -1795,8 +1799,6 @@ if ($caseCustomerName === '') {
     $caseCustomerName = 'Onbekende klant';
 }
 
-$isPartnerUser = Auth::role() === 'partner';
-$assignedPartnerId = isset($caseDetails['partner_id']) ? (int) $caseDetails['partner_id'] : null;
 $assignedPartner = $assignedPartnerId ? $partnerRepository->find($assignedPartnerId) : null;
 $partnerContactConsent = !empty($caseDetails['partner_contact_consent']);
 $partnerDataRequest = [];
@@ -1805,7 +1807,6 @@ if (isset($caseDetails['partner_data_request']) && is_array($caseDetails['partne
 }
 $partnerRequestStatus = strtolower((string) ($partnerDataRequest['status'] ?? ''));
 $partnerAccessApproved = $partnerRequestStatus === 'approved';
-$partnerViewingOwnCase = $isPartnerUser && $assignedPartnerId !== null && $assignedPartnerId === Auth::id();
 $partnerMaskValue = static function (?string $value): string {
     $clean = trim((string) $value);
     if ($clean === '') {
