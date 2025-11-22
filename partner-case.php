@@ -209,6 +209,16 @@ if (isset($details['problem_description']) && is_string($details['problem_descri
     $problemDescription = trim($details['problem_description']);
 }
 
+$problemDescriptionText = $problemDescription;
+if ($problemDescriptionText === '' && isset($case['summary']) && is_string($case['summary'])) {
+    $problemDescriptionText = trim((string) $case['summary']);
+}
+
+$deviceNotesText = '';
+if (is_string($deviceNotes)) {
+    $deviceNotesText = trim((string) $deviceNotes);
+}
+
 $archiveLabel = $partnerStatus === 'archived' ? 'Archiwum partnera' : '';
 
 $canEditEstimate = in_array($partnerStatus, ['awaiting_acceptance', 'estimate_submitted', 'counter_review'], true);
@@ -387,10 +397,11 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       <div class="info-tile info-tile--wide">
         <p class="info-tile__label">Opis problemu</p>
         <p class="info-tile__value"><?= nl2br(htmlspecialchars($problemDescription !== '' ? $problemDescription : 'Brak opisu problemu.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+
       </div>
       <div class="info-tile info-tile--wide">
         <p class="info-tile__label">Notatki o sprzęcie</p>
-        <p class="info-tile__value"><?= nl2br(htmlspecialchars($deviceNotes !== null && trim((string) $deviceNotes) !== '' ? (string) $deviceNotes : 'Brak dodatkowych notatek.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+         <p class="info-tile__value"><?= nl2br(htmlspecialchars($deviceNotesText !== '' ? $deviceNotesText : 'Brak dodatkowych notatek.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
         </div>
     </div>
     <div class="callout-grid">
@@ -414,7 +425,7 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
           <ul class="expander__list">
             <li>Ładowarka oraz kabel USB-C</li>
             <li>Dodatkowa pamięć RAM klienta</li>
-            <li>Uwagi: <?= htmlspecialchars($deviceNotes !== null && trim((string) $deviceNotes) !== '' ? (string) $deviceNotes : 'brak dodatkowych uwag', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+            <li>Uwagi: <?= nl2br(htmlspecialchars($deviceNotesText !== '' ? $deviceNotesText : 'brak dodatkowych uwag', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></li>
           </ul>
         </details>
         <div class="inline-actions">
