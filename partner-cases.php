@@ -23,6 +23,7 @@ $statusLabels = [
     'diagnosis' => 'W trakcie diagnozy',
     'estimate_submitted' => 'Wycena wysłana',
     'counter_review' => 'Zmiana ceny',
+    'estimate_declined' => 'Wycena odrzucona',
     'repair_ready' => 'Wycena zaakceptowana',
     'repair_in_progress' => 'Naprawa',
     'archived' => 'Archiwum',

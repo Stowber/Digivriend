@@ -2047,6 +2047,12 @@ body.modal-open {
   color: #b91c1c;
 }
 
+.partner-estimate-review {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
 @media (max-width: 1200px) {
   .workflow-grid {
     grid-template-columns: 1fr;
