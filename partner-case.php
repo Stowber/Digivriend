@@ -306,8 +306,6 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
         <?php if ($archiveLabel !== ''): ?>
           <span class="pill pill--warning" aria-label="Status partnera"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         <?php endif; ?>
-        <button class="pill pill--ghost" type="button" data-copy-target="#client-phone">Kopiuj telefon</button>
-        <button class="pill pill--ghost" type="button" data-open-popover="next-steps-popover">Zobacz wskazówki</button>
       </div>
       <div class="progress-ribbon" role="list" aria-label="Postęp zgłoszenia">
         <?php $currentStep = $progressPosition[$partnerStatus] ?? 1; ?>
@@ -365,10 +363,6 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
             <button type="button" class="btn btn--primary btn--full" data-open-popover="contact-popover">Zapisz preferencję</button>
           </div>
         </div>
-      </div>
-      <div class="micro-actions">
-        <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Szybkie podpowiedzi</button>
-        <button type="button" class="btn btn--primary" data-copy-target="#client-email">Udostępnij e-mail</button>
       </div>
     </aside>
   </section>
