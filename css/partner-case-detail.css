@@ -11,9 +11,9 @@
   gap: 20px;
   margin-bottom: 22px;
   background: linear-gradient(135deg, #0f172a, #1e293b);
-  color: #fff;
+  color: #0f172a;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -33,7 +33,7 @@
 }
 
 .partner-case__intro .muted {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-muted);
 }
 
 .partner-case__panel .muted {
@@ -131,7 +131,7 @@
 
 .progress-ribbon__label {
   font-weight: 600;
-  color: #fff;
+  color: #0f172a;
 }
 
 .card {
@@ -187,6 +187,7 @@
   box-shadow: 0 10px 45px rgba(15, 23, 42, 0.08);
   min-width: 280px;
   border: 1px solid #e2e8f0;
+  color: #0f172a;
 }
 
 .info-card--layered {
