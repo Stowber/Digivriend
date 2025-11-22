@@ -404,43 +404,6 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
          <p class="info-tile__value"><?= nl2br(htmlspecialchars($deviceNotesText !== '' ? $deviceNotesText : 'Brak dodatkowych notatek.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
         </div>
     </div>
-    <div class="callout-grid">
-      <div class="callout">
-        <div>
-          <p class="callout__eyebrow">Nowość</p>
-          <h3 class="callout__title">Kapsuła informacji o sprzęcie</h3>
-          <p class="muted">Przeglądaj ważne punkty bez przewijania dzięki rozwijanym podsumowaniom i mini checklistom.</p>
-          <div class="addon-chips" data-addon-target="#estimate-description">
-            <button type="button" class="addon-chip" data-addon="Dodaj pełne czyszczenie układu chłodzenia.">Czyszczenie</button>
-            <button type="button" class="addon-chip" data-addon="Zalecam wymianę pasty termicznej i kontrolę wentylatorów.">Serwis chłodzenia</button>
-            <button type="button" class="addon-chip" data-addon="Test żywotności dysku + kopia zapasowa plików krytycznych.">Backup + test</button>
-          </div>
-        </div>
-      </div>
-      <div class="callout callout--ghost">
-        <p class="callout__eyebrow">Skróty</p>
-        <h3 class="callout__title">Lista akcesoriów</h3>
-        <details class="expander">
-          <summary>Rozwiń dodatki</summary>
-          <ul class="expander__list">
-            <li>Ładowarka oraz kabel USB-C</li>
-            <li>Dodatkowa pamięć RAM klienta</li>
-            <li>Uwagi: <?= nl2br(htmlspecialchars($deviceNotesText !== '' ? $deviceNotesText : 'brak dodatkowych uwag', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></li>
-          </ul>
-        </details>
-        <div class="inline-actions">
-          <label class="form-field form-field--inline">
-            <span class="form-field__label">Tryb diagnozy</span>
-            <select class="pill-select" data-toast-on-change>
-              <option value="standard">Standard (45 min)</option>
-              <option value="extended">Rozszerzona (90 min)</option>
-              <option value="express">Express (25 min)</option>
-            </select>
-          </label>
-          <button type="button" class="btn btn--ghost" data-open-popover="next-steps-popover">Podgląd kroków</button>
-        </div>
-      </div>
-    </div>
   </section>
   <section class="card">
     <div class="card__header">
