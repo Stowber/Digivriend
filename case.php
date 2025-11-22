@@ -1951,6 +1951,7 @@ $partnerEstimateHistory = isset($partnerWorkflow['estimate_history']) && is_arra
 $partnerCorrectionRequest = isset($partnerWorkflow['correction_request']) && is_array($partnerWorkflow['correction_request'])
     ? $partnerWorkflow['correction_request']
     : null;
+$partnerCorrectionStatus = (string) ($partnerCorrectionRequest['status'] ?? '');
 $partnerAccessApproved = $partnerRequestStatus === 'approved';
 $partnerMaskValue = static function (?string $value): string {
     $clean = trim((string) $value);
