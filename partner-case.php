@@ -40,6 +40,7 @@ $statusLabels = [
     'estimate_declined' => 'Wycena odrzucona',
     'repair_ready' => 'Wycena zaakceptowana',
     'repair_in_progress' => 'Naprawa',
+    'correction_review' => 'Korekta oczekuje na zatwierdzenie',
     'archived' => 'Archiwum',
 ];
 
@@ -73,6 +74,13 @@ $partnerStatusLabel = $statusLabels[$partnerStatus] ?? ucfirst(str_replace('_', 
 
 $partnerEstimate = isset($workflow['estimate']) && is_array($workflow['estimate']) ? $workflow['estimate'] : null;
 $partnerDecision = isset($workflow['decision']) && is_array($workflow['decision']) ? $workflow['decision'] : null;
+$partnerEstimateHistory = isset($workflow['estimate_history']) && is_array($workflow['estimate_history'])
+    ? $workflow['estimate_history']
+    : [];
+$correctionRequest = isset($workflow['correction_request']) && is_array($workflow['correction_request'])
+    ? $workflow['correction_request']
+    : null;
+$isEditingEstimate = filter_input(INPUT_GET, 'edit_estimate', FILTER_VALIDATE_BOOLEAN) === true;
 $csrfToken = Csrf::token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -83,33 +91,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $action = $_POST['action'] ?? '';
 
-        if ($action !== 'submit-estimate') {
+        if (!in_array($action, ['submit-estimate', 'submit-correction'], true)) {
             throw new ValidationException(['general' => 'Nieznane działanie.']);
         }
 
-        $amountRaw = InputValidator::requireString($_POST, 'estimate_amount', 32);
-        $normalizedAmount = str_replace(',', '.', $amountRaw);
-        $amount = filter_var($normalizedAmount, FILTER_VALIDATE_FLOAT);
-        if ($amount === false || $amount <= 0) {
-            throw new ValidationException(['estimate_amount' => 'Podaj kwotę wyceny większą od zera.']);
+        if ($action === 'submit-estimate') {
+            if ($partnerStatus === 'repair_ready') {
+                throw new ValidationException(['general' => 'Zaakceptowanej wyceny nie można już zmienić.']);
+            }
+
+            $amountRaw = InputValidator::requireString($_POST, 'estimate_amount', 32);
+            $normalizedAmount = str_replace(',', '.', $amountRaw);
+            $amount = filter_var($normalizedAmount, FILTER_VALIDATE_FLOAT);
+            if ($amount === false || $amount <= 0) {
+                throw new ValidationException(['estimate_amount' => 'Podaj kwotę wyceny większą od zera.']);
+            }
+
+            $description = InputValidator::requireString($_POST, 'estimate_description', 500);
+
+            $history = $partnerEstimateHistory;
+            if ($partnerEstimate !== null) {
+                $history[] = array_merge($partnerEstimate, [
+                    'replaced_at' => Clock::nowFormatted(),
+                    'replaced_by' => Auth::username(),
+                ]);
+            }
+
+            $workflow['status'] = 'awaiting_acceptance';
+            $workflow['estimate_history'] = $history;
+            $workflow['estimate'] = [
+                'amount' => round($amount, 2),
+                'currency' => 'EUR',
+                'description' => $description,
+                'submitted_at' => Clock::nowFormatted(),
+                'submitted_by' => Auth::username(),
+            ];
+            unset($workflow['decision'], $workflow['correction_request']);
+
+            $details['partner_workflow'] = $workflow;
+            $caseRepository->updateDetails((int) $caseId, $details);
+
+            Response::redirect('partner-case.php?id=' . (int) $caseId . '&estimate_submitted=1');
         }
 
-        $description = InputValidator::requireString($_POST, 'estimate_description', 500);
+        if ($action === 'submit-correction') {
+            if ($partnerStatus !== 'repair_ready') {
+                throw new ValidationException(['general' => 'Błąd można zgłosić tylko po akceptacji wyceny.']);
+            }
 
-        $workflow['status'] = 'estimate_submitted';
-        $workflow['estimate'] = [
-            'amount' => round($amount, 2),
-            'currency' => 'EUR',
-            'description' => $description,
-            'submitted_at' => Clock::nowFormatted(),
-            'submitted_by' => Auth::username(),
-        ];
-        unset($workflow['decision']);
+            if (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'pending') {
+                throw new ValidationException(['general' => 'Poprzednie zgłoszenie błędu oczekuje na decyzję.']);
+            }
 
-        $details['partner_workflow'] = $workflow;
-        $caseRepository->updateDetails((int) $caseId, $details);
+            $amountRaw = InputValidator::requireString($_POST, 'estimate_amount', 32);
+            $normalizedAmount = str_replace(',', '.', $amountRaw);
+            $amount = filter_var($normalizedAmount, FILTER_VALIDATE_FLOAT);
+            if ($amount === false || $amount <= 0) {
+                throw new ValidationException(['estimate_amount' => 'Podaj kwotę wyceny większą od zera.']);
+            }
 
-        Response::redirect('partner-case.php?id=' . (int) $caseId . '&estimate_submitted=1');
+            $description = InputValidator::requireString($_POST, 'estimate_description', 500);
+            $errorDetails = InputValidator::optionalString($_POST, 'error_details', 300);
+
+            $workflow['status'] = 'correction_review';
+            $workflow['correction_request'] = [
+                'status' => 'pending',
+                'amount' => round($amount, 2),
+                'currency' => 'EUR',
+                'description' => $description,
+                'submitted_at' => Clock::nowFormatted(),
+                'submitted_by' => Auth::username(),
+                'error_details' => $errorDetails !== '' ? $errorDetails : null,
+            ];
+
+            $details['partner_workflow'] = $workflow;
+            $caseRepository->updateDetails((int) $caseId, $details);
+
+            Response::redirect('partner-case.php?id=' . (int) $caseId . '&correction_submitted=1');
+        }
     } catch (ValidationException $exception) {
         $errors = $exception->errors();
     }
@@ -117,6 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if (filter_input(INPUT_GET, 'estimate_submitted', FILTER_VALIDATE_BOOLEAN)) {
     $successMessage = 'Wycena została wysłana do pracownika.';
+}
+
+if (filter_input(INPUT_GET, 'correction_submitted', FILTER_VALIDATE_BOOLEAN)) {
+    $successMessage = 'Zgłoszenie błędu zostało wysłane do pracownika.';
 }
 
             $customer = $customerRepository->findById((int) ($case['customer_id'] ?? 0));
@@ -147,6 +210,28 @@ if (isset($details['problem_description']) && is_string($details['problem_descri
 }
 
 $archiveLabel = $partnerStatus === 'archived' ? 'Archiwum partnera' : '';
+
+$canEditEstimate = in_array($partnerStatus, ['awaiting_acceptance', 'estimate_submitted', 'counter_review'], true);
+if ($partnerEstimate === null) {
+    $canEditEstimate = true;
+}
+
+if (!$canEditEstimate) {
+    $isEditingEstimate = false;
+}
+
+$showEstimateForm = $partnerEstimate === null || $isEditingEstimate;
+$canReportCorrection = $partnerStatus === 'repair_ready';
+$pendingCorrection = is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'pending';
+$correctionResponseLabel = '';
+if (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'approved') {
+    $correctionResponseLabel = 'Korekta zaakceptowana przez pracownika.';
+} elseif (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'declined') {
+    $correctionResponseLabel = 'Korekta odrzucona przez pracownika.';
+}
+$shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
+    && ($_POST['action'] ?? '') === 'submit-correction'
+    && $errors !== [];
 
 ?>
 <!DOCTYPE html>
@@ -303,7 +388,41 @@ $archiveLabel = $partnerStatus === 'archived' ? 'Archiwum partnera' : '';
                 </div>
               <?php endif; ?>
             <?php endif; ?>
+            <?php if ($partnerEstimateHistory !== []): ?>
+              <div class="info-list__item">
+                <dt>Historia wycen</dt>
+                <dd>
+                  <ul class="muted" style="padding-left: 1rem; margin: 0;">
+                    <?php foreach (array_reverse($partnerEstimateHistory) as $historyItem): ?>
+                      <li>
+                        <strong>€ <?= number_format((float) ($historyItem['amount'] ?? 0), 2, ',', ' ') ?></strong>
+                        <?php if (!empty($historyItem['replaced_at'])): ?>
+                          · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $historyItem['replaced_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        <?php endif; ?>
+                        <?php if (!empty($historyItem['replaced_by'])): ?>
+                          · <?= htmlspecialchars((string) $historyItem['replaced_by'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        <?php endif; ?>
+                      </li>
+                    <?php endforeach; ?>
+                  </ul>
+                </dd>
+              </div>
+            <?php endif; ?>
           </dl>
+          <div class="card-actions">
+            <?php if ($canEditEstimate && !$isEditingEstimate): ?>
+              <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>&edit_estimate=1">Edytuj wycenę</a>
+            <?php endif; ?>
+            <?php if ($canReportCorrection): ?>
+              <?php if ($pendingCorrection): ?>
+                <span class="status-badge" aria-label="Status korekty">Korekta oczekuje na decyzję</span>
+              <?php elseif ($correctionResponseLabel !== ''): ?>
+                <span class="status-badge" aria-label="Status korekty"><?= htmlspecialchars($correctionResponseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <?php else: ?>
+                <button type="button" class="btn btn--ghost" data-modal-target="correction-modal">Zgłoś błąd</button>
+              <?php endif; ?>
+            <?php endif; ?>
+          </div>
         <?php else: ?>
           <p class="muted">Nie wysłano jeszcze żadnej wyceny dla tej sprawy.</p>
         <?php endif; ?>
@@ -311,26 +430,99 @@ $archiveLabel = $partnerStatus === 'archived' ? 'Archiwum partnera' : '';
 
       <div class="quote-grid__column">
         <h3>Nowa wycena</h3>
-        <form method="post" class="form-grid" novalidate>
-          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-          <input type="hidden" name="action" value="submit-estimate">
-          <label class="form-field">
-            <span class="form-field__label">Kwota (€)</span>
-            <input type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00">
-            <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-          </label>
-          <label class="form-field">
-            <span class="form-field__label">Opis części/naprawy</span>
-            <textarea name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Wymienię płytę główną, dysk SSD i zasilacz."></textarea>
-            <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-          </label>
-          <div class="form-actions">
-            <button type="submit" class="btn btn--primary">Wyślij wycenę</button>
-          </div>
-        </form>
+        <?php if ($showEstimateForm): ?>
+          <?php
+          $amountValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-estimate'
+              ? (string) ($_POST['estimate_amount'] ?? '')
+              : ($partnerEstimate['amount'] ?? '');
+          $descriptionValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-estimate'
+              ? (string) ($_POST['estimate_description'] ?? '')
+              : ($partnerEstimate['description'] ?? '');
+          ?>
+          <form method="post" class="form-grid" novalidate>
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+            <input type="hidden" name="action" value="submit-estimate">
+            <label class="form-field">
+              <span class="form-field__label">Kwota (€)</span>
+              <input type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Opis części/naprawy</span>
+              <textarea name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Wymienię płytę główną, dysk SSD i zasilacz."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn--primary">Wyślij wycenę</button>
+              <?php if ($partnerEstimate !== null): ?>
+                <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>">Anuluj edycję</a>
+              <?php endif; ?>
+            </div>
+          </form>
+        <?php else: ?>
+          <p class="muted">Wycena została wysłana. <?= $canEditEstimate ? 'Kliknij „Edytuj wycenę”, aby wprowadzić zmiany przed akceptacją.' : 'Edytowanie jest dostępne tylko przed akceptacją.' ?></p>
+        <?php endif; ?>
       </div>
     </div>
   </section>
 </main>
+<?php if ($canReportCorrection): ?>
+  <div
+    class="modal<?= $shouldOpenCorrectionModal ? ' is-visible' : '' ?>"
+    id="correction-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-hidden="true"
+    aria-labelledby="correction-modal-title"
+  >
+    <div class="modal__panel" role="document">
+      <header class="modal__header">
+        <div>
+          <p class="modal__eyebrow">Wycena</p>
+          <h2 id="correction-modal-title">Zgłoś błąd w zaakceptowanej wycenie</h2>
+        </div>
+        <button type="button" class="modal__close" data-modal-close aria-label="Zamknij">&times;</button>
+      </header>
+      <form method="post" class="modal__body" novalidate>
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+        <input type="hidden" name="action" value="submit-correction">
+        <?php
+        $correctionAmountValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-correction'
+            ? (string) ($_POST['estimate_amount'] ?? '')
+            : ($partnerEstimate['amount'] ?? '');
+        $correctionDescriptionValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-correction'
+            ? (string) ($_POST['estimate_description'] ?? '')
+            : ($partnerEstimate['description'] ?? '');
+        $correctionNoteValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-correction'
+            ? (string) ($_POST['error_details'] ?? '')
+            : ($correctionRequest['error_details'] ?? '');
+        ?>
+        <label class="form-field">
+          <span class="form-field__label">Poprawiona kwota (€)</span>
+          <input type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars($correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Poprawiony opis</span>
+          <textarea name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Opisz poprawioną wycenę."><?= htmlspecialchars($correctionDescriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+          <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Opis błędu (opcjonalnie)</span>
+          <textarea name="error_details" rows="3" maxlength="300" placeholder="Opisz, co wymaga korekty."><?= htmlspecialchars($correctionNoteValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+        </label>
+        <?php if (!empty($errors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+        <div class="modal__footer">
+          <button type="button" class="btn btn--ghost" data-modal-close>Anuluj</button>
+          <button type="submit" class="btn btn--primary">Wyślij korektę</button>
+        </div>
+      </form>
+    </div>
+  </div>
+<?php endif; ?>
+<script src="js/modals.js"></script>
+<?php if ($shouldOpenCorrectionModal): ?>
+  <script>document.body.classList.add('modal-open');</script>
+<?php endif; ?>
 </body>
 </html>

@@ -467,6 +467,7 @@ $partnerAssignErrors = [];
 $partnerRequestErrors = [];
 $partnerResponseErrors = [];
 $partnerEstimateErrors = [];
+$partnerCorrectionErrors = [];
 $currentAction = null;
 $attendanceErrors = [];
 $attendanceFormValues = [
@@ -1492,6 +1493,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'note' => $reviewNote,
                 ]);
                 break;
+              case 'review-correction-request':
+                if ($isPartnerUser) {
+                    throw new ValidationException(['general' => 'Partner nie może zatwierdzać korekt.']);
+                }
+
+                $partnerWorkflow = isset($caseDetails['partner_workflow']) && is_array($caseDetails['partner_workflow'])
+                    ? $caseDetails['partner_workflow']
+                    : [];
+                $partnerEstimate = isset($partnerWorkflow['estimate']) && is_array($partnerWorkflow['estimate'])
+                    ? $partnerWorkflow['estimate']
+                    : null;
+                $correctionRequest = isset($partnerWorkflow['correction_request']) && is_array($partnerWorkflow['correction_request'])
+                    ? $partnerWorkflow['correction_request']
+                    : null;
+
+                if (!is_array($correctionRequest) || ($correctionRequest['status'] ?? '') !== 'pending') {
+                    throw new ValidationException(['general' => 'Brak oczekującej korekty do zatwierdzenia.']);
+                }
+
+                $decision = strtolower(InputValidator::requireString($_POST, 'decision', 16));
+                if (!in_array($decision, ['approve', 'decline'], true)) {
+                    throw new ValidationException(['decision' => 'Wybierz akceptację lub odrzucenie korekty.']);
+                }
+
+                $responseNote = InputValidator::optionalString($_POST, 'response_note', 500);
+                $history = isset($partnerWorkflow['estimate_history']) && is_array($partnerWorkflow['estimate_history'])
+                    ? $partnerWorkflow['estimate_history']
+                    : [];
+
+                if ($partnerEstimate !== null) {
+                    $history[] = array_merge($partnerEstimate, [
+                        'replaced_at' => Clock::nowFormatted(),
+                        'replaced_by' => Auth::username(),
+                        'reason' => 'correction',
+                    ]);
+                }
+
+                if ($decision === 'approve') {
+                    $partnerWorkflow['estimate_history'] = $history;
+                    $partnerWorkflow['estimate'] = [
+                        'amount' => (float) ($correctionRequest['amount'] ?? 0),
+                        'currency' => (string) ($correctionRequest['currency'] ?? 'EUR'),
+                        'description' => (string) ($correctionRequest['description'] ?? ''),
+                        'submitted_at' => (string) ($correctionRequest['submitted_at'] ?? Clock::nowFormatted()),
+                        'submitted_by' => (string) ($correctionRequest['submitted_by'] ?? 'partner'),
+                    ];
+                    $partnerWorkflow['correction_request'] = array_merge($correctionRequest, [
+                        'status' => 'approved',
+                        'responded_at' => Clock::nowFormatted(),
+                        'responded_by' => Auth::username(),
+                        'response_note' => $responseNote !== '' ? $responseNote : null,
+                    ]);
+                    $partnerWorkflow['status'] = 'repair_ready';
+                } else {
+                    $partnerWorkflow['correction_request'] = array_merge($correctionRequest, [
+                        'status' => 'declined',
+                        'responded_at' => Clock::nowFormatted(),
+                        'responded_by' => Auth::username(),
+                        'response_note' => $responseNote !== '' ? $responseNote : null,
+                    ]);
+                    $partnerWorkflow['status'] = 'repair_ready';
+                }
+
+                $caseDetails['partner_workflow'] = $partnerWorkflow;
+                $caseRepository->updateDetails((int) $caseId, $caseDetails);
+                $auditLogger->log((int) $caseId, Auth::id(), Auth::username(), 'partner_correction_reviewed', [
+                    'decision' => $decision,
+                    'response_note' => $responseNote,
+                    'correction_amount' => $correctionRequest['amount'] ?? null,
+                ]);
+                break;
             default:
                 throw new ValidationException(['general' => 'Onbekende actie.']);
         }
@@ -1873,6 +1945,12 @@ $partnerWorkflow = isset($caseDetails['partner_workflow']) && is_array($caseDeta
 $partnerWorkflowStatus = (string) ($partnerWorkflow['status'] ?? 'awaiting_acceptance');
 $partnerEstimate = isset($partnerWorkflow['estimate']) && is_array($partnerWorkflow['estimate']) ? $partnerWorkflow['estimate'] : null;
 $partnerDecision = isset($partnerWorkflow['decision']) && is_array($partnerWorkflow['decision']) ? $partnerWorkflow['decision'] : null;
+$partnerEstimateHistory = isset($partnerWorkflow['estimate_history']) && is_array($partnerWorkflow['estimate_history'])
+    ? $partnerWorkflow['estimate_history']
+    : [];
+$partnerCorrectionRequest = isset($partnerWorkflow['correction_request']) && is_array($partnerWorkflow['correction_request'])
+    ? $partnerWorkflow['correction_request']
+    : null;
 $partnerAccessApproved = $partnerRequestStatus === 'approved';
 $partnerMaskValue = static function (?string $value): string {
     $clean = trim((string) $value);
@@ -2268,36 +2346,81 @@ $partnerRequestPending = $partnerRequestStatus === 'pending';
                   <?php endif; ?>
                 </div>
               <?php endif; ?>
-              <form method="post" class="form-grid" novalidate>
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                <input type="hidden" name="action" value="review-partner-estimate">
-                <label class="form-field">
-                  <span class="form-field__label">Decyzja</span>
-                  <?php $decisionValue = $currentAction === 'review-partner-estimate' ? (string) ($_POST['decision'] ?? '') : ''; ?>
-                  <select name="decision" required>
-                    <option value="">— Wybierz —</option>
-                    <option value="approve" <?= $decisionValue === 'approve' ? 'selected' : '' ?>>Zatwierdź kwotę</option>
-                    <option value="decline" <?= $decisionValue === 'decline' ? 'selected' : '' ?>>Odrzuć</option>
-                    <option value="counter" <?= $decisionValue === 'counter' ? 'selected' : '' ?>>Zaproponuj zmianę</option>
-                  </select>
-                  <?php if (!empty($partnerEstimateErrors['decision'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerEstimateErrors['decision']) ? implode(' ', array_map('strval', $partnerEstimateErrors['decision'])) : (string) $partnerEstimateErrors['decision'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field">
-                  <span class="form-field__label">Proponowana kwota (€)</span>
-                  <?php $counterValue = $currentAction === 'review-partner-estimate' ? (string) ($_POST['counter_amount'] ?? '') : (string) ($partnerEstimate['counter_amount'] ?? ''); ?>
-                  <input type="number" name="counter_amount" step="0.01" min="0" value="<?= htmlspecialchars($counterValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="Wpisz przy zmianie ceny">
-                  <?php if (!empty($partnerEstimateErrors['counter_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerEstimateErrors['counter_amount']) ? implode(' ', array_map('strval', $partnerEstimateErrors['counter_amount'])) : (string) $partnerEstimateErrors['counter_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <label class="form-field">
-                  <span class="form-field__label">Notatka dla partnera</span>
-                  <?php $reviewNoteValue = $currentAction === 'review-partner-estimate' ? (string) ($_POST['review_note'] ?? '') : ''; ?>
-                  <textarea name="review_note" rows="3" maxlength="500" placeholder="Uzasadnij akceptację, odrzucenie lub nową kwotę."><?= htmlspecialchars($reviewNoteValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-                </label>
-                <?php if (!empty($partnerEstimateErrors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerEstimateErrors['general']) ? implode(' ', array_map('strval', $partnerEstimateErrors['general'])) : (string) $partnerEstimateErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
-                <div class="form-actions">
-                  <button type="submit" class="btn btn--primary">Wyślij decyzję</button>
+              <?php if ($partnerEstimateHistory !== []): ?>
+                <div class="info-card__hint">
+                  <p><strong>Historia wycen:</strong></p>
+                  <ul class="muted" style="padding-left: 1.2rem; margin: 0;">
+                    <?php foreach (array_reverse($partnerEstimateHistory) as $history): ?>
+                      <li>
+                        € <?= number_format((float) ($history['amount'] ?? 0), 2, ',', ' ') ?>
+                        <?php if (!empty($history['replaced_at'])): ?>
+                          · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $history['replaced_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        <?php endif; ?>
+                        <?php if (!empty($history['replaced_by'])): ?>
+                          · <?= htmlspecialchars((string) $history['replaced_by'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                        <?php endif; ?>
+                      </li>
+                    <?php endforeach; ?>
+                  </ul>
                 </div>
-              </form>
+              <?php endif; ?>
+              <?php if ($partnerCorrectionStatus === 'pending'): ?>
+                <div class="alert alert--warning">Partner zgłosił błąd w zaakceptowanej wycenie. Sprawdź i zatwierdź korektę.</div>
+                <p><strong>Proponowana kwota:</strong> € <?= number_format((float) ($partnerCorrectionRequest['amount'] ?? 0), 2, ',', ' ') ?></p>
+                <p><strong>Opis korekty:</strong><br><?= nl2br(htmlspecialchars((string) ($partnerCorrectionRequest['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                <?php if (!empty($partnerCorrectionRequest['error_details'])): ?>
+                  <p class="muted">Notatka partnera: <?= nl2br(htmlspecialchars((string) $partnerCorrectionRequest['error_details'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                <?php endif; ?>
+                <form method="post" class="form-grid" novalidate>
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="action" value="review-correction-request">
+                  <label class="form-field">
+                    <span class="form-field__label">Notatka zwrotna</span>
+                    <?php $correctionResponseNote = $currentAction === 'review-correction-request' ? (string) ($_POST['response_note'] ?? '') : ''; ?>
+                    <textarea name="response_note" rows="3" maxlength="500" placeholder="Uzasadnij akceptację lub odrzucenie korekty."><?= htmlspecialchars($correctionResponseNote, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  </label>
+                  <?php if (!empty($partnerCorrectionErrors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerCorrectionErrors['general']) ? implode(' ', array_map('strval', $partnerCorrectionErrors['general'])) : (string) $partnerCorrectionErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+                  <?php if (!empty($partnerCorrectionErrors['decision'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerCorrectionErrors['decision']) ? implode(' ', array_map('strval', $partnerCorrectionErrors['decision'])) : (string) $partnerCorrectionErrors['decision'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+                  <div class="form-actions">
+                    <button type="submit" name="decision" value="approve" class="btn btn--primary">Zatwierdź korektę</button>
+                    <button type="submit" name="decision" value="decline" class="btn btn--ghost">Odrzuć korektę</button>
+                  </div>
+                </form>
+              <?php else: ?>
+                <?php if ($partnerCorrectionStatus === 'approved' || $partnerCorrectionStatus === 'declined'): ?>
+                  <div class="alert alert--success">Status korekty: <?= htmlspecialchars($partnerCorrectionStatus === 'approved' ? 'zaakceptowana' : 'odrzucona', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                <?php endif; ?>
+                <form method="post" class="form-grid" novalidate>
+                  <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <input type="hidden" name="action" value="review-partner-estimate">
+                  <label class="form-field">
+                    <span class="form-field__label">Decyzja</span>
+                    <?php $decisionValue = $currentAction === 'review-partner-estimate' ? (string) ($_POST['decision'] ?? '') : ''; ?>
+                    <select name="decision" required>
+                      <option value="">— Wybierz —</option>
+                      <option value="approve" <?= $decisionValue === 'approve' ? 'selected' : '' ?>>Zatwierdź kwotę</option>
+                      <option value="decline" <?= $decisionValue === 'decline' ? 'selected' : '' ?>>Odrzuć</option>
+                      <option value="counter" <?= $decisionValue === 'counter' ? 'selected' : '' ?>>Zaproponuj zmianę</option>
+                    </select>
+                    <?php if (!empty($partnerEstimateErrors['decision'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerEstimateErrors['decision']) ? implode(' ', array_map('strval', $partnerEstimateErrors['decision'])) : (string) $partnerEstimateErrors['decision'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field__label">Proponowana kwota (€)</span>
+                    <?php $counterValue = $currentAction === 'review-partner-estimate' ? (string) ($_POST['counter_amount'] ?? '') : (string) ($partnerEstimate['counter_amount'] ?? ''); ?>
+                    <input type="number" name="counter_amount" step="0.01" min="0" value="<?= htmlspecialchars($counterValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" placeholder="Wpisz przy zmianie ceny">
+                    <?php if (!empty($partnerEstimateErrors['counter_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($partnerEstimateErrors['counter_amount']) ? implode(' ', array_map('strval', $partnerEstimateErrors['counter_amount'])) : (string) $partnerEstimateErrors['counter_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
+                  <label class="form-field">
+                    <span class="form-field__label">Notatka dla partnera</span>
+                    <?php $reviewNoteValue = $currentAction === 'review-partner-estimate' ? (string) ($_POST['review_note'] ?? '') : ''; ?>
+                    <textarea name="review_note" rows="3" maxlength="500" placeholder="Uzasadnij akceptację, odrzucenie lub nową kwotę."><?= htmlspecialchars($reviewNoteValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  </label>
+                  <?php if (!empty($partnerEstimateErrors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($partnerEstimateErrors['general']) ? implode(' ', array_map('strval', $partnerEstimateErrors['general'])) : (string) $partnerEstimateErrors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn--primary">Wyślij decyzję</button>
+                  </div>
+                </form>
+              <?php endif; ?>
             <?php else: ?>
               <p class="muted">Partner nie przesłał jeszcze wyceny do zatwierdzenia.</p>
             <?php endif; ?>
