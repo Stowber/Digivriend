@@ -231,6 +231,12 @@ if (!$canEditEstimate) {
 }
 
 $showEstimateForm = $partnerEstimate === null || $isEditingEstimate;
+$amountValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-estimate'
+    ? (string) ($_POST['estimate_amount'] ?? '')
+    : ($partnerEstimate['amount'] ?? '');
+$descriptionValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-estimate'
+    ? (string) ($_POST['estimate_description'] ?? '')
+    : ($partnerEstimate['description'] ?? '');
 $progressSteps = [
     1 => 'Zgłoszenie',
     2 => 'Wycena',
@@ -367,8 +373,8 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
     </aside>
   </section>
 
-  <section class="card">
-    <div class="card__header">
+  <section class="card estimate-lab">
+    <div class="card__header estimate-lab__header">
       <div>
         <p class="eyebrow">Informacje o urządzeniu</p>
         <h2>Sprzęt przekazany do diagnozy</h2>
@@ -445,11 +451,14 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
   <section class="card">
     <div class="card__header">
       <div>
-        <p class="eyebrow">Wycena naprawy</p>
-        <h2>Wyślij koszt naprawy w €</h2>
+        <p class="eyebrow">Wycena naprawy · Studio</p>
+        <h2>Nowy układ wyceny z bocznym podglądem</h2>
+        <p class="muted">Składaj ofertę w jednym miejscu, a szczegóły, historię i gotowe dodatki zobaczysz w panelach obok.</p>
       </div>
-      <div class="status-badge" aria-label="Status wyceny">
-        <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+      <div class="lab-legend" aria-label="Legenda statusów">
+        <span class="legend-dot legend-dot--ready">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        <span class="legend-dot legend-dot--live">Podgląd na żywo</span>
+        <span class="legend-dot legend-dot--ghost">Nowy layout</span>
       </div>
     </div>
 
@@ -460,135 +469,317 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       <div class="alert alert--danger"><?= htmlspecialchars(is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
     <?php endif; ?>
 
-    <div class="quote-grid">
-      <div class="quote-grid__column">
-        <h3>Twoja ostatnia wycena</h3>
-        <?php if ($partnerEstimate !== null): ?>
-          <dl class="info-list info-list--plain">
-            <div class="info-list__item">
-              <dt>Kwota</dt>
-              <dd>€ <?= number_format((float) ($partnerEstimate['amount'] ?? 0), 2, ',', ' ') ?></dd>
+    <div class="estimate-lab__meta" role="list" aria-label="Szybkie ustawienia">
+      <div class="lab-chip" role="listitem">
+        <span class="lab-chip__label">Status partnera</span>
+        <strong><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+      </div>
+      <div class="lab-chip" role="listitem">
+        <span class="lab-chip__label">Tryb pracy</span>
+        <button type="button" class="chip-button" data-open-popover="next-steps-popover">Kreator kroków</button>
+      </div>
+      <div class="lab-chip" role="listitem">
+        <span class="lab-chip__label">Nowy panel</span>
+        <button type="button" class="chip-button" data-drawer-open="estimate-drawer">Otwórz podgląd</button>
+      </div>
+      <div class="lab-chip" role="listitem">
+        <span class="lab-chip__label">Kontakt</span>
+        <button type="button" class="chip-button" data-open-popover="contact-popover">Wyślij preferencję</button>
+      </div>
+    </div>
+
+    <div class="estimate-lab__layout">
+      <div class="estimate-lab__column">
+        <div class="lab-panel">
+          <div class="lab-panel__header">
+            <div>
+              <p class="eyebrow">Twoja ostatnia wycena</p>
+              <h3>Live panel szczegółów</h3>
             </div>
-            <div class="info-list__item">
-              <dt>Opis</dt>
-              <dd><?= nl2br(htmlspecialchars((string) ($partnerEstimate['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></dd>
+            <div class="lab-panel__actions">
+              <button type="button" class="btn btn--ghost" data-drawer-open="estimate-drawer">Panel boczny</button>
+              <?php if ($canEditEstimate && !$isEditingEstimate): ?>
+                <a class="btn btn--primary" href="partner-case.php?id=<?= (int) $caseId ?>&edit_estimate=1">Tryb edycji</a>
+              <?php endif; ?>
             </div>
-            <?php if (!empty($partnerEstimate['submitted_at'])): ?>
-              <div class="info-list__item">
-                <dt>Wysłano</dt>
-                <dd><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $partnerEstimate['submitted_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+          <?php if ($partnerEstimate !== null): ?>
+            <div class="lab-summary">
+              <div>
+                <p class="lab-summary__label">Kwota</p>
+                <p class="lab-summary__value">€ <?= number_format((float) ($partnerEstimate['amount'] ?? 0), 2, ',', ' ') ?></p>
               </div>
-            <?php endif; ?>
-            <?php if ($partnerDecision !== null): ?>
-              <div class="info-list__item">
-                <dt>Decyzja</dt>
-                <dd><?= htmlspecialchars(ucfirst(str_replace('_', ' ', (string) ($partnerDecision['status'] ?? ''))), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            <div>
+                <p class="lab-summary__label">Opis</p>
+                <p class="lab-summary__value lab-summary__value--muted"><?= nl2br(htmlspecialchars((string) ($partnerEstimate['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
               </div>
-              <?php if (!empty($partnerDecision['proposed_amount'])): ?>
-                <div class="info-list__item">
-                  <dt>Propozycja</dt>
-                  <dd>€ <?= number_format((float) $partnerDecision['proposed_amount'], 2, ',', ' ') ?></dd>
+              <?php if (!empty($partnerEstimate['submitted_at'])): ?>
+                <div>
+                  <p class="lab-summary__label">Wysłano</p>
+                  <p class="lab-summary__value lab-summary__value--muted"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $partnerEstimate['submitted_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 </div>
               <?php endif; ?>
-              <?php if (!empty($partnerDecision['note'])): ?>
-                <div class="info-list__item">
-                  <dt>Uwagi pracownika</dt>
-                  <dd><?= nl2br(htmlspecialchars((string) $partnerDecision['note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></dd>
-                </div>
-              <?php endif; ?>
-            <?php endif; ?>
-            <?php if ($partnerEstimateHistory !== []): ?>
-              <div class="info-list__item">
-                <dt>Historia wycen</dt>
-                <dd>
-                  <ul class="muted" style="padding-left: 1rem; margin: 0;">
-                    <?php foreach (array_reverse($partnerEstimateHistory) as $historyItem): ?>
-                      <li>
-                        <strong>€ <?= number_format((float) ($historyItem['amount'] ?? 0), 2, ',', ' ') ?></strong>
-                        <?php if (!empty($historyItem['replaced_at'])): ?>
-                          · <?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $historyItem['replaced_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                        <?php endif; ?>
-                        <?php if (!empty($historyItem['replaced_by'])): ?>
-                          · <?= htmlspecialchars((string) $historyItem['replaced_by'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                        <?php endif; ?>
-                      </li>
-                    <?php endforeach; ?>
-                  </ul>
-                </dd>
               </div>
-            <?php endif; ?>
-          </dl>
-          <div class="card-actions">
-            <?php if ($canEditEstimate && !$isEditingEstimate): ?>
-              <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>&edit_estimate=1">Edytuj wycenę</a>
-            <?php endif; ?>
-            <?php if ($canReportCorrection): ?>
-              <?php if ($pendingCorrection): ?>
-                <span class="status-badge" aria-label="Status korekty">Korekta oczekuje na decyzję</span>
-              <?php elseif ($correctionResponseLabel !== ''): ?>
-                <span class="status-badge" aria-label="Status korekty"><?= htmlspecialchars($correctionResponseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-              <?php else: ?>
-                <button type="button" class="btn btn--ghost" data-modal-target="correction-modal">Zgłoś błąd</button>
+            <div class="lab-grid lab-grid--two">
+              <div class="lab-tile">
+                <p class="lab-tile__label">Decyzja klienta</p>
+                <?php if ($partnerDecision !== null): ?>
+                  <p class="lab-tile__value"><?= htmlspecialchars(ucfirst(str_replace('_', ' ', (string) ($partnerDecision['status'] ?? ''))), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                  <?php if (!empty($partnerDecision['note'])): ?>
+                    <p class="muted lab-tile__note"><?= nl2br(htmlspecialchars((string) $partnerDecision['note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <p class="muted">Brak decyzji – czeka na akcję klienta.</p>
+                <?php endif; ?>
+              </div>
+              <div class="lab-tile">
+                <p class="lab-tile__label">Historia</p>
+                <?php if ($partnerEstimateHistory !== []): ?>
+                  <details class="lab-accordion" open>
+                    <summary>Rozwiń historię wycen</summary>
+                    <ul class="lab-history">
+                      <?php foreach (array_reverse($partnerEstimateHistory) as $historyItem): ?>
+                        <li>
+                          <div>
+                            <strong>€ <?= number_format((float) ($historyItem['amount'] ?? 0), 2, ',', ' ') ?></strong>
+                            <?php if (!empty($historyItem['replaced_at'])): ?>
+                              <span class="lab-history__meta"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $historyItem['replaced_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                            <?php endif; ?>
+                          </div>
+                          <?php if (!empty($historyItem['replaced_by'])): ?>
+                            <span class="lab-history__meta"><?= htmlspecialchars((string) $historyItem['replaced_by'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                          <?php endif; ?>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </details>
+                <?php else: ?>
+                  <p class="muted">Brak wcześniejszych wycen.</p>
+                <?php endif; ?>
+              </div>
+            </div>
+            <div class="lab-panel__footer">
+              <?php if ($canReportCorrection): ?>
+                <?php if ($pendingCorrection): ?>
+                  <span class="status-badge" aria-label="Status korekty">Korekta oczekuje na decyzję</span>
+                <?php elseif ($correctionResponseLabel !== ''): ?>
+                  <span class="status-badge" aria-label="Status korekty"><?= htmlspecialchars($correctionResponseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php else: ?>
+                  <button type="button" class="btn btn--ghost" data-modal-target="correction-modal">Zgłoś błąd</button>
+                <?php endif; ?>
               <?php endif; ?>
-            <?php endif; ?>
+            </div>
+          <?php else: ?>
+            <p class="muted">Nie wysłano jeszcze żadnej wyceny. Zbuduj nową po prawej stronie, aby uruchomić podgląd.</p>
+          <?php endif; ?>
+        </div>
+
+        <div class="lab-panel lab-panel--stacked">
+          <div class="lab-panel__header">
+            <div>
+              <p class="eyebrow">Pakiety i mikro-usługi</p>
+              <h3>Dodaj elementy jednym kliknięciem</h3>
+            </div>
+            <div class="lab-panel__actions">
+              <span class="pill pill--ghost">Nowy zestaw</span>
+            </div>
           </div>
-        <?php else: ?>
-          <p class="muted">Nie wysłano jeszcze żadnej wyceny dla tej sprawy.</p>
-        <?php endif; ?>
+        <div class="lab-matrix" data-accordion>
+            <button type="button" class="matrix-row" data-accordion-toggle>
+              <span>Diagnoza i czyszczenie</span>
+              <span class="matrix-row__meta">Rozwiń</span>
+            </button>
+            <div class="matrix-content">
+              <button
+                type="button"
+                class="micro-toggle"
+                data-checklist-add="Przyspieszona diagnoza (30 min)."
+                data-add-amount="45"
+                data-target-description="#estimate-description"
+                data-target-amount="#estimate-amount"
+              >Diagnoza Express +45€</button>
+              <button
+                type="button"
+                class="micro-toggle"
+                data-checklist-add="Pełne czyszczenie układu chłodzenia."
+                data-add-amount="35"
+                data-target-description="#estimate-description"
+                data-target-amount="#estimate-amount"
+              >Czyszczenie turbo +35€</button>
+            </div>
+
+            <button type="button" class="matrix-row" data-accordion-toggle>
+              <span>Wymiana części</span>
+              <span class="matrix-row__meta">Rozwiń</span>
+            </button>
+            <div class="matrix-content">
+              <button
+                type="button"
+                class="micro-toggle"
+                data-checklist-add="Wymiana dysku SSD z klonowaniem danych."
+                data-add-amount="120"
+                data-target-description="#estimate-description"
+                data-target-amount="#estimate-amount"
+              >Nowy SSD + klonowanie +120€</button>
+              <button
+                type="button"
+                class="micro-toggle"
+                data-checklist-add="Wymiana zasilacza i testy obciążeniowe."
+                data-add-amount="80"
+                data-target-description="#estimate-description"
+                data-target-amount="#estimate-amount"
+              >Stabilny zasilacz +80€</button>
+            </div>
+
+            <button type="button" class="matrix-row" data-accordion-toggle>
+              <span>Opcje komfortu</span>
+              <span class="matrix-row__meta">Rozwiń</span>
+            </button>
+            <div class="matrix-content">
+              <button
+                type="button"
+                class="micro-toggle"
+                data-checklist-add="Backup bezpieczeństwa przed naprawą."
+                data-add-amount="25"
+                data-target-description="#estimate-description"
+                data-target-amount="#estimate-amount"
+              >Backup startowy +25€</button>
+              <button
+                type="button"
+                class="micro-toggle"
+                data-checklist-add="Test końcowy i instrukcja dla klienta."
+                data-add-amount="18"
+                data-target-description="#estimate-description"
+                data-target-amount="#estimate-amount"
+              >Checklist końcowa +18€</button>
+            </div>
+          </div>
+          <div class="lab-inline-ribbon">
+            <span class="pill pill--ghost">Dodajesz + zapisujesz do opisu i kwoty</span>
+            <button type="button" class="chip-button" data-copy-target="#estimate-amount">Skopiuj kwotę</button>
+          </div>
+        </div>
       </div>
 
-      <div class="quote-grid__column">
-        <h3>Nowa wycena</h3>
-        <?php if ($showEstimateForm): ?>
-          <?php
-          $amountValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-estimate'
-              ? (string) ($_POST['estimate_amount'] ?? '')
-              : ($partnerEstimate['amount'] ?? '');
-          $descriptionValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-estimate'
-              ? (string) ($_POST['estimate_description'] ?? '')
-              : ($partnerEstimate['description'] ?? '');
-          ?>
-          <form method="post" class="form-grid" novalidate>
-            <div class="form-toolbar">
-              <label class="form-field form-field--inline">
-                <span class="form-field__label">Szablon wyceny</span>
-                <select class="pill-select" data-template-select data-target-amount="#estimate-amount" data-target-description="#estimate-description">
-                  <option value="">Wybierz gotowy pakiet</option>
-                  <option data-amount="85" data-description="Pakiet diagnozy + czyszczenie układu chłodzenia.">Szybka diagnoza €85</option>
-                  <option data-amount="145" data-description="Wymiana dysku SSD, klonowanie danych oraz konfiguracja systemu.">SSD + konfiguracja €145</option>
-                  <option data-amount="210" data-description="Kompleksowy serwis: chłodzenie, zasilacz, testy obciążeniowe.">Serwis premium €210</option>
-                </select>
-              </label>
-              <div class="inline-actions">
-                <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Podpowiedzi</button>
-                <button type="button" class="btn btn--ghost" data-copy-target="#estimate-description">Kopiuj opis</button>
+      <div class="estimate-lab__column estimate-lab__column--primary">
+        <div class="lab-panel lab-panel--primary">
+          <div class="lab-panel__header">
+            <div>
+              <p class="eyebrow">Nowa wycena</p>
+              <h3>Tryb pisania + suwak kwoty</h3>
+            </div>
+            <div class="lab-panel__actions">
+              <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Podpowiedzi</button>
+              <button type="button" class="btn btn--ghost" data-drawer-open="estimate-drawer">Podgląd</button>
+            </div>
+          </div>
+          <?php if ($showEstimateForm): ?>
+            <form method="post" class="estimate-form" novalidate>
+              <div class="lab-toolbar">
+                <label class="form-field form-field--inline">
+                  <span class="form-field__label">Szablon wyceny</span>
+                  <select class="pill-select" data-template-select data-target-amount="#estimate-amount" data-target-description="#estimate-description">
+                    <option value="">Wybierz gotowy pakiet</option>
+                    <option data-amount="85" data-description="Pakiet diagnozy + czyszczenie układu chłodzenia.">Szybka diagnoza €85</option>
+                    <option data-amount="145" data-description="Wymiana dysku SSD, klonowanie danych oraz konfiguracja systemu.">SSD + konfiguracja €145</option>
+                    <option data-amount="210" data-description="Kompleksowy serwis: chłodzenie, zasilacz, testy obciążeniowe.">Serwis premium €210</option>
+                  </select>
+                </label>
+                <label class="form-field form-field--inline">
+                  <span class="form-field__label">Kanał powiadomień</span>
+                  <select class="pill-select" data-toast-on-change>
+                    <option value="email">E-mail</option>
+                    <option value="sms">SMS</option>
+                    <option value="push">Powiadomienie PUSH</option>
+                  </select>
+                </label>
               </div>
-            </div>
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-            <input type="hidden" name="action" value="submit-estimate">
-            <label class="form-field">
-              <span class="form-field__label">Kwota (€)</span>
-              <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-              <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <label class="form-field">
-              <span class="form-field__label">Opis części/naprawy</span>
-              <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Wymienię płytę główną, dysk SSD i zasilacz."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-              <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-            </label>
-            <div class="form-actions">
-              <button type="submit" class="btn btn--primary">Wyślij wycenę</button>
-              <?php if ($partnerEstimate !== null): ?>
-                <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>">Anuluj edycję</a>
-              <?php endif; ?>
-            </div>
-          </form>
-        <?php else: ?>
-          <p class="muted">Wycena została wysłana. <?= $canEditEstimate ? 'Kliknij „Edytuj wycenę”, aby wprowadzić zmiany przed akceptacją.' : 'Edytowanie jest dostępne tylko przed akceptacją.' ?></p>
-        <?php endif; ?>
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input type="hidden" name="action" value="submit-estimate">
+              <div class="lab-amount">
+                <label class="form-field">
+                  <span class="form-field__label">Kwota (€)</span>
+                  <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <div class="range-control">
+                  <label for="amount-range">Suwak kwoty</label>
+                  <input id="amount-range" data-amount-range data-target-amount="#estimate-amount" type="range" min="0" max="500" step="5" value="<?= htmlspecialchars((string) ($amountValue !== '' ? $amountValue : '0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                  <div class="range-scale">
+                    <span>0€</span><span>250€</span><span>500€</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lab-description">
+                <label class="form-field">
+                  <span class="form-field__label">Opis części/naprawy</span>
+                  <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Dodaj najważniejsze elementy i dodatki."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                  <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                </label>
+                <div class="lab-description__grid">
+                  <div>
+                    <p class="lab-subtitle">Makra tekstowe</p>
+                    <div class="lab-chips" data-addon-target="#estimate-description">
+                      <button type="button" class="addon-chip" data-addon="Dodatkowe testy SMART + raport.">Testy SMART</button>
+                      <button type="button" class="addon-chip" data-addon="Przegląd portów I/O i czyszczenie styków.">Kontrola portów</button>
+                      <button type="button" class="addon-chip" data-addon="Aktualizacja BIOS/firmware po akceptacji klienta.">Aktualizacja BIOS</button>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="lab-subtitle">Podgląd i kopiowanie</p>
+                    <div class="lab-actions">
+                      <button type="button" class="btn btn--ghost" data-copy-target="#estimate-description">Kopiuj opis</button>
+                      <button type="button" class="btn btn--ghost" data-copy-target="#estimate-amount">Kopiuj kwotę</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn--primary">Wyślij wycenę</button>
+                <?php if ($partnerEstimate !== null): ?>
+                  <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>">Anuluj edycję</a>
+                <?php endif; ?>
+              </div>
+            </form>
+          <?php else: ?>
+            <p class="muted">Wycena została wysłana. <?= $canEditEstimate ? 'Kliknij „Edytuj wycenę”, aby wprowadzić zmiany przed akceptacją.' : 'Edytowanie jest dostępne tylko przed akceptacją.' ?></p>
+          <?php endif; ?>
+        </div>
       </div>
     </div>
   </section>
+
+  <div class="drawer" id="estimate-drawer" aria-hidden="true" role="dialog" aria-label="Panel podglądu wyceny">
+    <div class="drawer__backdrop" data-drawer-close></div>
+    <div class="drawer__panel">
+      <header class="drawer__header">
+        <div>
+          <p class="drawer__eyebrow">Live podgląd</p>
+          <h3>Nowy wygląd bocznego panelu</h3>
+        </div>
+        <button type="button" class="drawer__close" data-drawer-close aria-label="Zamknij">&times;</button>
+      </header>
+      <div class="drawer__body">
+        <p class="muted">Suwak kwoty, mikro-usługi i makra tekstowe są od razu podglądane w tym panelu. Widok jest niezależny od formularza.</p>
+        <div class="drawer__grid">
+          <div>
+            <p class="drawer__label">Kwota robocza</p>
+            <p class="drawer__value" data-drawer-amount>€ <?= htmlspecialchars((string) ($amountValue ?? $partnerEstimate['amount'] ?? '0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          </div>
+          <div>
+            <p class="drawer__label">Opis roboczy</p>
+            <p class="drawer__value drawer__value--muted" data-drawer-description><?= nl2br(htmlspecialchars((string) ($descriptionValue ?? $partnerEstimate['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+          </div>
+        </div>
+        <div class="drawer__actions">
+          <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Zainspiruj</button>
+          <button type="button" class="btn btn--primary" data-drawer-close>Zamknij panel</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="floating-popovers" aria-live="polite">
     <div class="floating-popover" id="next-steps-popover" hidden>
       <div class="floating-popover__header">

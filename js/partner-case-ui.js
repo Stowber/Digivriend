@@ -134,6 +134,108 @@
     });
   }
 
+  function bindAccordions() {
+    document.querySelectorAll('[data-accordion]').forEach((container) => {
+      container.querySelectorAll('[data-accordion-toggle]').forEach((trigger) => {
+        const content = trigger.nextElementSibling;
+        if (!content) return;
+        trigger.addEventListener('click', () => {
+          const expanded = trigger.classList.toggle('is-open');
+          content.style.display = expanded ? 'grid' : 'none';
+        });
+        content.style.display = 'none';
+      });
+    });
+  }
+
+  function updateDrawer(amountField, descriptionField) {
+    const drawerAmount = document.querySelector('[data-drawer-amount]');
+    const drawerDescription = document.querySelector('[data-drawer-description]');
+    if (drawerAmount && amountField) {
+      drawerAmount.textContent = `€ ${amountField.value || '0'}`;
+    }
+    if (drawerDescription && descriptionField) {
+      drawerDescription.innerHTML = (descriptionField.value || '').replace(/\n/g, '<br>');
+    }
+  }
+
+  function bindMicroToggles() {
+    document.querySelectorAll('[data-checklist-add]').forEach((button) => {
+      const targetDescription = document.querySelector(button.dataset.targetDescription || '');
+      const targetAmount = document.querySelector(button.dataset.targetAmount || '');
+      const addition = button.dataset.checklistAdd || '';
+      const delta = Number(button.dataset.addAmount || 0);
+      button.addEventListener('click', () => {
+        if (!targetDescription || !targetAmount) return;
+        const isActive = button.classList.toggle('is-active');
+        const lines = targetDescription.value.split('\n').filter(Boolean);
+        if (isActive && addition) {
+          lines.push(`• ${addition}`);
+        } else {
+          const index = lines.findIndex((line) => line.includes(addition));
+          if (index > -1) lines.splice(index, 1);
+        }
+        targetDescription.value = lines.join('\n');
+        const currentAmount = Number(targetAmount.value || 0);
+        const nextAmount = Math.max(0, isActive ? currentAmount + delta : currentAmount - delta);
+        if (!Number.isNaN(nextAmount)) {
+          targetAmount.value = nextAmount.toFixed(2);
+        }
+        updateDrawer(targetAmount, targetDescription);
+        showToast('Zaktualizowano zestaw wyceny.');
+      });
+    });
+  }
+
+  function bindDrawer() {
+    const openers = document.querySelectorAll('[data-drawer-open]');
+    const closers = document.querySelectorAll('[data-drawer-close]');
+    const toggleDrawer = (drawer, show) => {
+      if (!drawer) return;
+      drawer.classList.toggle('is-visible', show);
+      drawer.setAttribute('aria-hidden', String(!show));
+      document.body.classList.toggle('modal-open', show);
+    };
+
+    openers.forEach((opener) => {
+      opener.addEventListener('click', () => {
+        const drawer = document.getElementById(opener.dataset.drawerOpen);
+        toggleDrawer(drawer, true);
+      });
+    });
+
+    closers.forEach((closer) => {
+      closer.addEventListener('click', () => toggleDrawer(closer.closest('.drawer'), false));
+    });
+  }
+
+  function bindAmountRange() {
+    const range = document.querySelector('[data-amount-range]');
+    if (!range) return;
+    const target = document.querySelector(range.dataset.targetAmount || '');
+    if (!target) return;
+    range.addEventListener('input', () => {
+      target.value = range.value;
+      updateDrawer(target, document.querySelector('[data-estimate-description]'));
+    });
+    target.addEventListener('input', () => {
+      range.value = target.value || 0;
+      updateDrawer(target, document.querySelector('[data-estimate-description]'));
+    });
+  }
+
+  function bindLiveDrawerSync() {
+    const amountField = document.querySelector('[data-estimate-amount]');
+    const descriptionField = document.querySelector('[data-estimate-description]');
+    if (amountField) {
+      amountField.addEventListener('input', () => updateDrawer(amountField, descriptionField));
+    }
+    if (descriptionField) {
+      descriptionField.addEventListener('input', () => updateDrawer(amountField, descriptionField));
+    }
+    updateDrawer(amountField, descriptionField);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     bindTemplateSelects();
     bindDropdowns();
@@ -141,5 +243,10 @@
     bindPopovers();
     bindAddonChips();
     bindToastOnChange();
+    bindAccordions();
+    bindMicroToggles();
+    bindDrawer();
+    bindAmountRange();
+    bindLiveDrawerSync();
   });
 })();
