@@ -80,6 +80,7 @@ $partnerEstimateHistory = isset($workflow['estimate_history']) && is_array($work
 $correctionRequest = isset($workflow['correction_request']) && is_array($workflow['correction_request'])
     ? $workflow['correction_request']
     : null;
+$isEstimateLocked = $partnerStatus === 'repair_ready';
 $isEditingEstimate = filter_input(INPUT_GET, 'edit_estimate', FILTER_VALIDATE_BOOLEAN) === true;
 $csrfToken = Csrf::token();
 
@@ -431,7 +432,7 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       </div>
     </div>
 
-    <div class="estimate-lab__layout">
+    <div class="estimate-lab__layout<?= $isEstimateLocked ? ' estimate-lab__layout--single' : '' ?>">
       <div class="estimate-lab__column">
         <div class="lab-panel">
             <div class="lab-panel__header">
@@ -599,17 +600,18 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
         </div>
       </div>
 
-      <div class="estimate-lab__column estimate-lab__column--primary">
-        <div class="lab-panel lab-panel--primary">
-          <div class="lab-panel__header">
-            <div>
-              <p class="eyebrow">Nowa wycena</p>
-              <h3>Tryb pisania + suwak kwoty</h3>
+      <?php if (!$isEstimateLocked): ?>
+        <div class="estimate-lab__column estimate-lab__column--primary">
+          <div class="lab-panel lab-panel--primary">
+            <div class="lab-panel__header">
+              <div>
+                <p class="eyebrow">Nowa wycena</p>
+                <h3>Tryb pisania + suwak kwoty</h3>
+              </div>
+              <div class="lab-panel__actions"></div>
             </div>
-            <div class="lab-panel__actions"></div>
-          </div>
-          <?php if ($showEstimateForm): ?>
-            <form method="post" class="estimate-form" novalidate>
+            <?php if ($showEstimateForm): ?>
+              <form method="post" class="estimate-form" novalidate>
               <div class="lab-toolbar">
                 <label class="form-field form-field--inline">
                   <span class="form-field__label">Szablon wyceny</span>
@@ -678,11 +680,12 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
                 <?php endif; ?>
               </div>
             </form>
-          <?php else: ?>
-            <p class="muted">Wycena została wysłana. <?= $canEditEstimate ? 'Kliknij „Edytuj wycenę”, aby wprowadzić zmiany przed akceptacją.' : 'Edytowanie jest dostępne tylko przed akceptacją.' ?></p>
-          <?php endif; ?>
+            <?php else: ?>
+              <p class="muted">Wycena została wysłana. <?= $canEditEstimate ? 'Kliknij „Edytuj wycenę”, aby wprowadzić zmiany przed akceptacją.' : 'Edytowanie jest dostępne tylko przed akceptacją.' ?></p>
+            <?php endif; ?>
+          </div>
         </div>
-      </div>
+      <?php endif; ?>
     </div>
   </section>
   <div class="toast-stack" data-toast-stack aria-live="polite"></div>

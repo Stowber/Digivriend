@@ -475,6 +475,10 @@
   gap: 14px;
 }
 
+.estimate-lab__layout--single {
+  grid-template-columns: 1fr;
+}
+
 .estimate-lab__column { display: grid; gap: 12px; align-content: start; }
 .estimate-lab__column--primary { grid-row: span 2; }
 
