@@ -221,6 +221,24 @@ if (!$canEditEstimate) {
 }
 
 $showEstimateForm = $partnerEstimate === null || $isEditingEstimate;
+$progressSteps = [
+    1 => 'Zgłoszenie',
+    2 => 'Wycena',
+    3 => 'Decyzja klienta',
+    4 => 'Naprawa',
+    5 => 'Archiwizacja',
+];
+$progressPosition = [
+    'awaiting_acceptance' => 2,
+    'diagnosis' => 2,
+    'estimate_submitted' => 2,
+    'counter_review' => 2,
+    'estimate_declined' => 3,
+    'repair_ready' => 3,
+    'correction_review' => 3,
+    'repair_in_progress' => 4,
+    'archived' => 5,
+];
 $canReportCorrection = $partnerStatus === 'repair_ready';
 $pendingCorrection = is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'pending';
 $correctionResponseLabel = '';
@@ -259,41 +277,85 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
   </div>
 </header>
 <main class="container partner-case">
-  <div class="partner-case__header">
-    <div>
-      <p class="eyebrow">Case #<?= htmlspecialchars((string) ($case['reference_code'] ?? $caseId), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-      <h1><?= htmlspecialchars((string) ($case['summary'] ?? 'Zgłoszenie partnera'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+  <section class="partner-case__hero card card--glass">
+    <div class="partner-case__intro">
+      <div class="partner-case__eyebrow">
+        <p class="eyebrow">Case #<?= htmlspecialchars((string) ($case['reference_code'] ?? $caseId), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <span class="pill pill--signal">Nowy widok partnera</span>
+      </div>
+      <h1 class="partner-case__title"><?= htmlspecialchars((string) ($case['summary'] ?? 'Zgłoszenie partnera'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
       <p class="muted">Urządzenie: <?= htmlspecialchars($deviceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-      <p class="muted">Status partnera: <strong><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong></p>
-    <?php if ($archiveLabel !== ''): ?>
-        <div class="status-badge" aria-label="Status partnera"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-      <?php endif; ?>
+      <div class="pill-row">
+        <span class="pill pill--status">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        <?php if ($archiveLabel !== ''): ?>
+          <span class="pill pill--warning" aria-label="Status partnera"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        <?php endif; ?>
+        <button class="pill pill--ghost" type="button" data-copy-target="#client-phone">Kopiuj telefon</button>
+        <button class="pill pill--ghost" type="button" data-open-popover="next-steps-popover">Zobacz wskazówki</button>
+      </div>
+      <div class="progress-ribbon" role="list" aria-label="Postęp zgłoszenia">
+        <?php $currentStep = $progressPosition[$partnerStatus] ?? 1; ?>
+        <?php foreach ($progressSteps as $index => $label): ?>
+          <div class="progress-ribbon__step<?= $index <= $currentStep ? ' is-active' : '' ?>" role="listitem">
+            <span class="progress-ribbon__index">0<?= (int) $index ?></span>
+            <span class="progress-ribbon__label"><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          </div>
+        <?php endforeach; ?>
+      </div>
       <?php if ($archivedAt !== '' || $archiveReason !== ''): ?>
-        <p class="muted">
+        <p class="muted partner-case__archive">
           <?php if ($archivedAt !== ''): ?>Zarchiwizowano: <?= htmlspecialchars(date('d-m-Y H:i', strtotime($archivedAt)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
           <?php if ($archiveReason !== ''): ?><br>Powód: <?= htmlspecialchars($archiveReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
         </p>
       <?php endif; ?>
     </div>
-  <div class="info-card" aria-label="Informacje o kliencie">
-      <p class="eyebrow">Klient</p>
-      <h2 class="info-card__title"><?= htmlspecialchars((string) ($customer['full_name'] ?? 'Nieznany klient'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
-      <dl class="info-list">
-        <div class="info-list__item">
-          <dt>Telefon</dt>
-          <dd><?= htmlspecialchars((string) ($customer['phone'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+  <aside class="partner-case__panel" aria-label="Informacje i akcje dla klienta">
+      <div class="info-card info-card--layered">
+        <p class="eyebrow">Klient</p>
+        <h2 class="info-card__title"><?= htmlspecialchars((string) ($customer['full_name'] ?? 'Nieznany klient'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <dl class="info-list">
+          <div class="info-list__item">
+            <dt>Telefon</dt>
+            <dd id="client-phone"><?= htmlspecialchars((string) ($customer['phone'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="info-list__item">
+            <dt>E-mail</dt>
+            <dd id="client-email"><?= htmlspecialchars((string) ($customer['email'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+          <div class="info-list__item">
+            <dt>Kod klienta</dt>
+            <dd><?= htmlspecialchars((string) ($customer['customer_code'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          </div>
+        </dl>
+        <div class="action-dropdown" data-dropdown>
+          <button type="button" class="action-dropdown__trigger" data-dropdown-toggle aria-expanded="false">Preferencje kontaktu</button>
+          <div class="dropdown-panel">
+            <label class="form-field form-field--inline">
+              <span class="form-field__label">Kanał</span>
+              <select name="contact_channel" class="pill-select" data-toast-on-change>
+                <option value="call">Telefon</option>
+                <option value="email">E-mail</option>
+                <option value="sms">SMS</option>
+              </select>
+            </label>
+            <label class="form-field form-field--inline">
+              <span class="form-field__label">Preferowana pora</span>
+              <select name="contact_slot" class="pill-select" data-toast-on-change>
+                <option value="morning">08:00-12:00</option>
+                <option value="afternoon">12:00-16:00</option>
+                <option value="evening">16:00-20:00</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn--primary btn--full" data-open-popover="contact-popover">Zapisz preferencję</button>
+          </div>
         </div>
-        <div class="info-list__item">
-          <dt>E-mail</dt>
-          <dd><?= htmlspecialchars((string) ($customer['email'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-        </div>
-        <div class="info-list__item">
-          <dt>Kod klienta</dt>
-          <dd><?= htmlspecialchars((string) ($customer['customer_code'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-        </div>
-      </dl>
-    </div>
-  </div>
+      </div>
+      <div class="micro-actions">
+        <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Szybkie podpowiedzi</button>
+        <button type="button" class="btn btn--primary" data-copy-target="#client-email">Udostępnij e-mail</button>
+      </div>
+    </aside>
+  </section>
 
   <section class="card">
     <div class="card__header">
@@ -329,7 +391,43 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       <div class="info-tile info-tile--wide">
         <p class="info-tile__label">Notatki o sprzęcie</p>
         <p class="info-tile__value"><?= nl2br(htmlspecialchars($deviceNotes !== null && trim((string) $deviceNotes) !== '' ? (string) $deviceNotes : 'Brak dodatkowych notatek.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
-        </form>
+        </div>
+    </div>
+    <div class="callout-grid">
+      <div class="callout">
+        <div>
+          <p class="callout__eyebrow">Nowość</p>
+          <h3 class="callout__title">Kapsuła informacji o sprzęcie</h3>
+          <p class="muted">Przeglądaj ważne punkty bez przewijania dzięki rozwijanym podsumowaniom i mini checklistom.</p>
+          <div class="addon-chips" data-addon-target="#estimate-description">
+            <button type="button" class="addon-chip" data-addon="Dodaj pełne czyszczenie układu chłodzenia.">Czyszczenie</button>
+            <button type="button" class="addon-chip" data-addon="Zalecam wymianę pasty termicznej i kontrolę wentylatorów.">Serwis chłodzenia</button>
+            <button type="button" class="addon-chip" data-addon="Test żywotności dysku + kopia zapasowa plików krytycznych.">Backup + test</button>
+          </div>
+        </div>
+      </div>
+      <div class="callout callout--ghost">
+        <p class="callout__eyebrow">Skróty</p>
+        <h3 class="callout__title">Lista akcesoriów</h3>
+        <details class="expander">
+          <summary>Rozwiń dodatki</summary>
+          <ul class="expander__list">
+            <li>Ładowarka oraz kabel USB-C</li>
+            <li>Dodatkowa pamięć RAM klienta</li>
+            <li>Uwagi: <?= htmlspecialchars($deviceNotes !== null && trim((string) $deviceNotes) !== '' ? (string) $deviceNotes : 'brak dodatkowych uwag', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
+          </ul>
+        </details>
+        <div class="inline-actions">
+          <label class="form-field form-field--inline">
+            <span class="form-field__label">Tryb diagnozy</span>
+            <select class="pill-select" data-toast-on-change>
+              <option value="standard">Standard (45 min)</option>
+              <option value="extended">Rozszerzona (90 min)</option>
+              <option value="express">Express (25 min)</option>
+            </select>
+          </label>
+          <button type="button" class="btn btn--ghost" data-open-popover="next-steps-popover">Podgląd kroków</button>
+        </div>
       </div>
     </div>
   </section>
@@ -440,16 +538,31 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
               : ($partnerEstimate['description'] ?? '');
           ?>
           <form method="post" class="form-grid" novalidate>
+            <div class="form-toolbar">
+              <label class="form-field form-field--inline">
+                <span class="form-field__label">Szablon wyceny</span>
+                <select class="pill-select" data-template-select data-target-amount="#estimate-amount" data-target-description="#estimate-description">
+                  <option value="">Wybierz gotowy pakiet</option>
+                  <option data-amount="85" data-description="Pakiet diagnozy + czyszczenie układu chłodzenia.">Szybka diagnoza €85</option>
+                  <option data-amount="145" data-description="Wymiana dysku SSD, klonowanie danych oraz konfiguracja systemu.">SSD + konfiguracja €145</option>
+                  <option data-amount="210" data-description="Kompleksowy serwis: chłodzenie, zasilacz, testy obciążeniowe.">Serwis premium €210</option>
+                </select>
+              </label>
+              <div class="inline-actions">
+                <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Podpowiedzi</button>
+                <button type="button" class="btn btn--ghost" data-copy-target="#estimate-description">Kopiuj opis</button>
+              </div>
+            </div>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
             <input type="hidden" name="action" value="submit-estimate">
             <label class="form-field">
               <span class="form-field__label">Kwota (€)</span>
-              <input type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
               <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
             </label>
             <label class="form-field">
               <span class="form-field__label">Opis części/naprawy</span>
-              <textarea name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Wymienię płytę główną, dysk SSD i zasilacz."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+              <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Wymienię płytę główną, dysk SSD i zasilacz."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
               <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
             </label>
             <div class="form-actions">
@@ -465,6 +578,38 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       </div>
     </div>
   </section>
+  <div class="floating-popovers" aria-live="polite">
+    <div class="floating-popover" id="next-steps-popover" hidden>
+      <div class="floating-popover__header">
+        <h3>Najbliższe kroki</h3>
+        <button type="button" class="floating-popover__close" data-popover-close aria-label="Zamknij">&times;</button>
+      </div>
+      <ol class="floating-popover__list">
+        <li>Potwierdź z klientem kanał kontaktu (dropdown w panelu).</li>
+        <li>Dodaj gotowy pakiet wyceny z listy rozwijanej i uzupełnij opis.</li>
+        <li>Załącz korektę, jeśli pojawiła się nowa informacja o sprzęcie.</li>
+      </ol>
+    </div>
+    <div class="floating-popover" id="contact-popover" hidden>
+      <div class="floating-popover__header">
+        <h3>Preferencja zapisana</h3>
+        <button type="button" class="floating-popover__close" data-popover-close aria-label="Zamknij">&times;</button>
+      </div>
+      <p class="floating-popover__body">Pracownik otrzyma aktualną preferencję kontaktu wraz z terminem. Możesz ją zmieniać bez wychodzenia ze strony.</p>
+    </div>
+    <div class="floating-popover" id="insights-popover" hidden>
+      <div class="floating-popover__header">
+        <h3>Podpowiedzi do wyceny</h3>
+        <button type="button" class="floating-popover__close" data-popover-close aria-label="Zamknij">&times;</button>
+      </div>
+      <ul class="floating-popover__list">
+        <li>Użyj przycisków dodatków, aby dodać checklistę serwisową.</li>
+        <li>Kopiuj opis do notatek klienta jednym kliknięciem.</li>
+        <li>Włącz tryb Express, jeśli klient oczekuje szybkiej diagnozy.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="toast-stack" data-toast-stack aria-live="polite"></div>
 </main>
 <?php if ($canReportCorrection): ?>
   <div
@@ -497,14 +642,25 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
             ? (string) ($_POST['error_details'] ?? '')
             : ($correctionRequest['error_details'] ?? '');
         ?>
+        <div class="form-toolbar">
+          <label class="form-field form-field--inline">
+            <span class="form-field__label">Szybka korekta</span>
+            <select class="pill-select" data-template-select data-target-amount="#correction-amount" data-target-description="#correction-description">
+              <option value="">Wybierz scenariusz</option>
+              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="Aktualizacja kosztu części po potwierdzeniu magazynu.">Koszt części</option>
+              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="Dodaj roboczogodziny za dodatkową diagnozę.">Dodatkowa diagnoza</option>
+              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="Obniżka ceny po negocjacji z klientem.">Negocjacja</option>
+            </select>
+          </label>
+        </div>
         <label class="form-field">
           <span class="form-field__label">Poprawiona kwota (€)</span>
-          <input type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars($correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input id="correction-amount" type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars($correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
         </label>
         <label class="form-field">
           <span class="form-field__label">Poprawiony opis</span>
-          <textarea name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Opisz poprawioną wycenę."><?= htmlspecialchars($correctionDescriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+          <textarea id="correction-description" name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Opisz poprawioną wycenę."><?= htmlspecialchars($correctionDescriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
           <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
         </label>
         <label class="form-field">
@@ -521,6 +677,7 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
   </div>
 <?php endif; ?>
 <script src="js/modals.js"></script>
+<script src="js/partner-case-ui.js"></script>
 <?php if ($shouldOpenCorrectionModal): ?>
   <script>document.body.classList.add('modal-open');</script>
 <?php endif; ?>
