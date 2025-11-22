@@ -489,7 +489,7 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
         <?php
         $correctionAmountValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-correction'
             ? (string) ($_POST['estimate_amount'] ?? '')
-            : ($partnerEstimate['amount'] ?? '');
+            : (string) ($partnerEstimate['amount'] ?? '');
         $correctionDescriptionValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit-correction'
             ? (string) ($_POST['estimate_description'] ?? '')
             : ($partnerEstimate['description'] ?? '');
