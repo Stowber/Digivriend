@@ -360,7 +360,7 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
                 <option value="evening">16:00-20:00</option>
               </select>
             </label>
-            <button type="button" class="btn btn--primary btn--full" data-open-popover="contact-popover">Zapisz preferencję</button>
+            <button type="button" class="btn btn--primary btn--full">Zapisz preferencję</button>
           </div>
         </div>
       </div>
@@ -414,8 +414,6 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       </div>
       <div class="lab-legend" aria-label="Legenda statusów">
         <span class="legend-dot legend-dot--ready">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-        <span class="legend-dot legend-dot--live">Podgląd na żywo</span>
-        <span class="legend-dot legend-dot--ghost">Nowy layout</span>
       </div>
     </div>
 
@@ -431,34 +429,17 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
         <span class="lab-chip__label">Status partnera</span>
         <strong><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
       </div>
-      <div class="lab-chip" role="listitem">
-        <span class="lab-chip__label">Tryb pracy</span>
-        <button type="button" class="chip-button" data-open-popover="next-steps-popover">Kreator kroków</button>
-      </div>
-      <div class="lab-chip" role="listitem">
-        <span class="lab-chip__label">Nowy panel</span>
-        <button type="button" class="chip-button" data-drawer-open="estimate-drawer">Otwórz podgląd</button>
-      </div>
-      <div class="lab-chip" role="listitem">
-        <span class="lab-chip__label">Kontakt</span>
-        <button type="button" class="chip-button" data-open-popover="contact-popover">Wyślij preferencję</button>
-      </div>
     </div>
 
     <div class="estimate-lab__layout">
       <div class="estimate-lab__column">
         <div class="lab-panel">
-          <div class="lab-panel__header">
-            <div>
-              <p class="eyebrow">Twoja ostatnia wycena</p>
-              <h3>Live panel szczegółów</h3>
-            </div>
-            <div class="lab-panel__actions">
-              <button type="button" class="btn btn--ghost" data-drawer-open="estimate-drawer">Panel boczny</button>
-              <?php if ($canEditEstimate && !$isEditingEstimate): ?>
-                <a class="btn btn--primary" href="partner-case.php?id=<?= (int) $caseId ?>&edit_estimate=1">Tryb edycji</a>
-              <?php endif; ?>
-            </div>
+            <div class="lab-panel__header">
+              <div>
+                <p class="eyebrow">Twoja ostatnia wycena</p>
+                <h3>Live panel szczegółów</h3>
+              </div>
+              <div class="lab-panel__actions"></div>
             </div>
           <?php if ($partnerEstimate !== null): ?>
             <div class="lab-summary">
@@ -625,10 +606,7 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
               <p class="eyebrow">Nowa wycena</p>
               <h3>Tryb pisania + suwak kwoty</h3>
             </div>
-            <div class="lab-panel__actions">
-              <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Podpowiedzi</button>
-              <button type="button" class="btn btn--ghost" data-drawer-open="estimate-drawer">Podgląd</button>
-            </div>
+            <div class="lab-panel__actions"></div>
           </div>
           <?php if ($showEstimateForm): ?>
             <form method="post" class="estimate-form" novalidate>
@@ -707,67 +685,6 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
       </div>
     </div>
   </section>
-
-  <div class="drawer" id="estimate-drawer" aria-hidden="true" role="dialog" aria-label="Panel podglądu wyceny">
-    <div class="drawer__backdrop" data-drawer-close></div>
-    <div class="drawer__panel">
-      <header class="drawer__header">
-        <div>
-          <p class="drawer__eyebrow">Live podgląd</p>
-          <h3>Nowy wygląd bocznego panelu</h3>
-        </div>
-        <button type="button" class="drawer__close" data-drawer-close aria-label="Zamknij">&times;</button>
-      </header>
-      <div class="drawer__body">
-        <p class="muted">Suwak kwoty, mikro-usługi i makra tekstowe są od razu podglądane w tym panelu. Widok jest niezależny od formularza.</p>
-        <div class="drawer__grid">
-          <div>
-            <p class="drawer__label">Kwota robocza</p>
-            <p class="drawer__value" data-drawer-amount>€ <?= htmlspecialchars((string) ($amountValue ?? $partnerEstimate['amount'] ?? '0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-          </div>
-          <div>
-            <p class="drawer__label">Opis roboczy</p>
-            <p class="drawer__value drawer__value--muted" data-drawer-description><?= nl2br(htmlspecialchars((string) ($descriptionValue ?? $partnerEstimate['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
-          </div>
-        </div>
-        <div class="drawer__actions">
-          <button type="button" class="btn btn--ghost" data-open-popover="insights-popover">Zainspiruj</button>
-          <button type="button" class="btn btn--primary" data-drawer-close>Zamknij panel</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="floating-popovers" aria-live="polite">
-    <div class="floating-popover" id="next-steps-popover" hidden>
-      <div class="floating-popover__header">
-        <h3>Najbliższe kroki</h3>
-        <button type="button" class="floating-popover__close" data-popover-close aria-label="Zamknij">&times;</button>
-      </div>
-      <ol class="floating-popover__list">
-        <li>Potwierdź z klientem kanał kontaktu (dropdown w panelu).</li>
-        <li>Dodaj gotowy pakiet wyceny z listy rozwijanej i uzupełnij opis.</li>
-        <li>Załącz korektę, jeśli pojawiła się nowa informacja o sprzęcie.</li>
-      </ol>
-    </div>
-    <div class="floating-popover" id="contact-popover" hidden>
-      <div class="floating-popover__header">
-        <h3>Preferencja zapisana</h3>
-        <button type="button" class="floating-popover__close" data-popover-close aria-label="Zamknij">&times;</button>
-      </div>
-      <p class="floating-popover__body">Pracownik otrzyma aktualną preferencję kontaktu wraz z terminem. Możesz ją zmieniać bez wychodzenia ze strony.</p>
-    </div>
-    <div class="floating-popover" id="insights-popover" hidden>
-      <div class="floating-popover__header">
-        <h3>Podpowiedzi do wyceny</h3>
-        <button type="button" class="floating-popover__close" data-popover-close aria-label="Zamknij">&times;</button>
-      </div>
-      <ul class="floating-popover__list">
-        <li>Użyj przycisków dodatków, aby dodać checklistę serwisową.</li>
-        <li>Kopiuj opis do notatek klienta jednym kliknięciem.</li>
-        <li>Włącz tryb Express, jeśli klient oczekuje szybkiej diagnozy.</li>
-      </ul>
-    </div>
-  </div>
   <div class="toast-stack" data-toast-stack aria-live="polite"></div>
 </main>
 <?php if ($canReportCorrection): ?>
