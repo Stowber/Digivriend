@@ -236,6 +236,46 @@
     updateDrawer(amountField, descriptionField);
   }
 
+  function bindArchiveHelpers() {
+    const reasonField = document.querySelector('[data-archive-reason]');
+    const preview = document.querySelector('[data-archive-preview]');
+    const form = document.querySelector('[data-archive-form]');
+    const submitButton = document.querySelector('[data-archive-submit]');
+
+    const syncPreview = () => {
+      if (!preview) return;
+      const text = (reasonField ? reasonField.value : '').trim();
+      preview.textContent = text || 'Brak dodatkowego opisu – archiwizujesz czysto.';
+    };
+
+    document.querySelectorAll('[data-archive-template]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const template = button.dataset.archiveTemplate || '';
+        if (reasonField) {
+          reasonField.value = template;
+          reasonField.focus();
+        }
+        syncPreview();
+        showToast(button.dataset.toast || 'Dodano powód archiwizacji.');
+      });
+    });
+
+    if (reasonField) {
+      reasonField.addEventListener('input', syncPreview);
+      syncPreview();
+    }
+
+    if (submitButton && form) {
+      submitButton.addEventListener('click', () => {
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
+      });
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     bindTemplateSelects();
     bindDropdowns();
@@ -248,5 +288,6 @@
     bindDrawer();
     bindAmountRange();
     bindLiveDrawerSync();
+    bindArchiveHelpers();
   });
 })();

@@ -456,17 +456,33 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         <h3>Zakończ zlecenie po stronie partnera</h3>
         <p class="muted">Po zakończeniu prac możesz przenieść zlecenie do archiwum partnera. Informacje pozostaną dostępne w zakładce Archiwum.</p>
       </div>
+      <?php if ($partnerStatus !== 'archived'): ?>
+        <div class="archive-panel__cta">
+          <button type="button" class="btn btn--ghost btn--micro" data-modal-target="archive-modal">
+            <span class="btn__dot" aria-hidden="true"></span>
+            Szybkie zamknięcie
+          </button>
+          <p class="archive-panel__hint">Malutki przycisk z nowoczesnym popupem podpowie powód archiwizacji.</p>
+        </div>
+      <?php endif; ?>
       <?php if ($partnerStatus === 'archived'): ?>
         <div class="archive-panel__status">
           <span class="pill pill--warning">Sprawa w archiwum partnera</span>
         </div>
       <?php else: ?>
-        <form method="post" class="archive-panel__form" novalidate>
+        <form method="post" class="archive-panel__form" data-archive-form novalidate>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <input type="hidden" name="action" value="archive-case">
           <label class="form-field">
             <span class="form-field__label">Powód archiwizacji (opcjonalnie)</span>
-            <textarea name="archive_reason" rows="3" maxlength="300" placeholder="np. Zakończono naprawę i wydano sprzęt."><?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+            <textarea
+              id="archive-reason"
+              name="archive_reason"
+              rows="3"
+              maxlength="300"
+              placeholder="np. Zakończono naprawę i wydano sprzęt."
+              data-archive-reason
+            ><?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
             <?php if (!empty($errors['archive_reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['archive_reason']) ? implode(' ', array_map('strval', $errors['archive_reason'])) : (string) $errors['archive_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
           </label>
           <div class="form-actions">
@@ -475,6 +491,65 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         </form>
       <?php endif; ?>
     </div>
+
+    <?php if ($partnerStatus !== 'archived'): ?>
+      <div
+        class="modal"
+        id="archive-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-labelledby="archive-modal-title"
+      >
+        <div class="modal__panel" role="document">
+          <header class="modal__header">
+            <div>
+              <p class="modal__eyebrow">Archiwizacja</p>
+              <h2 id="archive-modal-title">Zamknij i archiwizuj jednym kliknięciem</h2>
+              <p class="muted">Nowoczesny popup pozwala szybko dodać opis i potwierdzić koniec zlecenia.</p>
+            </div>
+            <button type="button" class="modal__close" data-modal-close aria-label="Zamknij">&times;</button>
+          </header>
+          <div class="modal__body archive-modal__body">
+            <div class="archive-modal__highlight">
+              <span class="pill pill--status">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <p>Przeniesiemy sprawę do archiwum partnera i zachowamy pełny podgląd w historii.</p>
+            </div>
+            <div class="archive-modal__chips" role="list" aria-label="Szybkie powody archiwizacji">
+              <button type="button" class="archive-chip" data-archive-template="Zakończono naprawę i wydano sprzęt." data-toast="Dodano powód archiwizacji.">
+                <span class="archive-chip__dot"></span>
+                <span>
+                  <strong>Naprawa zakończona</strong>
+                  <small>Sprzęt odebrany, finisz prac.</small>
+                </span>
+              </button>
+              <button type="button" class="archive-chip" data-archive-template="Klient wycofał zlecenie – zamykamy sprawę." data-toast="Zaktualizowano opis archiwizacji.">
+                <span class="archive-chip__dot"></span>
+                <span>
+                  <strong>Wycofanie klienta</strong>
+                  <small>Notatka z decyzją klienta.</small>
+                </span>
+              </button>
+              <button type="button" class="archive-chip" data-archive-template="Przeniesiono do archiwum po długim braku aktywności." data-toast="Dodano szablon braku aktywności.">
+                <span class="archive-chip__dot"></span>
+                <span>
+                  <strong>Brak aktywności</strong>
+                  <small>Automatyczna finalizacja.</small>
+                </span>
+              </button>
+            </div>
+            <div class="archive-modal__preview" aria-live="polite">
+              <p class="archive-modal__preview-label">Podgląd powodu</p>
+              <p class="archive-modal__preview-text" data-archive-preview>Brak dodatkowego opisu – archiwizujesz czysto.</p>
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-modal-close>Wróć</button>
+            <button type="button" class="btn btn--primary" data-archive-submit>Potwierdź archiwizację</button>
+          </div>
+        </div>
+      </div>
+    <?php endif; ?>
 
     <div class="estimate-lab__meta" role="list" aria-label="Szybkie ustawienia">
       <div class="lab-chip" role="listitem">
