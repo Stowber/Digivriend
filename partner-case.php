@@ -326,6 +326,25 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
       </div>
       <h1 class="partner-case__title"><?= htmlspecialchars((string) ($case['summary'] ?? __('partner_case.hero.fallback_title')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
       <p class="muted"><?= htmlspecialchars(__('partner_case.hero.device_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>: <?= htmlspecialchars($deviceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      <?php if ($partnerStatus !== 'archived'): ?>
+        <div class="pill-row">
+          <span class="pill pill--status"><?= htmlspecialchars(__('partner_case.hero.status_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <?php if ($archiveLabel !== ''): ?>
+            <span class="pill pill--warning" aria-label="<?= htmlspecialchars(__('partner_case.hero.partner_status_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+      <?php if ($partnerStatus !== 'archived'): ?>
+        <div class="progress-ribbon" role="list" aria-label="<?= htmlspecialchars(__('partner_case.progress.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <?php $currentStep = $progressPosition[$partnerStatus] ?? 1; ?>
+          <?php foreach ($progressSteps as $index => $label): ?>
+            <div class="progress-ribbon__step<?= $index <= $currentStep ? ' is-active' : '' ?>" role="listitem">
+              <span class="progress-ribbon__index">0<?= (int) $index ?></span>
+              <span class="progress-ribbon__label"><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
       <div class="pill-row">
         <span class="pill pill--status"><?= htmlspecialchars(__('partner_case.hero.status_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         <?php if ($archiveLabel !== ''): ?>
@@ -432,6 +451,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         </div>
     </div>
   </section>
+  <?php if ($partnerStatus !== 'archived'): ?>
   <section class="card">
     <div class="card__header">
       <div>
@@ -746,6 +766,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
       <?php endif; ?>
     </div>
   </section>
+  <?php endif; ?>
   <div class="toast-stack" data-toast-stack aria-live="polite"></div>
 </main>
 <?php if ($canReportCorrection): ?>
