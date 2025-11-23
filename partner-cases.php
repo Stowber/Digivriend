@@ -141,11 +141,6 @@ $formatDate = static function (?string $value): string {
             <div class="archive-accordion__label">
               <span class="summary-card__label">Archiwum</span>
               <div class="archive-accordion__title">Sprawy przeniesione do archiwum</div>
-              <p class="archive-accordion__hint">Odnów widok na przeszłe sprawy w nowej, modernistycznej oprawie.</p>
-              <div class="archive-accordion__chips" aria-hidden="true">
-                <span class="chip chip--glass">Nowy layout</span>
-                <span class="chip chip--ghost">Tryb partnera</span>
-              </div>
             </div>
             <div class="archive-accordion__count" aria-hidden="true">
               <?= number_format(count($archivedCases), 0, ',', '.') ?>
