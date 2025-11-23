@@ -2213,55 +2213,66 @@ $partnerRequestPending = $partnerRequestStatus === 'pending';
       </div>
     <?php endif; ?>
     <section class="case-hero" data-case-status="<?= htmlspecialchars($caseStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-      <div class="case-hero__content">
-        <p class="case-hero__eyebrow">Case #<?= (int) $caseId ?> · <?= htmlspecialchars($caseTypeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-        <h1><?= htmlspecialchars($caseCustomerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
-        <p class="case-hero__subtitle">
-          <?= htmlspecialchars($caseDeviceSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-          <span>· <?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-        </p>
-        <div class="case-hero__badges">
-          <span class="case-badge <?= htmlspecialchars($statusBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Status: <?= htmlspecialchars($caseStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="case-badge <?= htmlspecialchars($priorityBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Priorytet: <?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          <span class="case-badge <?= htmlspecialchars($slaBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">SLA: <?= htmlspecialchars($slaDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+      <div class="case-hero__wrapper">
+        <div class="case-hero__content card card--glass">
+          <div class="case-hero__intro">
+            <p class="case-hero__eyebrow">Case #<?= (int) $caseId ?> · <?= htmlspecialchars($caseTypeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            <h1><?= htmlspecialchars($caseCustomerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+            <p class="case-hero__subtitle">
+              <?= htmlspecialchars($caseDeviceSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+              <span>· <?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            </p>
+            <div class="pill-row">
+              <span class="pill pill--status <?= htmlspecialchars($statusBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Status: <?= htmlspecialchars($caseStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <span class="pill pill--neutral <?= htmlspecialchars($priorityBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Priorytet: <?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <span class="pill pill--muted <?= htmlspecialchars($slaBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">SLA: <?= htmlspecialchars($slaDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            </div>
+          </div>
+          <dl class="case-hero__meta">
+            <div>
+              <dt>Referencja</dt>
+              <dd><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+            <div>
+              <dt>Ostatnia aktualizacja</dt>
+              <dd><?= htmlspecialchars($caseLastUpdatedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+            <div>
+              <dt>Kontakt</dt>
+              <dd><?= htmlspecialchars($primaryContactLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+          </dl>
+          <div class="case-hero__actions">
+            <button type="button" class="btn btn--primary" data-modal-target="case-appointment-modal">Zaplanuj wizytę</button>
+            <button type="button" class="btn btn--ghost" data-modal-target="case-close-modal">Zamknij case</button>
+            <a class="btn btn--ghost" href="magazyn.php?case=<?= (int) $caseId ?>">Magazyn</a>
+          </div>
         </div>
-        <dl class="case-hero__meta">
-          <div>
-            <dt>Referencja</dt>
-            <dd><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+        <div class="case-hero__panel card card--glass">
+          <div class="case-hero__panel-header">
+            <p class="eyebrow">Plan działań</p>
+            <h3>Najbliższe kroki</h3>
           </div>
-          <div>
-            <dt>Ostatnia aktualizacja</dt>
-            <dd><?= htmlspecialchars($caseLastUpdatedLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+          <dl class="case-hero__panel-meta">
+            <div>
+              <dt>Następna wizyta</dt>
+              <dd>
+                <strong><?= htmlspecialchars($nextAppointmentLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                <span><?= htmlspecialchars($nextAppointmentTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php if ($nextAppointmentStatus !== ''): ?>
+                  <span class="case-hero__panel-status"><?= htmlspecialchars(ucfirst($nextAppointmentStatus), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <?php endif; ?>
+              </dd>
+            </div>
+            <div>
+              <dt>Opis</dt>
+              <dd><?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+          </dl>
+          <div class="case-hero__actions">
+            <button type="button" class="btn btn--primary" data-modal-target="case-appointment-modal">Nowa wizyta</button>
+            <button type="button" class="btn btn--ghost" data-modal-target="case-close-modal">Zamknij</button>
           </div>
-          <div>
-            <dt>Kontakt</dt>
-            <dd><?= htmlspecialchars($primaryContactLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-          </div>
-        </dl>
-      </div>
-      <div class="case-hero__panel">
-        <h3>Najbliższe kroki</h3>
-        <dl class="case-hero__panel-meta">
-          <div>
-            <dt>Następna wizyta</dt>
-            <dd>
-              <strong><?= htmlspecialchars($nextAppointmentLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-              <span><?= htmlspecialchars($nextAppointmentTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-              <?php if ($nextAppointmentStatus !== ''): ?>
-                <span class="case-hero__panel-status"><?= htmlspecialchars(ucfirst($nextAppointmentStatus), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-              <?php endif; ?>
-            </dd>
-          </div>
-          <div>
-            <dt>Opis</dt>
-            <dd><?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
-          </div>
-        </dl>
-        <div class="case-hero__actions">
-          <button type="button" class="btn btn--primary" data-modal-target="case-appointment-modal">Zaplanuj wizytę</button>
-          <button type="button" class="btn btn--ghost" data-modal-target="case-close-modal">Zamknij case</button>
-          <a class="btn btn--ghost" href="magazyn.php?case=<?= (int) $caseId ?>">Magazyn</a>
         </div>
       </div>
     </section>
