@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $action = $_POST['action'] ?? '';
 
-        if (!in_array($action, ['submit-estimate', 'submit-correction'], true)) {
+        if (!in_array($action, ['submit-estimate', 'submit-correction', 'archive-case'], true)) {
             throw new ValidationException(['general' => 'Nieznane działanie.']);
         }
 
@@ -170,6 +170,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             Response::redirect('partner-case.php?id=' . (int) $caseId . '&correction_submitted=1');
         }
+
+        if ($action === 'archive-case') {
+            if ($partnerStatus === 'archived') {
+                throw new ValidationException(['general' => 'Sprawa jest już w archiwum.']);
+            }
+
+            $archiveReasonInput = InputValidator::optionalString($_POST, 'archive_reason', 300);
+
+            $workflow['status'] = 'archived';
+            $workflow['archived_at'] = Clock::nowFormatted();
+            $workflow['archive_reason'] = $archiveReasonInput !== '' ? $archiveReasonInput : null;
+            $workflow['archived_by'] = Auth::username();
+
+            $details['partner_workflow'] = $workflow;
+            $caseRepository->updateDetails((int) $caseId, $details);
+
+            Response::redirect('partner-case.php?id=' . (int) $caseId . '&archived=1');
+        }
     } catch (ValidationException $exception) {
         $errors = $exception->errors();
     }
@@ -181,6 +199,10 @@ if (filter_input(INPUT_GET, 'estimate_submitted', FILTER_VALIDATE_BOOLEAN)) {
 
 if (filter_input(INPUT_GET, 'correction_submitted', FILTER_VALIDATE_BOOLEAN)) {
     $successMessage = 'Zgłoszenie błędu zostało wysłane do pracownika.';
+}
+
+if (filter_input(INPUT_GET, 'archived', FILTER_VALIDATE_BOOLEAN)) {
+    $successMessage = 'Sprawa została zakończona i przeniesiona do archiwum partnera.';
 }
 
             $customer = $customerRepository->findById((int) ($case['customer_id'] ?? 0));
@@ -267,6 +289,9 @@ if (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'ap
 $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
     && ($_POST['action'] ?? '') === 'submit-correction'
     && $errors !== [];
+$archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'archive-case'
+    ? (string) ($_POST['archive_reason'] ?? '')
+    : $archiveReason;
 
 ?>
 <!DOCTYPE html>
@@ -424,6 +449,32 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
     <?php if (!empty($errors['general'])): ?>
       <div class="alert alert--danger"><?= htmlspecialchars(is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
     <?php endif; ?>
+
+    <div class="archive-panel">
+      <div>
+        <p class="eyebrow">Archiwizacja</p>
+        <h3>Zakończ zlecenie po stronie partnera</h3>
+        <p class="muted">Po zakończeniu prac możesz przenieść zlecenie do archiwum partnera. Informacje pozostaną dostępne w zakładce Archiwum.</p>
+      </div>
+      <?php if ($partnerStatus === 'archived'): ?>
+        <div class="archive-panel__status">
+          <span class="pill pill--warning">Sprawa w archiwum partnera</span>
+        </div>
+      <?php else: ?>
+        <form method="post" class="archive-panel__form" novalidate>
+          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <input type="hidden" name="action" value="archive-case">
+          <label class="form-field">
+            <span class="form-field__label">Powód archiwizacji (opcjonalnie)</span>
+            <textarea name="archive_reason" rows="3" maxlength="300" placeholder="np. Zakończono naprawę i wydano sprzęt."><?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+            <?php if (!empty($errors['archive_reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['archive_reason']) ? implode(' ', array_map('strval', $errors['archive_reason'])) : (string) $errors['archive_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--danger">Zakończ i archiwizuj</button>
+          </div>
+        </form>
+      <?php endif; ?>
+    </div>
 
     <div class="estimate-lab__meta" role="list" aria-label="Szybkie ustawienia">
       <div class="lab-chip" role="listitem">
