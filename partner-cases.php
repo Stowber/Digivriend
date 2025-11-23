@@ -194,8 +194,10 @@ $formatDate = static function (?string $value): string {
                   $reference = trim((string) ($case['reference_code'] ?? ''));
                   $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
                   $customerName = trim((string) ($case['customer_name'] ?? ''));
-                  $partnerStatusLabel = (string) ($case['partner_status_label'] ?? 'Archiwum');
-                  $archivedAt = $case['details']['partner_workflow']['archived_at'] ?? null;
+                  $partnerStatusLabelRaw = (string) ($case['partner_status_label'] ?? '');
+                  $partnerStatusLabel = trim($partnerStatusLabelRaw) !== '' ? $partnerStatusLabelRaw : 'Archiwum';
+                  $archivedAtRaw = $case['details']['partner_workflow']['archived_at'] ?? null;
+                  $archivedAt = is_string($archivedAtRaw) && trim($archivedAtRaw) !== '' ? $archivedAtRaw : null;
                 ?>
                 <tr
                   data-archive-row
