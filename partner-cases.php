@@ -100,7 +100,36 @@ $formatDate = static function (?string $value): string {
       <?php if ($activeCases === []): ?>
         <p class="panel__empty">Brak aktywnych spraw.</p>
       <?php else: ?>
-        <table class="partner-cases-table">
+        <div class="archive-shell">
+          <div class="archive-controls">
+            <label class="archive-search">
+              <span class="archive-search__label">Wyszukaj otwarte zlecenia</span>
+              <div class="archive-search__field">
+                <span class="archive-search__icon" aria-hidden="true">🔎</span>
+                <input
+                  type="search"
+                  name="active_search"
+                  placeholder="Imię klienta lub numer referencyjny"
+                  class="archive-search__input"
+                  data-active-search
+                >
+                <span class="archive-search__glow" aria-hidden="true"></span>
+              </div>
+            </label>
+
+            <div class="archive-meta" role="status" aria-live="polite" data-active-summary>
+              Wyświetlanie wszystkich <?= number_format(count($activeCases), 0, ',', '.') ?> pozycji
+            </div>
+          </div>
+
+          <div class="archive-pagination" data-active-pagination hidden>
+            <button type="button" class="btn btn--ghost" data-active-prev aria-label="Poprzednia strona">&larr;</button>
+            <span class="archive-pagination__label" data-active-page>Strona 1</span>
+            <button type="button" class="btn btn--ghost" data-active-next aria-label="Następna strona">&rarr;</button>
+          </div>
+        </div>
+
+        <table class="partner-cases-table" data-active-table>
           <thead>
             <tr>
               <th>Referencja</th>
@@ -118,8 +147,14 @@ $formatDate = static function (?string $value): string {
                 $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
                 $summary = trim((string) ($case['summary'] ?? ''));
                 $partnerStatusLabel = (string) ($case['partner_status_label'] ?? '—');
+                $customerName = trim((string) ($case['customer_name'] ?? ''));
               ?>
-              <tr>
+              <tr
+                data-active-row
+                data-reference="<?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                data-customer="<?= htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                data-summary="<?= htmlspecialchars($summary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+              >
                 <td><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                 <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
                 <td><?= htmlspecialchars($summary !== '' ? $summary : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
@@ -131,6 +166,7 @@ $formatDate = static function (?string $value): string {
             <?php endforeach; ?>
           </tbody>
         </table>
+        <p class="panel__empty" data-active-empty hidden>Brak wyników dla wybranego filtrowania.</p>
       <?php endif; ?>
     </section>
 
