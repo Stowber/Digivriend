@@ -176,8 +176,14 @@
 }
 
 .archive-accordion__table {
-  margin: 0.75rem 1rem 1rem;
+  margin: 0.5rem 0.75rem 0.75rem;
   border-spacing: 0 6px;
+}
+
+.archive-accordion__table th,
+.archive-accordion__table td {
+  padding: 0.6rem 0.75rem;
+  line-height: 1.3;
 }
 
 .archive-accordion .panel__empty {
