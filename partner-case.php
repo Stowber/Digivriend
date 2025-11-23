@@ -450,28 +450,24 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
       <div class="alert alert--danger"><?= htmlspecialchars(is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
     <?php endif; ?>
 
-    <div class="archive-panel">
-      <?php if ($partnerStatus === 'archived'): ?>
+    <?php if ($partnerStatus === 'archived'): ?>
+      <div class="archive-panel">
         <div class="archive-panel__status">
           <span class="pill pill--warning">Sprawa w archiwum partnera</span>
         </div>
-      <?php else: ?>
-        <div class="archive-panel__cta">
-          <button type="button" class="btn btn--ghost btn--micro" data-modal-target="archive-modal">
-            <span class="btn__dot" aria-hidden="true"></span>
-            Zakończ i archiwizuj
-          </button>
+      </div>
+    <?php endif; ?>
+
+    <?php if ($partnerStatus !== 'archived'): ?>
+      <form method="post" class="archive-panel__form" data-archive-form novalidate hidden>
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+        <input type="hidden" name="action" value="archive-case">
+        <input type="hidden" name="archive_reason" data-archive-reason value="<?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+        <div class="form-actions">
+          <button type="submit" class="btn btn--danger">Zakończ i archiwizuj</button>
         </div>
-        <form method="post" class="archive-panel__form" data-archive-form novalidate hidden>
-          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-          <input type="hidden" name="action" value="archive-case">
-          <input type="hidden" name="archive_reason" data-archive-reason value="<?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-          <div class="form-actions">
-            <button type="submit" class="btn btn--danger">Zakończ i archiwizuj</button>
-          </div>
         </form>
-      <?php endif; ?>
-    </div>
+    <?php endif; ?>
 
     <?php if ($partnerStatus !== 'archived'): ?>
       <div
@@ -605,6 +601,9 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
               </div>
             </div>
             <div class="lab-panel__footer">
+              <?php if ($partnerStatus !== 'archived'): ?>
+                <button type="button" class="btn btn--ghost btn--archive" data-modal-target="archive-modal">Zakończ i archiwizuj</button>
+              <?php endif; ?>
               <?php if ($canReportCorrection): ?>
                 <?php if ($pendingCorrection): ?>
                   <span class="status-badge" aria-label="Status korekty">Korekta oczekuje na decyzję</span>

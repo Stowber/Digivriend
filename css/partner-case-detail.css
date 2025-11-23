@@ -1016,6 +1016,18 @@ body.modal-open {
   width: 100%;
 }
 
+.btn--archive {
+  background: rgba(249, 115, 22, 0.14);
+  color: #c2410c;
+  box-shadow: none;
+}
+
+.btn--archive:hover,
+.btn--archive:focus {
+  background: rgba(249, 115, 22, 0.2);
+  color: #9a3412;
+}
+
 .archive-panel {
   display: flex;
   flex-wrap: wrap;
