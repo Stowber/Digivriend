@@ -470,7 +470,13 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
           <span class="pill pill--warning">Sprawa w archiwum partnera</span>
         </div>
       <?php else: ?>
-        <form method="post" class="archive-panel__form" data-archive-form novalidate>
+        <div class="archive-panel__cta">
+          <button type="button" class="btn btn--ghost btn--micro" data-modal-target="archive-modal">
+            <span class="btn__dot" aria-hidden="true"></span>
+            Zakończ i archiwizuj
+          </button>
+        </div>
+        <form method="post" class="archive-panel__form" data-archive-form novalidate hidden>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <input type="hidden" name="action" value="archive-case">
           <input type="hidden" name="archive_reason" data-archive-reason value="<?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
