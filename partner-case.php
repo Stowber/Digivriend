@@ -242,7 +242,7 @@ if (is_string($deviceNotes)) {
     $deviceNotesText = trim((string) $deviceNotes);
 }
 
-$archiveLabel = $partnerStatus === 'archived' ? __('partner_case.archive.badge') : '';
+$archiveLabel = $partnerStatus === 'archived' ? '' : __('partner_case.archive.badge');
 
 $canEditEstimate = in_array($partnerStatus, ['awaiting_acceptance', 'estimate_submitted', 'counter_review'], true);
 if ($partnerEstimate === null) {
@@ -332,15 +332,17 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
           <span class="pill pill--warning" aria-label="<?= htmlspecialchars(__('partner_case.hero.partner_status_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         <?php endif; ?>
       </div>
-      <div class="progress-ribbon" role="list" aria-label="<?= htmlspecialchars(__('partner_case.progress.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-        <?php $currentStep = $progressPosition[$partnerStatus] ?? 1; ?>
-        <?php foreach ($progressSteps as $index => $label): ?>
-          <div class="progress-ribbon__step<?= $index <= $currentStep ? ' is-active' : '' ?>" role="listitem">
-            <span class="progress-ribbon__index">0<?= (int) $index ?></span>
-            <span class="progress-ribbon__label"><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-          </div>
-        <?php endforeach; ?>
-      </div>
+      <?php if ($partnerStatus !== 'archived'): ?>
+        <div class="progress-ribbon" role="list" aria-label="<?= htmlspecialchars(__('partner_case.progress.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <?php $currentStep = $progressPosition[$partnerStatus] ?? 1; ?>
+          <?php foreach ($progressSteps as $index => $label): ?>
+            <div class="progress-ribbon__step<?= $index <= $currentStep ? ' is-active' : '' ?>" role="listitem">
+              <span class="progress-ribbon__index">0<?= (int) $index ?></span>
+              <span class="progress-ribbon__label"><?= htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
       <?php if ($archivedAt !== '' || $archiveReason !== ''): ?>
         <p class="muted partner-case__archive">
           <?php if ($archivedAt !== ''): ?><?= htmlspecialchars(__('partner_case.hero.archived_at', ['date' => date('d-m-Y H:i', strtotime($archivedAt))]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
@@ -447,14 +449,6 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
     <?php endif; ?>
     <?php if (!empty($errors['general'])): ?>
       <div class="alert alert--danger"><?= htmlspecialchars(is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
-    <?php endif; ?>
-
-    <?php if ($partnerStatus === 'archived'): ?>
-      <div class="archive-panel">
-        <div class="archive-panel__status">
-          <span class="pill pill--warning"><?= htmlspecialchars(__('partner_case.estimate_lab.archive_notice'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-        </div>
-      </div>
     <?php endif; ?>
 
     <?php if ($partnerStatus !== 'archived'): ?>
