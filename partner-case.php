@@ -444,21 +444,21 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
             </div>
           <?php if ($partnerEstimate !== null): ?>
             <div class="lab-summary">
-              <div>
+              <div class="lab-summary__item">
                 <p class="lab-summary__label">Kwota</p>
                 <p class="lab-summary__value">€ <?= number_format((float) ($partnerEstimate['amount'] ?? 0), 2, ',', ' ') ?></p>
               </div>
-            <div>
+            <div class="lab-summary__item">
                 <p class="lab-summary__label">Opis</p>
                 <p class="lab-summary__value lab-summary__value--muted"><?= nl2br(htmlspecialchars((string) ($partnerEstimate['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
               </div>
               <?php if (!empty($partnerEstimate['submitted_at'])): ?>
-                <div>
+                <div class="lab-summary__item">
                   <p class="lab-summary__label">Wysłano</p>
                   <p class="lab-summary__value lab-summary__value--muted"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $partnerEstimate['submitted_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 </div>
               <?php endif; ?>
-              </div>
+            </div>
             <div class="lab-grid lab-grid--two">
               <div class="lab-tile">
                 <p class="lab-tile__label">Decyzja klienta</p>

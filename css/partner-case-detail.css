@@ -510,15 +510,26 @@
 
 .lab-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
+  gap: 8px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 10px;
 }
 
+.lab-summary__item {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
 .lab-panel--primary .lab-summary { background: rgba(255, 255, 255, 0.06); border-color: rgba(148, 163, 184, 0.4); }
+.lab-panel--primary .lab-summary__item { background: rgba(255, 255, 255, 0.05); border-color: rgba(148, 163, 184, 0.4); }
 
 .lab-summary__label { margin: 0; color: var(--color-muted); }
 .lab-panel--primary .lab-summary__label { color: #cbd5e1; }
