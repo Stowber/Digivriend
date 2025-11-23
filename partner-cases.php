@@ -152,12 +152,34 @@ $formatDate = static function (?string $value): string {
         <?php if ($archivedCases === []): ?>
           <p class="panel__empty">Brak zarchiwizowanych spraw.</p>
         <?php else: ?>
-          <table class="partner-cases-table archive-accordion__table">
+          <div class="archive-controls">
+            <label class="archive-search">
+              <span class="archive-search__label">Wyszukaj w archiwum</span>
+              <input
+                type="search"
+                name="archive_search"
+                placeholder="Imię klienta lub numer referencyjny"
+                class="archive-search__input"
+                data-archive-search
+              >
+            </label>
+
+            <div class="archive-meta" role="status" aria-live="polite" data-archive-summary>
+              Wyświetlanie wszystkich <?= number_format(count($archivedCases), 0, ',', '.') ?> pozycji
+            </div>
+          </div>
+
+          <div class="archive-pagination" data-archive-pagination hidden>
+            <button type="button" class="btn btn--ghost" data-archive-prev aria-label="Poprzednia strona">&larr;</button>
+            <span class="archive-pagination__label" data-archive-page>Strona 1</span>
+            <button type="button" class="btn btn--ghost" data-archive-next aria-label="Następna strona">&rarr;</button>
+          </div>
+
+          <table class="partner-cases-table archive-accordion__table" data-archive-table>
             <thead>
               <tr>
                 <th>Referencja</th>
                 <th>Status partnera</th>
-                <th>Opis</th>
                 <th>Zarchiwizowano</th>
                 <th class="text-right">Podgląd</th>
               </tr>
@@ -168,14 +190,22 @@ $formatDate = static function (?string $value): string {
                   $caseId = (int) ($case['id'] ?? 0);
                   $reference = trim((string) ($case['reference_code'] ?? ''));
                   $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
-                  $summary = trim((string) ($case['summary'] ?? ''));
+                  $customerName = trim((string) ($case['customer_name'] ?? ''));
                   $partnerStatusLabel = (string) ($case['partner_status_label'] ?? 'Archiwum');
                   $archivedAt = $case['details']['partner_workflow']['archived_at'] ?? null;
                 ?>
-                <tr>
-                  <td><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                <tr
+                  data-archive-row
+                  data-reference="<?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                  data-customer="<?= htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                >
+                  <td>
+                    <div class="table-primary"><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    <?php if ($customerName !== ''): ?>
+                      <div class="table-subtle">Klient: <?= htmlspecialchars($customerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+                    <?php endif; ?>
+                  </td>
                   <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
-                  <td><?= htmlspecialchars($summary !== '' ? $summary : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars($formatDate($archivedAt ?? $case['updated_at'] ?? null), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                   <td class="text-right">
                     <a class="btn btn--ghost" href="partner-case.php?id=<?= $caseId ?>">Podgląd</a>
@@ -184,9 +214,11 @@ $formatDate = static function (?string $value): string {
               <?php endforeach; ?>
             </tbody>
           </table>
+          <p class="panel__empty" data-archive-empty hidden>Brak wyników dla wybranego filtrowania.</p>
         <?php endif; ?>
       </details>
     </section>
   </main>
+  <script src="js/partner-cases.js"></script>
 </body>
 </html>

@@ -143,4 +143,71 @@
 
 .archive-accordion .panel__empty {
   margin: 0 1rem 0.75rem;
+  }
+
+.archive-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin: 0.75rem 1rem 0.25rem;
+}
+
+.archive-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(320px, 100%);
+  flex: 1;
+}
+
+.archive-search__label {
+  font-weight: 600;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.archive-search__input {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.archive-search__input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.archive-meta {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.archive-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 1rem 0.75rem;
+}
+
+.archive-pagination .btn {
+  padding: 0.35rem 0.8rem;
+}
+
+.archive-pagination__label {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.table-primary {
+  font-weight: 700;
+}
+
+.table-subtle {
+  color: var(--color-muted);
+  font-size: 0.9rem;
 }
