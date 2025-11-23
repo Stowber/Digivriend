@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const normalize = (value = '') => value.toString().trim().toLowerCase();
 
+  const formatTemplate = (template, values) => Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`:${key}`, value),
+    template,
+  );
+
   const createTableController = ({
     tableSelector,
     rowSelector,
@@ -30,13 +35,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.querySelector(nextSelector);
     const emptyState = document.querySelector(emptySelector);
 
+    const summaryTemplates = {
+      range: summary?.dataset.rangeTemplate ?? 'Showing :start–:end of :total items',
+      all: summary?.dataset.allTemplate ?? 'Showing all :total items',
+      empty: summary?.dataset.emptyLabel ?? 'No results',
+    };
+
+    const pageTemplates = {
+      page: pageLabel?.dataset.pageTemplate ?? 'Page :current of :total',
+      empty: pageLabel?.dataset.emptyLabel ?? summaryTemplates.empty,
+    };
+
     let currentPage = 1;
     let filteredRows = [...rows];
 
     const updateSummary = (start, end, total) => {
       if (!summary) return;
       const startLabel = total === 0 ? 0 : start + 1;
-      summary.textContent = `Wyświetlanie ${startLabel}–${end} z ${total} pozycji`;
+      const label = total === 0
+        ? summaryTemplates.empty
+        : total <= pageSize
+          ? formatTemplate(summaryTemplates.all, { total })
+          : formatTemplate(summaryTemplates.range, { start: startLabel, end, total });
+      summary.textContent = label;
     };
 
     const renderRows = () => {
@@ -67,7 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (pageLabel) {
-        pageLabel.textContent = total === 0 ? 'Brak wyników' : `Strona ${currentPage} z ${totalPages}`;
+        pageLabel.textContent = total === 0
+          ? pageTemplates.empty
+          : formatTemplate(pageTemplates.page, { current: currentPage, total: totalPages });
       }
 
       if (prevBtn) {

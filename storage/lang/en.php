@@ -76,6 +76,47 @@ return [
             'view' => 'Open case',
             'empty' => 'No cases have been shared with your company yet.',
         ],
+        'list' => [
+            'active' => [
+                'label' => 'Active',
+                'empty' => 'No active cases.',
+                'search_label' => 'Search open cases',
+                'search_placeholder' => 'Customer name or reference number',
+                'table' => [
+                    'reference' => 'Reference',
+                    'status' => 'Partner status',
+                    'summary' => 'Summary',
+                    'updated' => 'Last update',
+                    'manage' => 'Manage',
+                ],
+                'filter_empty' => 'No results for the selected filters.',
+            ],
+            'archive' => [
+                'aria' => 'Partner archive',
+                'label' => 'Archive',
+                'title' => 'Cases moved to archive',
+                'empty' => 'No archived cases.',
+                'search_label' => 'Search the archive',
+                'search_placeholder' => 'Customer name or reference number',
+                'table' => [
+                    'reference' => 'Reference',
+                    'status' => 'Partner status',
+                    'archived' => 'Archived on',
+                    'customer' => 'Customer:',
+                    'preview' => 'Preview',
+                    'status_fallback' => 'Archived',
+                ],
+                'filter_empty' => 'No results for the selected filters.',
+            ],
+            'pagination' => [
+                'all' => 'Showing all :total items',
+                'range' => 'Showing :start–:end of :total items',
+                'page' => 'Page :current of :total',
+                'empty' => 'No results',
+                'previous' => 'Previous page',
+                'next' => 'Next page',
+            ],
+        ],
     ],
     'partner_case' => [
         'meta' => [

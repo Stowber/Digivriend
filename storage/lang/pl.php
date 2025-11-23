@@ -76,6 +76,47 @@ return [
             'view' => 'Otwórz zlecenie',
             'empty' => 'Brak zleceń przekazanych Twojej firmie.',
         ],
+        'list' => [
+            'active' => [
+                'label' => 'Aktywne',
+                'empty' => 'Brak aktywnych spraw.',
+                'search_label' => 'Wyszukaj otwarte zlecenia',
+                'search_placeholder' => 'Imię klienta lub numer referencyjny',
+                'table' => [
+                    'reference' => 'Referencja',
+                    'status' => 'Status partnera',
+                    'summary' => 'Opis',
+                    'updated' => 'Ostatnia aktualizacja',
+                    'manage' => 'Zarządzaj',
+                ],
+                'filter_empty' => 'Brak wyników dla wybranego filtrowania.',
+            ],
+            'archive' => [
+                'aria' => 'Archiwum partnera',
+                'label' => 'Archiwum',
+                'title' => 'Sprawy przeniesione do archiwum',
+                'empty' => 'Brak zarchiwizowanych spraw.',
+                'search_label' => 'Wyszukaj w archiwum',
+                'search_placeholder' => 'Imię klienta lub numer referencyjny',
+                'table' => [
+                    'reference' => 'Referencja',
+                    'status' => 'Status partnera',
+                    'archived' => 'Zarchiwizowano',
+                    'customer' => 'Klient:',
+                    'preview' => 'Podgląd',
+                    'status_fallback' => 'Archiwum',
+                ],
+                'filter_empty' => 'Brak wyników dla wybranego filtrowania.',
+            ],
+            'pagination' => [
+                'all' => 'Wyświetlanie wszystkich :total pozycji',
+                'range' => 'Wyświetlanie :start–:end z :total pozycji',
+                'page' => 'Strona :current z :total',
+                'empty' => 'Brak wyników',
+                'previous' => 'Poprzednia strona',
+                'next' => 'Następna strona',
+            ],
+        ],
     ],
     'partner_case' => [
         'meta' => [

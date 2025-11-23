@@ -76,6 +76,47 @@ return [
             'view' => 'Open zaak',
             'empty' => 'Er zijn nog geen zaken met jouw bedrijf gedeeld.',
         ],
+        'list' => [
+            'active' => [
+                'label' => 'Actief',
+                'empty' => 'Geen actieve zaken.',
+                'search_label' => 'Zoek open zaken',
+                'search_placeholder' => 'Klantnaam of referentienummer',
+                'table' => [
+                    'reference' => 'Referentie',
+                    'status' => 'Partnerstatus',
+                    'summary' => 'Samenvatting',
+                    'updated' => 'Laatste update',
+                    'manage' => 'Beheren',
+                ],
+                'filter_empty' => 'Geen resultaten voor dit filter.',
+            ],
+            'archive' => [
+                'aria' => 'Partnerarchief',
+                'label' => 'Archief',
+                'title' => 'Dossiers verplaatst naar archief',
+                'empty' => 'Geen gearchiveerde zaken.',
+                'search_label' => 'Zoek in het archief',
+                'search_placeholder' => 'Klantnaam of referentienummer',
+                'table' => [
+                    'reference' => 'Referentie',
+                    'status' => 'Partnerstatus',
+                    'archived' => 'Gearchiveerd op',
+                    'customer' => 'Klant:',
+                    'preview' => 'Bekijken',
+                    'status_fallback' => 'Archief',
+                ],
+                'filter_empty' => 'Geen resultaten voor dit filter.',
+            ],
+            'pagination' => [
+                'all' => 'Alle :total items',
+                'range' => 'Weergave :start–:end van :total items',
+                'page' => 'Pagina :current van :total',
+                'empty' => 'Geen resultaten',
+                'previous' => 'Vorige pagina',
+                'next' => 'Volgende pagina',
+            ],
+        ],
     ],
     'partner_case' => [
         'meta' => [
