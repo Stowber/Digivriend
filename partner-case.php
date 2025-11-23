@@ -460,7 +460,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         <div class="archive-panel__cta">
           <button type="button" class="btn btn--ghost btn--micro" data-modal-target="archive-modal">
             <span class="btn__dot" aria-hidden="true"></span>
-            Szybkie zamknięcie
+            Zakończ i archiwizuj
           </button>
           <p class="archive-panel__hint">Malutki przycisk z nowoczesnym popupem podpowie powód archiwizacji.</p>
         </div>
@@ -473,18 +473,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         <form method="post" class="archive-panel__form" data-archive-form novalidate>
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <input type="hidden" name="action" value="archive-case">
-          <label class="form-field">
-            <span class="form-field__label">Powód archiwizacji (opcjonalnie)</span>
-            <textarea
-              id="archive-reason"
-              name="archive_reason"
-              rows="3"
-              maxlength="300"
-              placeholder="np. Zakończono naprawę i wydano sprzęt."
-              data-archive-reason
-            ><?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-            <?php if (!empty($errors['archive_reason'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['archive_reason']) ? implode(' ', array_map('strval', $errors['archive_reason'])) : (string) $errors['archive_reason'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-          </label>
+          <input type="hidden" name="archive_reason" data-archive-reason value="<?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <div class="form-actions">
             <button type="submit" class="btn btn--danger">Zakończ i archiwizuj</button>
           </div>

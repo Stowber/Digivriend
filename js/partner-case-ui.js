@@ -253,7 +253,6 @@
         const template = button.dataset.archiveTemplate || '';
         if (reasonField) {
           reasonField.value = template;
-          reasonField.focus();
         }
         syncPreview();
         showToast(button.dataset.toast || 'Dodano powód archiwizacji.');
