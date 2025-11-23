@@ -137,10 +137,15 @@ $formatDate = static function (?string $value): string {
     <section class="table-shell partner-cases-card" aria-label="Archiwum partnera">
       <details class="archive-accordion">
         <summary class="archive-accordion__summary">
-          <div class="partner-cases-meta archive-accordion__meta">
-            <div>
+          <div class="archive-accordion__meta">
+            <div class="archive-accordion__label">
               <span class="summary-card__label">Archiwum</span>
-              <p class="archive-accordion__hint">Sprawy przeniesione do archiwum</p>
+              <div class="archive-accordion__title">Sprawy przeniesione do archiwum</div>
+              <p class="archive-accordion__hint">Odnów widok na przeszłe sprawy w nowej, modernistycznej oprawie.</p>
+              <div class="archive-accordion__chips" aria-hidden="true">
+                <span class="chip chip--glass">Nowy layout</span>
+                <span class="chip chip--ghost">Tryb partnera</span>
+              </div>
             </div>
             <div class="archive-accordion__count" aria-hidden="true">
               <?= number_format(count($archivedCases), 0, ',', '.') ?>
@@ -152,27 +157,33 @@ $formatDate = static function (?string $value): string {
         <?php if ($archivedCases === []): ?>
           <p class="panel__empty">Brak zarchiwizowanych spraw.</p>
         <?php else: ?>
-          <div class="archive-controls">
-            <label class="archive-search">
-              <span class="archive-search__label">Wyszukaj w archiwum</span>
-              <input
-                type="search"
-                name="archive_search"
-                placeholder="Imię klienta lub numer referencyjny"
-                class="archive-search__input"
-                data-archive-search
-              >
-            </label>
+          <div class="archive-shell">
+            <div class="archive-controls">
+              <label class="archive-search">
+                <span class="archive-search__label">Wyszukaj w archiwum</span>
+                <div class="archive-search__field">
+                  <span class="archive-search__icon" aria-hidden="true">🔎</span>
+                  <input
+                    type="search"
+                    name="archive_search"
+                    placeholder="Imię klienta lub numer referencyjny"
+                    class="archive-search__input"
+                    data-archive-search
+                  >
+                  <span class="archive-search__glow" aria-hidden="true"></span>
+                </div>
+              </label>
 
-            <div class="archive-meta" role="status" aria-live="polite" data-archive-summary>
-              Wyświetlanie wszystkich <?= number_format(count($archivedCases), 0, ',', '.') ?> pozycji
+              <div class="archive-meta" role="status" aria-live="polite" data-archive-summary>
+                Wyświetlanie wszystkich <?= number_format(count($archivedCases), 0, ',', '.') ?> pozycji
+              </div>
             </div>
-          </div>
 
           <div class="archive-pagination" data-archive-pagination hidden>
-            <button type="button" class="btn btn--ghost" data-archive-prev aria-label="Poprzednia strona">&larr;</button>
-            <span class="archive-pagination__label" data-archive-page>Strona 1</span>
-            <button type="button" class="btn btn--ghost" data-archive-next aria-label="Następna strona">&rarr;</button>
+              <button type="button" class="btn btn--ghost" data-archive-prev aria-label="Poprzednia strona">&larr;</button>
+              <span class="archive-pagination__label" data-archive-page>Strona 1</span>
+              <button type="button" class="btn btn--ghost" data-archive-next aria-label="Następna strona">&rarr;</button>
+            </div>
           </div>
 
           <table class="partner-cases-table archive-accordion__table" data-archive-table>
