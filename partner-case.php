@@ -18,12 +18,12 @@ require __DIR__ . '/auth.php';
 require_once __DIR__ . '/templates/partials/main-nav.php';
 
 if (Auth::role() !== 'partner') {
-    Response::error('Toegang geweigerd.', 403);
+    Response::error(__('partner_case.errors.access_denied'), 403);
 }
 
 $caseId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 if ($caseId === null || $caseId === false) {
-    Response::error('Ongeldig of ontbrekend case-ID.', 400);
+    Response::error(__('partner_case.errors.invalid_case_id'), 400);
 }
 
 $caseRepository = new CaseRepository($pdo);
@@ -33,21 +33,21 @@ $errors = [];
 $successMessage = '';
 
 $statusLabels = [
-    'awaiting_acceptance' => 'Oczekuje na akceptację',
-    'diagnosis' => 'W trakcie diagnozy',
-    'estimate_submitted' => 'Wycena wysłana',
-    'counter_review' => 'Zmiana ceny',
-    'estimate_declined' => 'Wycena odrzucona',
-    'repair_ready' => 'Wycena zaakceptowana',
-    'repair_in_progress' => 'Naprawa',
-    'correction_review' => 'Korekta oczekuje na zatwierdzenie',
-    'archived' => 'Archiwum',
+    'awaiting_acceptance' => __('partner_case.status.awaiting_acceptance'),
+    'diagnosis' => __('partner_case.status.diagnosis'),
+    'estimate_submitted' => __('partner_case.status.estimate_submitted'),
+    'counter_review' => __('partner_case.status.counter_review'),
+    'estimate_declined' => __('partner_case.status.estimate_declined'),
+    'repair_ready' => __('partner_case.status.repair_ready'),
+    'repair_in_progress' => __('partner_case.status.repair_in_progress'),
+    'correction_review' => __('partner_case.status.correction_review'),
+    'archived' => __('partner_case.status.archived'),
 ];
 
 $case = $caseRepository->findById((int) $caseId);
 
 if ($case === null) {
-    Response::error('Case niet gevonden.', 404);
+    Response::error(__('partner_case.errors.case_not_found'), 404);
 }
 
 $details = [];
@@ -60,7 +60,7 @@ if (!empty($case['details'])) {
 
 $partnerId = isset($details['partner_id']) ? (int) $details['partner_id'] : null;
 if ($partnerId !== Auth::id()) {
-    Response::error('Deze case is niet gekoppeld aan jouw partneraccount.', 403);
+    Response::error(__('partner_case.errors.not_linked'), 403);
 }
 
 $workflow = [];
@@ -87,25 +87,25 @@ $csrfToken = Csrf::token();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!Csrf::validate($_POST['csrf_token'] ?? '')) {
-            throw new ValidationException(['general' => 'Nieprawidłowa sesja, odśwież stronę i spróbuj ponownie.']);
+            throw new ValidationException(['general' => __('partner_case.form.errors.invalid_session')]);
         }
 
         $action = $_POST['action'] ?? '';
 
         if (!in_array($action, ['submit-estimate', 'submit-correction', 'archive-case'], true)) {
-            throw new ValidationException(['general' => 'Nieznane działanie.']);
+            throw new ValidationException(['general' => __('partner_case.form.errors.unknown_action')]);
         }
 
         if ($action === 'submit-estimate') {
             if ($partnerStatus === 'repair_ready') {
-                throw new ValidationException(['general' => 'Zaakceptowanej wyceny nie można już zmienić.']);
+                throw new ValidationException(['general' => __('partner_case.form.errors.estimate_locked')]);
             }
 
             $amountRaw = InputValidator::requireString($_POST, 'estimate_amount', 32);
             $normalizedAmount = str_replace(',', '.', $amountRaw);
             $amount = filter_var($normalizedAmount, FILTER_VALIDATE_FLOAT);
             if ($amount === false || $amount <= 0) {
-                throw new ValidationException(['estimate_amount' => 'Podaj kwotę wyceny większą od zera.']);
+                throw new ValidationException(['estimate_amount' => __('partner_case.form.errors.amount_positive')]);
             }
 
             $description = InputValidator::requireString($_POST, 'estimate_description', 500);
@@ -137,18 +137,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'submit-correction') {
             if ($partnerStatus !== 'repair_ready') {
-                throw new ValidationException(['general' => 'Błąd można zgłosić tylko po akceptacji wyceny.']);
+               throw new ValidationException(['general' => __('partner_case.form.errors.correction_requires_approval')]);
             }
 
             if (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'pending') {
-                throw new ValidationException(['general' => 'Poprzednie zgłoszenie błędu oczekuje na decyzję.']);
+                throw new ValidationException(['general' => __('partner_case.form.errors.correction_pending')]);
             }
 
             $amountRaw = InputValidator::requireString($_POST, 'estimate_amount', 32);
             $normalizedAmount = str_replace(',', '.', $amountRaw);
             $amount = filter_var($normalizedAmount, FILTER_VALIDATE_FLOAT);
             if ($amount === false || $amount <= 0) {
-                throw new ValidationException(['estimate_amount' => 'Podaj kwotę wyceny większą od zera.']);
+                throw new ValidationException(['estimate_amount' => __('partner_case.form.errors.amount_positive')]);
             }
 
             $description = InputValidator::requireString($_POST, 'estimate_description', 500);
@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'archive-case') {
             if ($partnerStatus === 'archived') {
-                throw new ValidationException(['general' => 'Sprawa jest już w archiwum.']);
+                throw new ValidationException(['general' => __('partner_case.form.errors.already_archived')]);
             }
 
             $archiveReasonInput = InputValidator::optionalString($_POST, 'archive_reason', 300);
@@ -194,20 +194,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (filter_input(INPUT_GET, 'estimate_submitted', FILTER_VALIDATE_BOOLEAN)) {
-    $successMessage = 'Wycena została wysłana do pracownika.';
+    $successMessage = __('partner_case.messages.estimate_submitted');
 }
 
 if (filter_input(INPUT_GET, 'correction_submitted', FILTER_VALIDATE_BOOLEAN)) {
-    $successMessage = 'Zgłoszenie błędu zostało wysłane do pracownika.';
+    $successMessage = __('partner_case.messages.correction_submitted');
 }
 
 if (filter_input(INPUT_GET, 'archived', FILTER_VALIDATE_BOOLEAN)) {
-    $successMessage = 'Sprawa została zakończona i przeniesiona do archiwum partnera.';
+    $successMessage = __('partner_case.messages.archived');
 }
 
             $customer = $customerRepository->findById((int) ($case['customer_id'] ?? 0));
 if ($customer === null) {
-    Response::error('Klient nie znaleziony.', 404);
+    Response::error(__('partner_case.errors.customer_not_found'), 404);
 }
 
             $device = null;
@@ -215,13 +215,13 @@ if (!empty($case['device_id'])) {
     $device = $deviceRepository->findById((int) $case['device_id']);
 }
 
-            $deviceBrand = $details['device_brand'] ?? ($device['brand'] ?? null);
+$deviceBrand = $details['device_brand'] ?? ($device['brand'] ?? null);
 $deviceModel = $details['device_model'] ?? ($device['model'] ?? null);
 $deviceSerial = $details['device_serial'] ?? ($device['serial_number'] ?? null);
 $deviceType = $details['device_type'] ?? ($device['device_type'] ?? null);
 $deviceNotes = $details['device_notes'] ?? ($device['notes'] ?? null);
 
-$deviceLabel = 'Onbekend apparaat';
+$deviceLabel = __('partner_case.device.unknown');
 $deviceLabelParts = array_filter([$deviceBrand, $deviceModel], static fn ($part) => is_string($part) && trim((string) $part) !== '');
 if ($deviceLabelParts !== []) {
     $deviceLabel = trim(implode(' ', $deviceLabelParts));
@@ -242,7 +242,7 @@ if (is_string($deviceNotes)) {
     $deviceNotesText = trim((string) $deviceNotes);
 }
 
-$archiveLabel = $partnerStatus === 'archived' ? 'Archiwum partnera' : '';
+$archiveLabel = $partnerStatus === 'archived' ? __('partner_case.archive.badge') : '';
 
 $canEditEstimate = in_array($partnerStatus, ['awaiting_acceptance', 'estimate_submitted', 'counter_review'], true);
 if ($partnerEstimate === null) {
@@ -261,11 +261,11 @@ $descriptionValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?
     ? (string) ($_POST['estimate_description'] ?? '')
     : ($partnerEstimate['description'] ?? '');
 $progressSteps = [
-    1 => 'Zgłoszenie',
-    2 => 'Wycena',
-    3 => 'Decyzja klienta',
-    4 => 'Naprawa',
-    5 => 'Archiwizacja',
+    1 => __('partner_case.progress.steps.reported'),
+    2 => __('partner_case.progress.steps.estimate'),
+    3 => __('partner_case.progress.steps.customer_decision'),
+    4 => __('partner_case.progress.steps.repair'),
+    5 => __('partner_case.progress.steps.archive'),
 ];
 $progressPosition = [
     'awaiting_acceptance' => 2,
@@ -282,9 +282,9 @@ $canReportCorrection = $partnerStatus === 'repair_ready';
 $pendingCorrection = is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'pending';
 $correctionResponseLabel = '';
 if (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'approved') {
-    $correctionResponseLabel = 'Korekta zaakceptowana przez pracownika.';
+    $correctionResponseLabel = __('partner_case.corrections.approved');
 } elseif (is_array($correctionRequest) && ($correctionRequest['status'] ?? '') === 'declined') {
-    $correctionResponseLabel = 'Korekta odrzucona przez pracownika.';
+    $correctionResponseLabel = __('partner_case.corrections.declined');
 }
 $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
     && ($_POST['action'] ?? '') === 'submit-correction'
@@ -298,7 +298,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
 <html lang="<?= htmlspecialchars(Translator::locale(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 <head>
   <meta charset="UTF-8">
-  <title>Case #<?= htmlspecialchars((string) ($case['reference_code'] ?? $caseId), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · Partner</title>
+  <title><?= htmlspecialchars(__('partner_case.meta.title', ['reference' => $referenceLabel]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/partner-case-detail.css">
@@ -323,17 +323,16 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
     <div class="partner-case__intro">
       <div class="partner-case__eyebrow">
         <p class="eyebrow">Case #<?= htmlspecialchars((string) ($case['reference_code'] ?? $caseId), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-        <span class="pill pill--signal">Nowy widok partnera</span>
       </div>
-      <h1 class="partner-case__title"><?= htmlspecialchars((string) ($case['summary'] ?? 'Zgłoszenie partnera'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
-      <p class="muted">Urządzenie: <?= htmlspecialchars($deviceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+      <h1 class="partner-case__title"><?= htmlspecialchars((string) ($case['summary'] ?? __('partner_case.hero.fallback_title')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+      <p class="muted"><?= htmlspecialchars(__('partner_case.hero.device_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>: <?= htmlspecialchars($deviceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       <div class="pill-row">
-        <span class="pill pill--status">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+        <span class="pill pill--status"><?= htmlspecialchars(__('partner_case.hero.status_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         <?php if ($archiveLabel !== ''): ?>
-          <span class="pill pill--warning" aria-label="Status partnera"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <span class="pill pill--warning" aria-label="<?= htmlspecialchars(__('partner_case.hero.partner_status_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($archiveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         <?php endif; ?>
       </div>
-      <div class="progress-ribbon" role="list" aria-label="Postęp zgłoszenia">
+      <div class="progress-ribbon" role="list" aria-label="<?= htmlspecialchars(__('partner_case.progress.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <?php $currentStep = $progressPosition[$partnerStatus] ?? 1; ?>
         <?php foreach ($progressSteps as $index => $label): ?>
           <div class="progress-ribbon__step<?= $index <= $currentStep ? ' is-active' : '' ?>" role="listitem">
@@ -344,49 +343,49 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
       </div>
       <?php if ($archivedAt !== '' || $archiveReason !== ''): ?>
         <p class="muted partner-case__archive">
-          <?php if ($archivedAt !== ''): ?>Zarchiwizowano: <?= htmlspecialchars(date('d-m-Y H:i', strtotime($archivedAt)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
-          <?php if ($archiveReason !== ''): ?><br>Powód: <?= htmlspecialchars($archiveReason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+          <?php if ($archivedAt !== ''): ?><?= htmlspecialchars(__('partner_case.hero.archived_at', ['date' => date('d-m-Y H:i', strtotime($archivedAt))]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
+          <?php if ($archiveReason !== ''): ?><br><?= htmlspecialchars(__('partner_case.hero.archive_reason', ['reason' => $archiveReason]), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?><?php endif; ?>
         </p>
       <?php endif; ?>
     </div>
-  <aside class="partner-case__panel" aria-label="Informacje i akcje dla klienta">
+  <aside class="partner-case__panel" aria-label="<?= htmlspecialchars(__('partner_case.customer.panel_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <div class="info-card info-card--layered">
-        <p class="eyebrow">Klient</p>
-        <h2 class="info-card__title"><?= htmlspecialchars((string) ($customer['full_name'] ?? 'Nieznany klient'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <p class="eyebrow"><?= htmlspecialchars(__('partner_case.customer.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <h2 class="info-card__title"><?= htmlspecialchars((string) ($customer['full_name'] ?? __('partner_case.customer.unknown')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         <dl class="info-list">
           <div class="info-list__item">
-            <dt>Telefon</dt>
+            <dt><?= htmlspecialchars(__('partner_case.customer.phone'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
             <dd id="client-phone"><?= htmlspecialchars((string) ($customer['phone'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
           </div>
           <div class="info-list__item">
-            <dt>E-mail</dt>
+            <dt><?= htmlspecialchars(__('partner_case.customer.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
             <dd id="client-email"><?= htmlspecialchars((string) ($customer['email'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
           </div>
           <div class="info-list__item">
-            <dt>Kod klienta</dt>
+            <dt><?= htmlspecialchars(__('partner_case.customer.code'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dt>
             <dd><?= htmlspecialchars((string) ($customer['customer_code'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
           </div>
         </dl>
         <div class="action-dropdown" data-dropdown>
-          <button type="button" class="action-dropdown__trigger" data-dropdown-toggle aria-expanded="false">Preferencje kontaktu</button>
+         <button type="button" class="action-dropdown__trigger" data-dropdown-toggle aria-expanded="false"><?= htmlspecialchars(__('partner_case.customer.preferences.trigger'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
           <div class="dropdown-panel">
             <label class="form-field form-field--inline">
-              <span class="form-field__label">Kanał</span>
+              <span class="form-field__label"><?= htmlspecialchars(__('partner_case.customer.preferences.channel_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               <select name="contact_channel" class="pill-select" data-toast-on-change>
-                <option value="call">Telefon</option>
-                <option value="email">E-mail</option>
-                <option value="sms">SMS</option>
+                <option value="call"><?= htmlspecialchars(__('partner_case.customer.preferences.channels.call'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <option value="email"><?= htmlspecialchars(__('partner_case.customer.preferences.channels.email'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+                <option value="sms"><?= htmlspecialchars(__('partner_case.customer.preferences.channels.sms'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
               </select>
             </label>
             <label class="form-field form-field--inline">
-              <span class="form-field__label">Preferowana pora</span>
+              <span class="form-field__label"><?= htmlspecialchars(__('partner_case.customer.preferences.time_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               <select name="contact_slot" class="pill-select" data-toast-on-change>
                 <option value="morning">08:00-12:00</option>
                 <option value="afternoon">12:00-16:00</option>
                 <option value="evening">16:00-20:00</option>
               </select>
             </label>
-            <button type="button" class="btn btn--primary btn--full">Zapisz preferencję</button>
+            <button type="button" class="btn btn--primary btn--full"><?= htmlspecialchars(__('partner_case.customer.preferences.save'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
           </div>
         </div>
       </div>

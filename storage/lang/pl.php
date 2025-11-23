@@ -77,6 +77,94 @@ return [
             'empty' => 'Brak zleceń przekazanych Twojej firmie.',
         ],
     ],
+    'partner_case' => [
+        'meta' => [
+            'title' => 'Zlecenie #:reference · Partner',
+        ],
+        'errors' => [
+            'access_denied' => 'Brak dostępu.',
+            'invalid_case_id' => 'Nieprawidłowy lub brakujący identyfikator sprawy.',
+            'not_linked' => 'Sprawa nie jest powiązana z Twoim kontem partnera.',
+            'case_not_found' => 'Nie znaleziono sprawy.',
+            'customer_not_found' => 'Nie znaleziono klienta.',
+        ],
+        'messages' => [
+            'estimate_submitted' => 'Wycena została wysłana do zespołu.',
+            'correction_submitted' => 'Zgłoszenie korekty zostało wysłane do zespołu.',
+            'archived' => 'Sprawa została zamknięta i przeniesiona do archiwum partnera.',
+        ],
+        'status' => [
+            'awaiting_acceptance' => 'Oczekuje na akceptację',
+            'diagnosis' => 'Diagnoza w toku',
+            'estimate_submitted' => 'Wycena wysłana',
+            'counter_review' => 'Zmiana ceny',
+            'estimate_declined' => 'Wycena odrzucona',
+            'repair_ready' => 'Wycena zaakceptowana',
+            'repair_in_progress' => 'Naprawa w toku',
+            'correction_review' => 'Korekta do zatwierdzenia',
+            'archived' => 'Archiwum',
+        ],
+        'form' => [
+            'errors' => [
+                'invalid_session' => 'Nieprawidłowa sesja, odśwież stronę i spróbuj ponownie.',
+                'unknown_action' => 'Nieznane działanie.',
+                'estimate_locked' => 'Zaakceptowanej wyceny nie można już zmienić.',
+                'amount_positive' => 'Podaj kwotę wyceny większą od zera.',
+                'correction_requires_approval' => 'Błąd można zgłosić tylko po akceptacji wyceny.',
+                'correction_pending' => 'Poprzednie zgłoszenie czeka na decyzję.',
+                'already_archived' => 'Sprawa jest już w archiwum.',
+            ],
+        ],
+        'device' => [
+            'unknown' => 'Nieznane urządzenie',
+        ],
+        'archive' => [
+            'badge' => 'Archiwum partnera',
+        ],
+        'progress' => [
+            'aria' => 'Postęp zgłoszenia',
+            'steps' => [
+                'reported' => 'Zgłoszenie',
+                'estimate' => 'Wycena',
+                'customer_decision' => 'Decyzja klienta',
+                'repair' => 'Naprawa',
+                'archive' => 'Archiwizacja',
+            ],
+        ],
+        'corrections' => [
+            'approved' => 'Korekta zaakceptowana przez zespół.',
+            'declined' => 'Korekta odrzucona przez zespół.',
+        ],
+        'hero' => [
+            'reference' => 'Zlecenie #:reference',
+            'pill' => 'Przestrzeń partnera',
+            'fallback_title' => 'Zgłoszenie partnera',
+            'device_prefix' => 'Urządzenie',
+            'status_prefix' => 'Status:',
+            'partner_status_aria' => 'Status partnera',
+            'archived_at' => 'Zarchiwizowano: :date',
+            'archive_reason' => 'Powód: :reason',
+        ],
+        'customer' => [
+            'panel_aria' => 'Informacje i akcje dla klienta',
+            'eyebrow' => 'Klient',
+            'unknown' => 'Nieznany klient',
+            'phone' => 'Telefon',
+            'email' => 'E-mail',
+            'code' => 'Kod klienta',
+            'preferences' => [
+                'trigger' => 'Preferencje kontaktu',
+                'channel_label' => 'Kanał',
+                'channels' => [
+                    'call' => 'Telefon',
+                    'email' => 'E-mail',
+                    'sms' => 'SMS',
+                ],
+                'time_label' => 'Preferowana pora',
+                'save' => 'Zapisz preferencje',
+            ],
+        ],
+    ],
     'employees' => [
         'meta' => [
             'title' => 'Pracownicy - Digivriend',

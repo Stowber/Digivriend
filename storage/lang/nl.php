@@ -77,6 +77,94 @@ return [
             'empty' => 'Er zijn nog geen zaken met jouw bedrijf gedeeld.',
         ],
     ],
+    'partner_case' => [
+        'meta' => [
+            'title' => 'Zaak #:reference · Partner',
+        ],
+        'errors' => [
+            'access_denied' => 'Toegang geweigerd.',
+            'invalid_case_id' => 'Ongeldig of ontbrekend zaak-ID.',
+            'not_linked' => 'Deze zaak is niet gekoppeld aan jouw partneraccount.',
+            'case_not_found' => 'Zaak niet gevonden.',
+            'customer_not_found' => 'Klant niet gevonden.',
+        ],
+        'messages' => [
+            'estimate_submitted' => 'De prijsopgave is naar het team verzonden.',
+            'correction_submitted' => 'De correctieaanvraag is naar het team verzonden.',
+            'archived' => 'De zaak is gesloten en verplaatst naar het partnerarchief.',
+        ],
+        'status' => [
+            'awaiting_acceptance' => 'Wacht op akkoord',
+            'diagnosis' => 'Diagnose bezig',
+            'estimate_submitted' => 'Prijsopgave verstuurd',
+            'counter_review' => 'Aanpassing aangevraagd',
+            'estimate_declined' => 'Prijsopgave afgewezen',
+            'repair_ready' => 'Prijsopgave geaccepteerd',
+            'repair_in_progress' => 'Reparatie bezig',
+            'correction_review' => 'Correctie in beoordeling',
+            'archived' => 'Gearchiveerd',
+        ],
+        'form' => [
+            'errors' => [
+                'invalid_session' => 'Ongeldige sessie, ververs de pagina en probeer opnieuw.',
+                'unknown_action' => 'Onbekende actie.',
+                'estimate_locked' => 'Een geaccepteerde prijsopgave kan niet meer worden aangepast.',
+                'amount_positive' => 'Voer een bedrag groter dan nul in.',
+                'correction_requires_approval' => 'Een correctie kan alleen na acceptatie worden gemeld.',
+                'correction_pending' => 'De vorige correctie wacht nog op een beslissing.',
+                'already_archived' => 'De zaak is al gearchiveerd.',
+            ],
+        ],
+        'device' => [
+            'unknown' => 'Onbekend apparaat',
+        ],
+        'archive' => [
+            'badge' => 'Partnerarchief',
+        ],
+        'progress' => [
+            'aria' => 'Voortgang van de zaak',
+            'steps' => [
+                'reported' => 'Melding',
+                'estimate' => 'Prijsopgave',
+                'customer_decision' => 'Klantbeslissing',
+                'repair' => 'Reparatie',
+                'archive' => 'Archief',
+            ],
+        ],
+        'corrections' => [
+            'approved' => 'Correctie goedgekeurd door het team.',
+            'declined' => 'Correctie afgewezen door het team.',
+        ],
+        'hero' => [
+            'reference' => 'Zaak #:reference',
+            'pill' => 'Partnerwerkruimte',
+            'fallback_title' => 'Partnerzaak',
+            'device_prefix' => 'Apparaat',
+            'status_prefix' => 'Status:',
+            'partner_status_aria' => 'Partnerstatus',
+            'archived_at' => 'Gearchiveerd op: :date',
+            'archive_reason' => 'Reden: :reason',
+        ],
+        'customer' => [
+            'panel_aria' => 'Klantinformatie en acties',
+            'eyebrow' => 'Klant',
+            'unknown' => 'Onbekende klant',
+            'phone' => 'Telefoon',
+            'email' => 'E-mail',
+            'code' => 'Klantcode',
+            'preferences' => [
+                'trigger' => 'Contactvoorkeuren',
+                'channel_label' => 'Kanaal',
+                'channels' => [
+                    'call' => 'Telefoontje',
+                    'email' => 'E-mail',
+                    'sms' => 'SMS-bericht',
+                ],
+                'time_label' => 'Voorkeurstijd',
+                'save' => 'Voorkeur opslaan',
+            ],
+        ],
+    ],
     'employees' => [
         'meta' => [
             'title' => 'Medewerkers - Digivriend',

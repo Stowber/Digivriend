@@ -77,6 +77,94 @@ return [
             'empty' => 'No cases have been shared with your company yet.',
         ],
     ],
+    'partner_case' => [
+        'meta' => [
+            'title' => 'Case #:reference · Partner',
+        ],
+        'errors' => [
+            'access_denied' => 'Access denied.',
+            'invalid_case_id' => 'Invalid or missing case ID.',
+            'not_linked' => 'This case is not linked to your partner account.',
+            'case_not_found' => 'Case not found.',
+            'customer_not_found' => 'Customer not found.',
+        ],
+        'messages' => [
+            'estimate_submitted' => 'The estimate was sent to the team.',
+            'correction_submitted' => 'The correction request was sent to the team.',
+            'archived' => 'The case has been closed and moved to the partner archive.',
+        ],
+        'status' => [
+            'awaiting_acceptance' => 'Awaiting acceptance',
+            'diagnosis' => 'Diagnosis in progress',
+            'estimate_submitted' => 'Estimate submitted',
+            'counter_review' => 'Counter review',
+            'estimate_declined' => 'Estimate declined',
+            'repair_ready' => 'Estimate accepted',
+            'repair_in_progress' => 'Repair in progress',
+            'correction_review' => 'Correction review',
+            'archived' => 'Archived',
+        ],
+        'form' => [
+            'errors' => [
+                'invalid_session' => 'Invalid session, refresh the page and try again.',
+                'unknown_action' => 'Unknown action.',
+                'estimate_locked' => 'An accepted estimate can no longer be edited.',
+                'amount_positive' => 'Enter an estimate amount greater than zero.',
+                'correction_requires_approval' => 'You can only report a correction after the estimate has been accepted.',
+                'correction_pending' => 'The previous correction request is still pending.',
+                'already_archived' => 'The case is already archived.',
+            ],
+        ],
+        'device' => [
+            'unknown' => 'Unknown device',
+        ],
+        'archive' => [
+            'badge' => 'Partner archive',
+        ],
+        'progress' => [
+            'aria' => 'Case progress',
+            'steps' => [
+                'reported' => 'Reported',
+                'estimate' => 'Estimate',
+                'customer_decision' => 'Customer decision',
+                'repair' => 'Repair',
+                'archive' => 'Archive',
+            ],
+        ],
+        'corrections' => [
+            'approved' => 'Correction approved by the team.',
+            'declined' => 'Correction declined by the team.',
+        ],
+        'hero' => [
+            'reference' => 'Case #:reference',
+            'pill' => 'Partner workspace',
+            'fallback_title' => 'Partner case',
+            'device_prefix' => 'Device',
+            'status_prefix' => 'Status:',
+            'partner_status_aria' => 'Partner status',
+            'archived_at' => 'Archived on: :date',
+            'archive_reason' => 'Reason: :reason',
+        ],
+        'customer' => [
+            'panel_aria' => 'Customer info and actions',
+            'eyebrow' => 'Customer',
+            'unknown' => 'Unknown customer',
+            'phone' => 'Phone',
+            'email' => 'Email',
+            'code' => 'Customer code',
+            'preferences' => [
+                'trigger' => 'Contact preferences',
+                'channel_label' => 'Channel',
+                'channels' => [
+                    'call' => 'Phone call',
+                    'email' => 'Email',
+                    'sms' => 'Text message',
+                ],
+                'time_label' => 'Preferred time',
+                'save' => 'Save preference',
+            ],
+        ],
+    ],
     'employees' => [
         'meta' => [
             'title' => 'Employees - Digivriend',
