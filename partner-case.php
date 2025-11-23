@@ -714,72 +714,29 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
             <div class="lab-panel__header">
               <div>
                 <p class="eyebrow">Nowa wycena</p>
-                <h3>Tryb pisania + suwak kwoty</h3>
+                <h3>Wpisz kwotę wyceny</h3>
               </div>
               <div class="lab-panel__actions"></div>
             </div>
             <?php if ($showEstimateForm): ?>
               <form method="post" class="estimate-form" novalidate>
-              <div class="lab-toolbar">
-                <label class="form-field form-field--inline">
-                  <span class="form-field__label">Szablon wyceny</span>
-                  <select class="pill-select" data-template-select data-target-amount="#estimate-amount" data-target-description="#estimate-description">
-                    <option value="">Wybierz gotowy pakiet</option>
-                    <option data-amount="85" data-description="Pakiet diagnozy + czyszczenie układu chłodzenia.">Szybka diagnoza €85</option>
-                    <option data-amount="145" data-description="Wymiana dysku SSD, klonowanie danych oraz konfiguracja systemu.">SSD + konfiguracja €145</option>
-                    <option data-amount="210" data-description="Kompleksowy serwis: chłodzenie, zasilacz, testy obciążeniowe.">Serwis premium €210</option>
-                  </select>
-                </label>
-                <label class="form-field form-field--inline">
-                  <span class="form-field__label">Kanał powiadomień</span>
-                  <select class="pill-select" data-toast-on-change>
-                    <option value="email">E-mail</option>
-                    <option value="sms">SMS</option>
-                    <option value="push">Powiadomienie PUSH</option>
-                  </select>
-                </label>
-              </div>
-              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-              <input type="hidden" name="action" value="submit-estimate">
-              <div class="lab-amount">
-                <label class="form-field">
-                  <span class="form-field__label">Kwota (€)</span>
-                  <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                  <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <div class="range-control">
-                  <label for="amount-range">Suwak kwoty</label>
-                  <input id="amount-range" data-amount-range data-target-amount="#estimate-amount" type="range" min="0" max="500" step="5" value="<?= htmlspecialchars((string) ($amountValue !== '' ? $amountValue : '0'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                  <div class="range-scale">
-                    <span>0€</span><span>250€</span><span>500€</span>
-                  </div>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                <input type="hidden" name="action" value="submit-estimate">
+                <div class="lab-amount">
+                  <label class="form-field">
+                    <span class="form-field__label">Kwota (€)</span>
+                    <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
                 </div>
-              </div>
 
               <div class="lab-description">
-                <label class="form-field">
-                  <span class="form-field__label">Opis części/naprawy</span>
-                  <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Dodaj najważniejsze elementy i dodatki."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
-                  <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
-                </label>
-                <div class="lab-description__grid">
-                  <div>
-                    <p class="lab-subtitle">Makra tekstowe</p>
-                    <div class="lab-chips" data-addon-target="#estimate-description">
-                      <button type="button" class="addon-chip" data-addon="Dodatkowe testy SMART + raport.">Testy SMART</button>
-                      <button type="button" class="addon-chip" data-addon="Przegląd portów I/O i czyszczenie styków.">Kontrola portów</button>
-                      <button type="button" class="addon-chip" data-addon="Aktualizacja BIOS/firmware po akceptacji klienta.">Aktualizacja BIOS</button>
-                    </div>
-                  </div>
-                  <div>
-                    <p class="lab-subtitle">Podgląd i kopiowanie</p>
-                    <div class="lab-actions">
-                      <button type="button" class="btn btn--ghost" data-copy-target="#estimate-description">Kopiuj opis</button>
-                      <button type="button" class="btn btn--ghost" data-copy-target="#estimate-amount">Kopiuj kwotę</button>
-                    </div>
-                  </div>
+                  <label class="form-field">
+                    <span class="form-field__label">Opis części/naprawy</span>
+                    <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Dodaj najważniejsze elementy i dodatki."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                    <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
+                  </label>
                 </div>
-              </div>
 
               <div class="form-actions">
                 <button type="submit" class="btn btn--primary">Wyślij wycenę</button>
