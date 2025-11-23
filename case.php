@@ -1918,6 +1918,9 @@ $referenceCode = trim((string) ($caseRecord['reference_code'] ?? ''));
 if ($referenceCode === '') {
     $referenceCode = 'Brak kodu';
 }
+$caseHeaderCode = $referenceCode !== 'Brak kodu'
+    ? $referenceCode
+    : 'CASE #' . (int) $caseId;
 
 $slaDueTimestamp = !empty($caseRecord['sla_due_at']) ? strtotime((string) $caseRecord['sla_due_at']) : false;
 $slaDueLabel = $slaDueTimestamp ? date('d-m-Y H:i', $slaDueTimestamp) : 'Brak terminu';
@@ -1930,6 +1933,28 @@ if ($caseTypeLabel === '') {
 $caseCustomerName = trim((string) ($caseRecord['full_name'] ?? 'Onbekende klant'));
 if ($caseCustomerName === '') {
     $caseCustomerName = 'Onbekende klant';
+}
+
+$caseWorkflowSteps = [
+    ['key' => 'melding', 'label' => 'Melding'],
+    ['key' => 'prijsopgave', 'label' => 'Prijsopgave'],
+    ['key' => 'klantbeslissing', 'label' => 'Klantbeslissing'],
+    ['key' => 'reparatie', 'label' => 'Reparatie'],
+    ['key' => 'archief', 'label' => 'Archief'],
+];
+$caseStatusToStepMap = [
+    'gepland' => 'prijsopgave',
+    'vertraagd' => 'prijsopgave',
+    'intake' => 'melding',
+    'in_behandeling' => 'reparatie',
+    'geannuleerd' => 'klantbeslissing',
+    'gesloten' => 'archief',
+    'opgehaald' => 'archief',
+];
+$currentStepKey = $caseStatusToStepMap[$caseStatusKey] ?? 'melding';
+$currentStepIndex = array_search($currentStepKey, array_column($caseWorkflowSteps, 'key'), true);
+if ($currentStepIndex === false) {
+    $currentStepIndex = 0;
 }
 
 $assignedPartner = $assignedPartnerId ? $partnerRepository->find($assignedPartnerId) : null;
@@ -2212,21 +2237,39 @@ $partnerRequestPending = $partnerRequestStatus === 'pending';
           </div>
       </div>
     <?php endif; ?>
-    <section class="case-hero" data-case-status="<?= htmlspecialchars($caseStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-      <div class="case-hero__wrapper">
-        <div class="case-hero__content card card--glass">
-          <div class="case-hero__intro">
-            <p class="case-hero__eyebrow">Case #<?= (int) $caseId ?> · <?= htmlspecialchars($caseTypeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
-            <h1><?= htmlspecialchars($caseCustomerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
-            <p class="case-hero__subtitle">
-              <?= htmlspecialchars($caseDeviceSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-              <span>· <?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-            </p>
-            <div class="pill-row">
-              <span class="pill pill--status <?= htmlspecialchars($statusBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Status: <?= htmlspecialchars($caseStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+    <section class="case-hero case-hero--employee" data-case-status="<?= htmlspecialchars($caseStatusKey, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+      <div class="case-hero__grid">
+        <article class="case-hero__card case-hero__card--main card card--glass">
+          <div class="case-hero__header">
+            <div class="case-hero__header-meta">
+              <p class="case-hero__eyebrow"><?= htmlspecialchars($caseHeaderCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> · <?= htmlspecialchars($caseTypeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <h1 class="case-hero__title"><?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h1>
+              <p class="case-hero__subtitle">Apparaat: <?= htmlspecialchars($caseDeviceSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <p class="case-hero__status">Status: <?= htmlspecialchars($caseStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+            </div>
+            <div class="case-hero__tags">
+              <span class="pill pill--status <?= htmlspecialchars($statusBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Status</span>
               <span class="pill pill--neutral <?= htmlspecialchars($priorityBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">Priorytet: <?= htmlspecialchars($priorityLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               <span class="pill pill--muted <?= htmlspecialchars($slaBadgeClass, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">SLA: <?= htmlspecialchars($slaDueLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             </div>
+          </div>
+          <div class="case-stepper" role="list">
+            <?php foreach ($caseWorkflowSteps as $index => $workflowStep): ?>
+              <?php
+              $stepState = '';
+              if ($index < $currentStepIndex) {
+                  $stepState = 'is-complete';
+              } elseif ($index === $currentStepIndex) {
+                  $stepState = 'is-active';
+              }
+              ?>
+              <div class="case-stepper__item <?= $stepState ?>" role="listitem">
+                <div class="case-stepper__indicator">
+                  <span><?= sprintf('%02d', $index + 1) ?></span>
+                </div>
+                <div class="case-stepper__label"><?= htmlspecialchars($workflowStep['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+              </div>
+            <?php endforeach; ?>
           </div>
           <dl class="case-hero__meta">
             <div>
@@ -2247,33 +2290,30 @@ $partnerRequestPending = $partnerRequestStatus === 'pending';
             <button type="button" class="btn btn--ghost" data-modal-target="case-close-modal">Zamknij case</button>
             <a class="btn btn--ghost" href="magazyn.php?case=<?= (int) $caseId ?>">Magazyn</a>
           </div>
-        </div>
-        <div class="case-hero__panel card card--glass">
+        </article>
+        <article class="case-hero__card case-hero__card--client card card--glass">
           <div class="case-hero__panel-header">
-            <p class="eyebrow">Plan działań</p>
-            <h3>Najbliższe kroki</h3>
+            <p class="eyebrow">Klant</p>
+            <h3><?= htmlspecialchars($caseCustomerName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
           </div>
           <dl class="case-hero__panel-meta">
             <div>
-              <dt>Następna wizyta</dt>
-              <dd>
-                <strong><?= htmlspecialchars($nextAppointmentLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
-                <span><?= htmlspecialchars($nextAppointmentTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                <?php if ($nextAppointmentStatus !== ''): ?>
-                  <span class="case-hero__panel-status"><?= htmlspecialchars(ucfirst($nextAppointmentStatus), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-                <?php endif; ?>
-              </dd>
+              <dt>Telefoon</dt>
+              <dd><?= htmlspecialchars($caseCustomerPhone !== '' ? $caseCustomerPhone : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
             <div>
-              <dt>Opis</dt>
-              <dd><?= htmlspecialchars($caseProblemSummary, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+              <dt>E-mail</dt>
+              <dd><?= htmlspecialchars($caseCustomerEmail !== '' ? $caseCustomerEmail : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
+            </div>
+            <div>
+              <dt>Klantcode</dt>
+              <dd><?= htmlspecialchars($referenceCode, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></dd>
             </div>
           </dl>
           <div class="case-hero__actions">
-            <button type="button" class="btn btn--primary" data-modal-target="case-appointment-modal">Nowa wizyta</button>
-            <button type="button" class="btn btn--ghost" data-modal-target="case-close-modal">Zamknij</button>
+            <button type="button" class="btn btn--primary">Contactvoorkeuren</button>
           </div>
-        </div>
+        </article>
       </div>
     </section>
 
