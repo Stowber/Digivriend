@@ -70,9 +70,10 @@
 .archive-accordion {
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 12px;
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
-  padding: 0.25rem 1rem 0.75rem;
+  background: #fff;
   margin-top: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
 }
 
 .archive-accordion__summary {
@@ -82,7 +83,8 @@
   gap: 12px;
   cursor: pointer;
   list-style: none;
-  padding: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .archive-accordion__summary::-webkit-details-marker {
@@ -122,14 +124,23 @@
   transition: transform 0.2s ease;
 }
 
+.archive-accordion:not([open]) .archive-accordion__summary:hover {
+  background: #f8fafc;
+}
+
+.archive-accordion[open] .archive-accordion__summary {
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
 .archive-accordion[open] .archive-accordion__chevron {
   transform: rotate(-135deg);
 }
 
 .archive-accordion__table {
-  margin-top: 0.75rem;
+  margin: 0.75rem 1rem 1rem;
 }
 
 .archive-accordion .panel__empty {
-  margin: 0 0 0.75rem;
+  margin: 0 1rem 0.75rem;
 }
