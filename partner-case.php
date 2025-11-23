@@ -395,50 +395,50 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
   <section class="card estimate-lab">
     <div class="card__header estimate-lab__header">
       <div>
-        <p class="eyebrow">Informacje o urządzeniu</p>
-        <h2>Sprzęt przekazany do diagnozy</h2>
+        <p class="eyebrow"><?= htmlspecialchars(__('partner_case.device_panel.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <h2><?= htmlspecialchars(__('partner_case.device_panel.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
       </div>
     </div>
     <div class="info-grid">
       <div class="info-tile">
-        <p class="info-tile__label">Marka</p>
+        <p class="info-tile__label"><?= htmlspecialchars(__('partner_case.device_panel.brand'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <p class="info-tile__value"><?= htmlspecialchars($deviceBrand !== null && $deviceBrand !== '' ? (string) $deviceBrand : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
     <div class="info-tile">
-        <p class="info-tile__label">Model</p>
+        <p class="info-tile__label"><?= htmlspecialchars(__('partner_case.device_panel.model'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <p class="info-tile__value"><?= htmlspecialchars($deviceModel !== null && $deviceModel !== '' ? (string) $deviceModel : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
 
       <div class="info-tile">
-        <p class="info-tile__label">Numer seryjny</p>
+        <p class="info-tile__label"><?= htmlspecialchars(__('partner_case.device_panel.serial'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <p class="info-tile__value"><?= htmlspecialchars($deviceSerial !== null && $deviceSerial !== '' ? (string) $deviceSerial : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
 
       <div class="info-tile">
-        <p class="info-tile__label">Typ urządzenia</p>
+        <p class="info-tile__label"><?= htmlspecialchars(__('partner_case.device_panel.type'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
         <p class="info-tile__value"><?= htmlspecialchars($deviceType !== null && $deviceType !== '' ? (string) $deviceType : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
 
       <div class="info-tile info-tile--wide">
-        <p class="info-tile__label">Opis problemu</p>
-        <p class="info-tile__value"><?= nl2br(htmlspecialchars($problemDescription !== '' ? $problemDescription : 'Brak opisu problemu.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+        <p class="info-tile__label"><?= htmlspecialchars(__('partner_case.device_panel.problem'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <p class="info-tile__value"><?= nl2br(htmlspecialchars($problemDescription !== '' ? $problemDescription : __('partner_case.device_panel.problem_none'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
 
       </div>
       <div class="info-tile info-tile--wide">
-        <p class="info-tile__label">Notatki o sprzęcie</p>
-         <p class="info-tile__value"><?= nl2br(htmlspecialchars($deviceNotesText !== '' ? $deviceNotesText : 'Brak dodatkowych notatek.', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
+        <p class="info-tile__label"><?= htmlspecialchars(__('partner_case.device_panel.notes'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+         <p class="info-tile__value"><?= nl2br(htmlspecialchars($deviceNotesText !== '' ? $deviceNotesText : __('partner_case.device_panel.notes_none'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
         </div>
     </div>
   </section>
   <section class="card">
     <div class="card__header">
       <div>
-        <p class="eyebrow">Wycena naprawy · Studio</p>
-        <h2>Nowy układ wyceny z bocznym podglądem</h2>
-        <p class="muted">Składaj ofertę w jednym miejscu, a szczegóły, historię i gotowe dodatki zobaczysz w panelach obok.</p>
+        <p class="eyebrow"><?= htmlspecialchars(__('partner_case.estimate_lab.header.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+        <h2><?= htmlspecialchars(__('partner_case.estimate_lab.header.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+        <p class="muted"><?= htmlspecialchars(__('partner_case.estimate_lab.header.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
       </div>
-      <div class="lab-legend" aria-label="Legenda statusów">
-        <span class="legend-dot legend-dot--ready">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+      <div class="lab-legend" aria-label="<?= htmlspecialchars(__('partner_case.estimate_lab.legend_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+        <span class="legend-dot legend-dot--ready"><?= htmlspecialchars(__('partner_case.estimate_lab.status_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
       </div>
     </div>
 
@@ -452,7 +452,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
     <?php if ($partnerStatus === 'archived'): ?>
       <div class="archive-panel">
         <div class="archive-panel__status">
-          <span class="pill pill--warning">Sprawa w archiwum partnera</span>
+          <span class="pill pill--warning"><?= htmlspecialchars(__('partner_case.estimate_lab.archive_notice'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         </div>
       </div>
     <?php endif; ?>
@@ -463,7 +463,7 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         <input type="hidden" name="action" value="archive-case">
         <input type="hidden" name="archive_reason" data-archive-reason value="<?= htmlspecialchars($archiveReasonValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
         <div class="form-actions">
-          <button type="submit" class="btn btn--danger">Zakończ i archiwizuj</button>
+          <button type="submit" class="btn btn--danger"><?= htmlspecialchars(__('partner_case.estimate_lab.close_and_archive'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
         </div>
         </form>
     <?php endif; ?>
@@ -480,56 +480,56 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         <div class="modal__panel" role="document">
           <header class="modal__header">
             <div>
-              <p class="modal__eyebrow">Archiwizacja</p>
-              <h2 id="archive-modal-title">Zamknij i archiwizuj jednym kliknięciem</h2>
-              <p class="muted">Nowoczesny popup pozwala szybko dodać opis i potwierdzić koniec zlecenia.</p>
+              <p class="modal__eyebrow"><?= htmlspecialchars(__('partner_case.estimate_lab.modal.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <h2 id="archive-modal-title"><?= htmlspecialchars(__('partner_case.estimate_lab.modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
+              <p class="muted"><?= htmlspecialchars(__('partner_case.estimate_lab.modal.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
             </div>
             <button type="button" class="modal__close" data-modal-close aria-label="Zamknij">&times;</button>
           </header>
           <div class="modal__body archive-modal__body">
             <div class="archive-modal__highlight">
-              <span class="pill pill--status">Status: <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
-              <p>Przeniesiemy sprawę do archiwum partnera i zachowamy pełny podgląd w historii.</p>
+              <span class="pill pill--status"><?= htmlspecialchars(__('partner_case.estimate_lab.status_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <p><?= htmlspecialchars(__('partner_case.estimate_lab.modal.highlight'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
             </div>
-            <div class="archive-modal__chips" role="list" aria-label="Szybkie powody archiwizacji">
-              <button type="button" class="archive-chip" data-archive-template="Zakończono naprawę i wydano sprzęt." data-toast="Dodano powód archiwizacji.">
+            <div class="archive-modal__chips" role="list" aria-label="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+              <button type="button" class="archive-chip" data-archive-template="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.completed.template'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-toast="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.completed.toast'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <span class="archive-chip__dot"></span>
                 <span>
-                  <strong>Naprawa zakończona</strong>
-                  <small>Sprzęt odebrany, finisz prac.</small>
+                  <strong><?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.completed.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <small><?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.completed.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                 </span>
               </button>
-              <button type="button" class="archive-chip" data-archive-template="Klient wycofał zlecenie – zamykamy sprawę." data-toast="Zaktualizowano opis archiwizacji.">
+              <button type="button" class="archive-chip" data-archive-template="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.withdrawn.template'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-toast="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.withdrawn.toast'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <span class="archive-chip__dot"></span>
                 <span>
-                  <strong>Wycofanie klienta</strong>
-                  <small>Notatka z decyzją klienta.</small>
+                  <strong><?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.withdrawn.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <small><?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.withdrawn.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                 </span>
               </button>
-              <button type="button" class="archive-chip" data-archive-template="Przeniesiono do archiwum po długim braku aktywności." data-toast="Dodano szablon braku aktywności.">
+              <button type="button" class="archive-chip" data-archive-template="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.inactive.template'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-toast="<?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.inactive.toast'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                 <span class="archive-chip__dot"></span>
                 <span>
-                  <strong>Brak aktywności</strong>
-                  <small>Automatyczna finalizacja.</small>
+                  <strong><?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.inactive.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+                  <small><?= htmlspecialchars(__('partner_case.estimate_lab.modal.quick_reasons.inactive.subtitle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small>
                 </span>
               </button>
             </div>
             <div class="archive-modal__preview" aria-live="polite">
-              <p class="archive-modal__preview-label">Podgląd powodu</p>
-              <p class="archive-modal__preview-text" data-archive-preview>Brak dodatkowego opisu – archiwizujesz czysto.</p>
+              <p class="archive-modal__preview-label"><?= htmlspecialchars(__('partner_case.estimate_lab.modal.reason_preview_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+              <p class="archive-modal__preview-text" data-archive-preview><?= htmlspecialchars(__('partner_case.estimate_lab.modal.reason_preview_empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
             </div>
           </div>
           <div class="modal__footer">
-            <button type="button" class="btn btn--ghost" data-modal-close>Wróć</button>
-            <button type="button" class="btn btn--primary" data-archive-submit>Potwierdź archiwizację</button>
+            <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('partner_case.estimate_lab.actions.back'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+            <button type="button" class="btn btn--primary" data-archive-submit><?= htmlspecialchars(__('partner_case.estimate_lab.actions.confirm'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
           </div>
         </div>
       </div>
     <?php endif; ?>
 
-    <div class="estimate-lab__meta" role="list" aria-label="Szybkie ustawienia">
+    <div class="estimate-lab__meta" role="list" aria-label="<?= htmlspecialchars(__('partner_case.estimate_lab.meta.aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
       <div class="lab-chip" role="listitem">
-        <span class="lab-chip__label">Status partnera</span>
+        <span class="lab-chip__label"><?= htmlspecialchars(__('partner_case.estimate_lab.meta.status_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
         <strong><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
       </div>
     </div>
@@ -539,45 +539,45 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         <div class="lab-panel">
             <div class="lab-panel__header">
               <div>
-                <p class="eyebrow">Twoja ostatnia wycena</p>
-                <h3>Live panel szczegółów</h3>
+                <p class="eyebrow"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <h3><?= htmlspecialchars(__('partner_case.estimate_lab.summary.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
               </div>
               <div class="lab-panel__actions"></div>
             </div>
           <?php if ($partnerEstimate !== null): ?>
             <div class="lab-summary">
               <div class="lab-summary__item">
-                <p class="lab-summary__label">Kwota</p>
+                <p class="lab-summary__label"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.amount'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 <p class="lab-summary__value">€ <?= number_format((float) ($partnerEstimate['amount'] ?? 0), 2, ',', ' ') ?></p>
               </div>
             <div class="lab-summary__item">
-                <p class="lab-summary__label">Opis</p>
+                <p class="lab-summary__label"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 <p class="lab-summary__value lab-summary__value--muted"><?= nl2br(htmlspecialchars((string) ($partnerEstimate['description'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
               </div>
               <?php if (!empty($partnerEstimate['submitted_at'])): ?>
                 <div class="lab-summary__item">
-                  <p class="lab-summary__label">Wysłano</p>
+                  <p class="lab-summary__label"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.submitted_at'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                   <p class="lab-summary__value lab-summary__value--muted"><?= htmlspecialchars(date('d-m-Y H:i', strtotime((string) $partnerEstimate['submitted_at'])), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 </div>
               <?php endif; ?>
             </div>
             <div class="lab-grid lab-grid--two">
               <div class="lab-tile">
-                <p class="lab-tile__label">Decyzja klienta</p>
+                <p class="lab-tile__label"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.customer_decision'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 <?php if ($partnerDecision !== null): ?>
                   <p class="lab-tile__value"><?= htmlspecialchars(ucfirst(str_replace('_', ' ', (string) ($partnerDecision['status'] ?? ''))), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                   <?php if (!empty($partnerDecision['note'])): ?>
                     <p class="muted lab-tile__note"><?= nl2br(htmlspecialchars((string) $partnerDecision['note'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?></p>
                   <?php endif; ?>
                 <?php else: ?>
-                  <p class="muted">Brak decyzji – czeka na akcję klienta.</p>
+                  <p class="muted"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.customer_pending'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 <?php endif; ?>
               </div>
               <div class="lab-tile">
-                <p class="lab-tile__label">Historia</p>
+                <p class="lab-tile__label"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.history'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 <?php if ($partnerEstimateHistory !== []): ?>
                   <details class="lab-accordion" open>
-                    <summary>Rozwiń historię wycen</summary>
+                    <summary><?= htmlspecialchars(__('partner_case.estimate_lab.summary.history_toggle'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></summary>
                     <ul class="lab-history">
                       <?php foreach (array_reverse($partnerEstimateHistory) as $historyItem): ?>
                         <li>
@@ -595,26 +595,26 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
                     </ul>
                   </details>
                 <?php else: ?>
-                  <p class="muted">Brak wcześniejszych wycen.</p>
+                  <p class="muted"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.history_empty'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                 <?php endif; ?>
               </div>
             </div>
             <div class="lab-panel__footer">
               <?php if ($partnerStatus !== 'archived'): ?>
-                <button type="button" class="btn btn--ghost btn--archive" data-modal-target="archive-modal">Zakończ i archiwizuj</button>
+                <button type="button" class="btn btn--ghost btn--archive" data-modal-target="archive-modal"><?= htmlspecialchars(__('partner_case.estimate_lab.close_and_archive'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
               <?php endif; ?>
               <?php if ($canReportCorrection): ?>
                 <?php if ($pendingCorrection): ?>
-                  <span class="status-badge" aria-label="Status korekty">Korekta oczekuje na decyzję</span>
+                  <span class="status-badge" aria-label="<?= htmlspecialchars(__('partner_case.estimate_lab.summary.correction_status_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.correction_pending'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <?php elseif ($correctionResponseLabel !== ''): ?>
-                  <span class="status-badge" aria-label="Status korekty"><?= htmlspecialchars($correctionResponseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                  <span class="status-badge" aria-label="<?= htmlspecialchars(__('partner_case.estimate_lab.summary.correction_status_aria'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($correctionResponseLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
                 <?php else: ?>
-                  <button type="button" class="btn btn--ghost" data-modal-target="correction-modal">Zgłoś błąd</button>
+                  <button type="button" class="btn btn--ghost" data-modal-target="correction-modal"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.report_correction'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 <?php endif; ?>
               <?php endif; ?>
             </div>
           <?php else: ?>
-            <p class="muted">Nie wysłano jeszcze żadnej wyceny. Zbuduj nową po prawej stronie, aby uruchomić podgląd.</p>
+            <p class="muted"><?= htmlspecialchars(__('partner_case.estimate_lab.summary.empty_state'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
           <?php endif; ?>
         </div>
 
@@ -622,73 +622,73 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
           <div class="lab-panel lab-panel--stacked">
             <div class="lab-panel__header">
               <div>
-                <p class="eyebrow">Pakiety i mikro-usługi</p>
-                <h3>Dodaj elementy jednym kliknięciem</h3>
+                <p class="eyebrow"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <h3><?= htmlspecialchars(__('partner_case.estimate_lab.packages.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
               </div>
               <div class="lab-panel__actions">
-                <span class="pill pill--ghost">Nowy zestaw</span>
+                <span class="pill pill--ghost"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.badge'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               </div>
             </div>
             <div class="lab-matrix" data-accordion>
               <button type="button" class="matrix-row" data-accordion-toggle>
-                <span>Diagnoza i czyszczenie</span>
-                <span class="matrix-row__meta">Rozwiń</span>
+                <span><?= htmlspecialchars(__('partner_case.estimate_lab.packages.groups.diagnostics'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span class="matrix-row__meta"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.expand'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               </button>
               <div class="matrix-content">
                 <button
                   type="button"
                   class="micro-toggle"
-                  data-checklist-add="Przyspieszona diagnoza (30 min)."
+                  data-checklist-add="<?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.express_diagnosis.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                   data-add-amount="45"
                   data-target-description="#estimate-description"
                   data-target-amount="#estimate-amount"
-                >Diagnoza Express +45€</button>
+                ><?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.express_diagnosis.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 <button
                   type="button"
                   class="micro-toggle"
-                  data-checklist-add="Pełne czyszczenie układu chłodzenia."
+                  data-checklist-add="<?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.turbo_clean.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                   data-add-amount="35"
                   data-target-description="#estimate-description"
                   data-target-amount="#estimate-amount"
-                >Czyszczenie turbo +35€</button>
+                ><?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.turbo_clean.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
               </div>
 
             <button type="button" class="matrix-row" data-accordion-toggle>
-              <span>Wymiana części</span>
-              <span class="matrix-row__meta">Rozwiń</span>
+              <span><?= htmlspecialchars(__('partner_case.estimate_lab.packages.groups.repairs'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <span class="matrix-row__meta"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.expand'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             </button>
             <div class="matrix-content">
               <button
                 type="button"
                 class="micro-toggle"
-                data-checklist-add="Wymiana dysku SSD z klonowaniem danych."
+                data-checklist-add="<?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.ssd_clone.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                 data-add-amount="120"
                 data-target-description="#estimate-description"
                 data-target-amount="#estimate-amount"
-              >Nowy SSD + klonowanie +120€</button>
+              ><?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.ssd_clone.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
               <button
                 type="button"
                 class="micro-toggle"
-                data-checklist-add="Wymiana zasilacza i testy obciążeniowe."
+                data-checklist-add="<?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.power_supply.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                 data-add-amount="80"
                 data-target-description="#estimate-description"
                 data-target-amount="#estimate-amount"
-              >Stabilny zasilacz +80€</button>
+              ><?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.power_supply.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
             </div>
 
             <button type="button" class="matrix-row" data-accordion-toggle>
-                <span>Opcje komfortu</span>
-                <span class="matrix-row__meta">Rozwiń</span>
+                <span><?= htmlspecialchars(__('partner_case.estimate_lab.packages.groups.comfort'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                <span class="matrix-row__meta"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.expand'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
               </button>
               <div class="matrix-content">
                 <button
                   type="button"
                   class="micro-toggle"
-                  data-checklist-add="Backup bezpieczeństwa przed naprawą."
+                  data-checklist-add="<?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.backup.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                   data-add-amount="25"
                   data-target-description="#estimate-description"
                   data-target-amount="#estimate-amount"
-                >Backup startowy +25€</button>
+                ><?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.backup.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 <button
                   type="button"
                   class="micro-toggle"
@@ -696,12 +696,12 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
                   data-add-amount="18"
                   data-target-description="#estimate-description"
                   data-target-amount="#estimate-amount"
-                >Checklist końcowa +18€</button>
+                ><?= htmlspecialchars(__('partner_case.estimate_lab.packages.items.final_check.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
               </div>
             </div>
             <div class="lab-inline-ribbon">
-              <span class="pill pill--ghost">Dodajesz + zapisujesz do opisu i kwoty</span>
-              <button type="button" class="chip-button" data-copy-target="#estimate-amount">Skopiuj kwotę</button>
+              <span class="pill pill--ghost"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.inline_hint'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+              <button type="button" class="chip-button" data-copy-target="#estimate-amount"><?= htmlspecialchars(__('partner_case.estimate_lab.packages.copy_amount'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
             </div>
           </div>
           <?php endif; ?>
@@ -712,8 +712,8 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
           <div class="lab-panel lab-panel--primary">
             <div class="lab-panel__header">
               <div>
-                <p class="eyebrow">Nowa wycena</p>
-                <h3>Wpisz kwotę wyceny</h3>
+                <p class="eyebrow"><?= htmlspecialchars(__('partner_case.estimate_lab.form.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                <h3><?= htmlspecialchars(__('partner_case.estimate_lab.form.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h3>
               </div>
               <div class="lab-panel__actions"></div>
             </div>
@@ -723,29 +723,29 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
                 <input type="hidden" name="action" value="submit-estimate">
                 <div class="lab-amount">
                   <label class="form-field">
-                    <span class="form-field__label">Kwota (€)</span>
-                    <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+                    <span class="form-field__label"><?= htmlspecialchars(__('partner_case.estimate_lab.form.amount_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <input id="estimate-amount" data-estimate-amount type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="<?= htmlspecialchars(__('partner_case.estimate_lab.form.amount_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" value="<?= htmlspecialchars((string) $amountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
                     <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
                   </label>
                 </div>
 
               <div class="lab-description">
                   <label class="form-field">
-                    <span class="form-field__label">Opis części/naprawy</span>
-                    <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Dodaj najważniejsze elementy i dodatki."><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                    <span class="form-field__label"><?= htmlspecialchars(__('partner_case.estimate_lab.form.description_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+                    <textarea id="estimate-description" data-estimate-description name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="<?= htmlspecialchars(__('partner_case.estimate_lab.form.description_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars((string) $descriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                     <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
                   </label>
                 </div>
 
               <div class="form-actions">
-                <button type="submit" class="btn btn--primary">Wyślij wycenę</button>
+                <button type="submit" class="btn btn--primary"><?= htmlspecialchars(__('partner_case.estimate_lab.form.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
                 <?php if ($partnerEstimate !== null): ?>
-                  <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>">Anuluj edycję</a>
+                  <a class="btn btn--ghost" href="partner-case.php?id=<?= (int) $caseId ?>"><?= htmlspecialchars(__('partner_case.estimate_lab.form.cancel_edit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></a>
                 <?php endif; ?>
               </div>
             </form>
             <?php else: ?>
-              <p class="muted">Wycena została wysłana. <?= $canEditEstimate ? 'Kliknij „Edytuj wycenę”, aby wprowadzić zmiany przed akceptacją.' : 'Edytowanie jest dostępne tylko przed akceptacją.' ?></p>
+             <p class="muted"><?= htmlspecialchars(__('partner_case.estimate_lab.form.submitted_prefix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <?= $canEditEstimate ? htmlspecialchars(__('partner_case.estimate_lab.form.submitted_editable'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : htmlspecialchars(__('partner_case.estimate_lab.form.submitted_locked'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
             <?php endif; ?>
           </div>
         </div>
@@ -766,10 +766,10 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
     <div class="modal__panel" role="document">
       <header class="modal__header">
         <div>
-          <p class="modal__eyebrow">Wycena</p>
-          <h2 id="correction-modal-title">Zgłoś błąd w zaakceptowanej wycenie</h2>
+          <p class="modal__eyebrow"><?= htmlspecialchars(__('partner_case.correction_modal.eyebrow'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+          <h2 id="correction-modal-title"><?= htmlspecialchars(__('partner_case.correction_modal.title'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></h2>
         </div>
-        <button type="button" class="modal__close" data-modal-close aria-label="Zamknij">&times;</button>
+        <button type="button" class="modal__close" data-modal-close aria-label="<?= htmlspecialchars(__('partner_case.correction_modal.close'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">&times;</button>
       </header>
       <form method="post" class="modal__body" novalidate>
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
@@ -787,33 +787,33 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
         ?>
         <div class="form-toolbar">
           <label class="form-field form-field--inline">
-            <span class="form-field__label">Szybka korekta</span>
+            <span class="form-field__label"><?= htmlspecialchars(__('partner_case.correction_modal.quick_fix'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
             <select class="pill-select" data-template-select data-target-amount="#correction-amount" data-target-description="#correction-description">
-              <option value="">Wybierz scenariusz</option>
-              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="Aktualizacja kosztu części po potwierdzeniu magazynu.">Koszt części</option>
-              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="Dodaj roboczogodziny za dodatkową diagnozę.">Dodatkowa diagnoza</option>
-              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="Obniżka ceny po negocjacji z klientem.">Negocjacja</option>
+              <option value=""><?= htmlspecialchars(__('partner_case.correction_modal.choose_scenario'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="<?= htmlspecialchars(__('partner_case.correction_modal.scenarios.parts_cost.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('partner_case.correction_modal.scenarios.parts_cost.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="<?= htmlspecialchars(__('partner_case.correction_modal.scenarios.extra_diagnostics.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('partner_case.correction_modal.scenarios.extra_diagnostics.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
+              <option data-amount="<?= htmlspecialchars((string) $correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" data-description="<?= htmlspecialchars(__('partner_case.correction_modal.scenarios.negotiation.description'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars(__('partner_case.correction_modal.scenarios.negotiation.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
             </select>
           </label>
         </div>
         <label class="form-field">
-          <span class="form-field__label">Poprawiona kwota (€)</span>
-          <input id="correction-amount" type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="0,00" value="<?= htmlspecialchars($correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
+          <span class="form-field__label"><?= htmlspecialchars(__('partner_case.correction_modal.amount_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <input id="correction-amount" type="number" name="estimate_amount" step="0.01" min="0" required aria-required="true" placeholder="<?= htmlspecialchars(__('partner_case.correction_modal.amount_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" value="<?= htmlspecialchars($correctionAmountValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
           <?php if (!empty($errors['estimate_amount'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_amount']) ? implode(' ', array_map('strval', $errors['estimate_amount'])) : (string) $errors['estimate_amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
         </label>
         <label class="form-field">
-          <span class="form-field__label">Poprawiony opis</span>
-          <textarea id="correction-description" name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="Opisz poprawioną wycenę."><?= htmlspecialchars($correctionDescriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+          <span class="form-field__label"><?= htmlspecialchars(__('partner_case.correction_modal.description_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <textarea id="correction-description" name="estimate_description" rows="4" maxlength="500" required aria-required="true" placeholder="<?= htmlspecialchars(__('partner_case.correction_modal.description_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($correctionDescriptionValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
           <?php if (!empty($errors['estimate_description'])): ?><small class="form-error"><?= htmlspecialchars(is_array($errors['estimate_description']) ? implode(' ', array_map('strval', $errors['estimate_description'])) : (string) $errors['estimate_description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></small><?php endif; ?>
         </label>
         <label class="form-field">
-          <span class="form-field__label">Opis błędu (opcjonalnie)</span>
-          <textarea name="error_details" rows="3" maxlength="300" placeholder="Opisz, co wymaga korekty."><?= htmlspecialchars($correctionNoteValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+          <span class="form-field__label"><?= htmlspecialchars(__('partner_case.correction_modal.error_label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
+          <textarea name="error_details" rows="3" maxlength="300" placeholder="<?= htmlspecialchars(__('partner_case.correction_modal.error_placeholder'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"><?= htmlspecialchars($correctionNoteValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
         </label>
         <?php if (!empty($errors['general'])): ?><div class="alert alert--danger"><?= htmlspecialchars(is_array($errors['general']) ? implode(' ', array_map('strval', $errors['general'])) : (string) $errors['general'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div><?php endif; ?>
         <div class="modal__footer">
-          <button type="button" class="btn btn--ghost" data-modal-close>Anuluj</button>
-          <button type="submit" class="btn btn--primary">Wyślij korektę</button>
+          <button type="button" class="btn btn--ghost" data-modal-close><?= htmlspecialchars(__('partner_case.correction_modal.actions.cancel'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
+          <button type="submit" class="btn btn--primary"><?= htmlspecialchars(__('partner_case.correction_modal.actions.submit'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></button>
         </div>
       </form>
     </div>
