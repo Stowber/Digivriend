@@ -513,39 +513,40 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
           <?php endif; ?>
         </div>
 
-        <div class="lab-panel lab-panel--stacked">
-          <div class="lab-panel__header">
-            <div>
-              <p class="eyebrow">Pakiety i mikro-usługi</p>
-              <h3>Dodaj elementy jednym kliknięciem</h3>
+        <?php if ($partnerEstimate === null || empty($partnerEstimate['submitted_at'])): ?>
+          <div class="lab-panel lab-panel--stacked">
+            <div class="lab-panel__header">
+              <div>
+                <p class="eyebrow">Pakiety i mikro-usługi</p>
+                <h3>Dodaj elementy jednym kliknięciem</h3>
+              </div>
+              <div class="lab-panel__actions">
+                <span class="pill pill--ghost">Nowy zestaw</span>
+              </div>
             </div>
-            <div class="lab-panel__actions">
-              <span class="pill pill--ghost">Nowy zestaw</span>
-            </div>
-          </div>
-        <div class="lab-matrix" data-accordion>
-            <button type="button" class="matrix-row" data-accordion-toggle>
-              <span>Diagnoza i czyszczenie</span>
-              <span class="matrix-row__meta">Rozwiń</span>
-            </button>
-            <div class="matrix-content">
-              <button
-                type="button"
-                class="micro-toggle"
-                data-checklist-add="Przyspieszona diagnoza (30 min)."
-                data-add-amount="45"
-                data-target-description="#estimate-description"
-                data-target-amount="#estimate-amount"
-              >Diagnoza Express +45€</button>
-              <button
-                type="button"
-                class="micro-toggle"
-                data-checklist-add="Pełne czyszczenie układu chłodzenia."
-                data-add-amount="35"
-                data-target-description="#estimate-description"
-                data-target-amount="#estimate-amount"
-              >Czyszczenie turbo +35€</button>
-            </div>
+            <div class="lab-matrix" data-accordion>
+              <button type="button" class="matrix-row" data-accordion-toggle>
+                <span>Diagnoza i czyszczenie</span>
+                <span class="matrix-row__meta">Rozwiń</span>
+              </button>
+              <div class="matrix-content">
+                <button
+                  type="button"
+                  class="micro-toggle"
+                  data-checklist-add="Przyspieszona diagnoza (30 min)."
+                  data-add-amount="45"
+                  data-target-description="#estimate-description"
+                  data-target-amount="#estimate-amount"
+                >Diagnoza Express +45€</button>
+                <button
+                  type="button"
+                  class="micro-toggle"
+                  data-checklist-add="Pełne czyszczenie układu chłodzenia."
+                  data-add-amount="35"
+                  data-target-description="#estimate-description"
+                  data-target-amount="#estimate-amount"
+                >Czyszczenie turbo +35€</button>
+              </div>
 
             <button type="button" class="matrix-row" data-accordion-toggle>
               <span>Wymiana części</span>
@@ -571,33 +572,34 @@ $shouldOpenCorrectionModal = $_SERVER['REQUEST_METHOD'] === 'POST'
             </div>
 
             <button type="button" class="matrix-row" data-accordion-toggle>
-              <span>Opcje komfortu</span>
-              <span class="matrix-row__meta">Rozwiń</span>
-            </button>
-            <div class="matrix-content">
-              <button
-                type="button"
-                class="micro-toggle"
-                data-checklist-add="Backup bezpieczeństwa przed naprawą."
-                data-add-amount="25"
-                data-target-description="#estimate-description"
-                data-target-amount="#estimate-amount"
-              >Backup startowy +25€</button>
-              <button
-                type="button"
-                class="micro-toggle"
-                data-checklist-add="Test końcowy i instrukcja dla klienta."
-                data-add-amount="18"
-                data-target-description="#estimate-description"
-                data-target-amount="#estimate-amount"
-              >Checklist końcowa +18€</button>
+                <span>Opcje komfortu</span>
+                <span class="matrix-row__meta">Rozwiń</span>
+              </button>
+              <div class="matrix-content">
+                <button
+                  type="button"
+                  class="micro-toggle"
+                  data-checklist-add="Backup bezpieczeństwa przed naprawą."
+                  data-add-amount="25"
+                  data-target-description="#estimate-description"
+                  data-target-amount="#estimate-amount"
+                >Backup startowy +25€</button>
+                <button
+                  type="button"
+                  class="micro-toggle"
+                  data-checklist-add="Test końcowy i instrukcja dla klienta."
+                  data-add-amount="18"
+                  data-target-description="#estimate-description"
+                  data-target-amount="#estimate-amount"
+                >Checklist końcowa +18€</button>
+              </div>
+            </div>
+            <div class="lab-inline-ribbon">
+              <span class="pill pill--ghost">Dodajesz + zapisujesz do opisu i kwoty</span>
+              <button type="button" class="chip-button" data-copy-target="#estimate-amount">Skopiuj kwotę</button>
             </div>
           </div>
-          <div class="lab-inline-ribbon">
-            <span class="pill pill--ghost">Dodajesz + zapisujesz do opisu i kwoty</span>
-            <button type="button" class="chip-button" data-copy-target="#estimate-amount">Skopiuj kwotę</button>
-          </div>
-        </div>
+          <?php endif; ?>
       </div>
 
       <?php if (!$isEstimateLocked): ?>
