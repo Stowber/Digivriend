@@ -451,20 +451,6 @@ $archiveReasonValue = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']
     <?php endif; ?>
 
     <div class="archive-panel">
-      <div>
-        <p class="eyebrow">Archiwizacja</p>
-        <h3>Zakończ zlecenie po stronie partnera</h3>
-        <p class="muted">Po zakończeniu prac możesz przenieść zlecenie do archiwum partnera. Informacje pozostaną dostępne w zakładce Archiwum.</p>
-      </div>
-      <?php if ($partnerStatus !== 'archived'): ?>
-        <div class="archive-panel__cta">
-          <button type="button" class="btn btn--ghost btn--micro" data-modal-target="archive-modal">
-            <span class="btn__dot" aria-hidden="true"></span>
-            Zakończ i archiwizuj
-          </button>
-          <p class="archive-panel__hint">Malutki przycisk z nowoczesnym popupem podpowie powód archiwizacji.</p>
-        </div>
-      <?php endif; ?>
       <?php if ($partnerStatus === 'archived'): ?>
         <div class="archive-panel__status">
           <span class="pill pill--warning">Sprawa w archiwum partnera</span>
