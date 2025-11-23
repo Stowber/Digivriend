@@ -24,6 +24,15 @@ if (!function_exists('render_main_nav')) {
         return platform_is_partner() ? 'theme--partner' : '';
     }
 
+    function language_flag(string $locale): string
+    {
+        return [
+            'nl' => '🇳🇱',
+            'pl' => '🇵🇱',
+            'en' => '🇬🇧',
+        ][strtolower(trim($locale))] ?? '🌐';
+    }
+
     function platform_body_attributes(string $additionalClasses = ''): string
     {
         $classes = array_filter([
@@ -106,20 +115,38 @@ if (!function_exists('render_main_nav')) {
         }
 
         echo '<li class="main-nav__language">';
-        echo '<form method="post" action="language.php" class="language-switcher">';
-        echo '<label for="main-nav-language" class="sr-only">' . htmlspecialchars(__('language.switcher.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</label>';
+        echo '<form method="post" action="language.php" class="language-switcher" data-language-switcher>';
         echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
         echo '<input type="hidden" name="redirect" value="' . htmlspecialchars($redirectTo, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
-        echo '<select id="main-nav-language" name="locale" onchange="this.form.submit()">';
+        echo '<details class="language-switcher__dropdown">';
+        echo '<summary class="language-switcher__trigger" role="button" aria-haspopup="menu" aria-label="' . htmlspecialchars(__('language.switcher.label'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
+        echo '<span class="language-switcher__planet" aria-hidden="true">';
+        echo '<svg viewBox="0 0 24 24" role="presentation" focusable="false"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm0 18a8 8 0 0 1-7.32-11.2 18.5 18.5 0 0 0 6.16 1.82 19.918 19.918 0 0 0 7.31-.76A8 8 0 0 1 12 20Zm7.28-10.83A17.84 17.84 0 0 1 12 10a17.6 17.6 0 0 1-6.88-1.45A8 8 0 0 1 17.38 4.8a19.506 19.506 0 0 1 1.9 4.37c.02.16.06.32.1.47a7.969 7.969 0 0 1-.1.47Z"></path></svg>';
+        echo '</span>';
+        echo '<span class="language-switcher__current">';
+        echo '<span class="language-switcher__flag" aria-hidden="true">' . htmlspecialchars(language_flag($currentLocale), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>';
+        echo '<span class="language-switcher__label">' . htmlspecialchars(language_name($currentLocale), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>';
+        echo '</span>';
+        echo '<span class="language-switcher__chevron" aria-hidden="true">';
+        echo '<svg viewBox="0 0 24 24" role="presentation" focusable="false"><path d="m7 10 5 5 5-5"></path></svg>';
+        echo '</span>';
+        echo '</summary>';
+        echo '<div class="language-switcher__menu" role="menu">';
 
         foreach (Translator::availableLocales() as $locale) {
-            $selected = $locale === $currentLocale ? ' selected' : '';
-            echo '<option value="' . htmlspecialchars($locale, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $selected . '>';
-            echo htmlspecialchars(language_name($locale), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            echo '</option>';
+            $isActive = $locale === $currentLocale;
+            $state = $isActive ? ' aria-current="true"' : '';
+            echo '<button type="submit" name="locale" value="' . htmlspecialchars($locale, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" class="language-switcher__option" role="menuitem"' . $state . '>';
+            echo '<span class="language-switcher__flag" aria-hidden="true">' . htmlspecialchars(language_flag($locale), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>';
+            echo '<span class="language-switcher__language">' . htmlspecialchars(language_name($locale), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>';
+            if ($isActive) {
+                echo '<span class="language-switcher__active" aria-hidden="true">•</span>';
+            }
+            echo '</button>';
         }
 
-        echo '</select>';
+        echo '</div>';
+        echo '</details>';
         echo '</form>';
         echo '</li>';
 
@@ -131,5 +158,35 @@ if (!function_exists('render_main_nav')) {
             htmlspecialchars($logoutItem['label'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
         );
         echo '</ul>';
+        echo '<script>
+            (() => {
+                if (window.__languageSwitcherInit) {
+                    return;
+                }
+
+                window.__languageSwitcherInit = true;
+
+                const closeAll = () => {
+                    document.querySelectorAll(".language-switcher__dropdown[open]").forEach((dropdown) => {
+                        dropdown.removeAttribute("open");
+                    });
+                };
+
+                document.addEventListener("click", (event) => {
+                    const target = event.target instanceof HTMLElement ? event.target : null;
+                    document.querySelectorAll(".language-switcher__dropdown").forEach((dropdown) => {
+                        if (!target || !dropdown.contains(target)) {
+                            dropdown.removeAttribute("open");
+                        }
+                    });
+                });
+
+                document.addEventListener("keyup", (event) => {
+                    if (event.key === "Escape") {
+                        closeAll();
+                    }
+                });
+            })();
+        </script>';
     }
 }
