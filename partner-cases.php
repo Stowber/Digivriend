@@ -135,46 +135,57 @@ $formatDate = static function (?string $value): string {
     </section>
 
     <section class="table-shell partner-cases-card" aria-label="Archiwum partnera">
-      <div class="partner-cases-meta">
-        <span class="summary-card__label">Archiwum</span>
-        <strong class="summary-card__value"><?= number_format(count($archivedCases), 0, ',', '.') ?></strong>
-      </div>
-      <?php if ($archivedCases === []): ?>
-        <p class="panel__empty">Brak zarchiwizowanych spraw.</p>
-      <?php else: ?>
-        <table class="partner-cases-table">
-          <thead>
-            <tr>
-              <th>Referencja</th>
-              <th>Status partnera</th>
-              <th>Opis</th>
-              <th>Zarchiwizowano</th>
-              <th class="text-right">Podgląd</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($archivedCases as $case): ?>
-              <?php
-                $caseId = (int) ($case['id'] ?? 0);
-                $reference = trim((string) ($case['reference_code'] ?? ''));
-                $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
-                $summary = trim((string) ($case['summary'] ?? ''));
-                $partnerStatusLabel = (string) ($case['partner_status_label'] ?? 'Archiwum');
-                $archivedAt = $case['details']['partner_workflow']['archived_at'] ?? null;
-              ?>
+      <details class="archive-accordion">
+        <summary class="archive-accordion__summary">
+          <div class="partner-cases-meta archive-accordion__meta">
+            <div>
+              <span class="summary-card__label">Archiwum</span>
+              <p class="archive-accordion__hint">Sprawy przeniesione do archiwum</p>
+            </div>
+            <div class="archive-accordion__count" aria-hidden="true">
+              <?= number_format(count($archivedCases), 0, ',', '.') ?>
+            </div>
+          </div>
+          <span class="archive-accordion__chevron" aria-hidden="true"></span>
+        </summary>
+
+        <?php if ($archivedCases === []): ?>
+          <p class="panel__empty">Brak zarchiwizowanych spraw.</p>
+        <?php else: ?>
+          <table class="partner-cases-table archive-accordion__table">
+            <thead>
               <tr>
-                <td><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
-                <td><?= htmlspecialchars($summary !== '' ? $summary : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars($formatDate($archivedAt ?? $case['updated_at'] ?? null), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                <td class="text-right">
-                  <a class="btn btn--ghost" href="partner-case.php?id=<?= $caseId ?>">Podgląd</a>
-                </td>
+                <th>Referencja</th>
+                <th>Status partnera</th>
+                <th>Opis</th>
+                <th>Zarchiwizowano</th>
+                <th class="text-right">Podgląd</th>
               </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      <?php endif; ?>
+            </thead>
+            <tbody>
+              <?php foreach ($archivedCases as $case): ?>
+                <?php
+                  $caseId = (int) ($case['id'] ?? 0);
+                  $reference = trim((string) ($case['reference_code'] ?? ''));
+                  $referenceLabel = $reference !== '' ? $reference : __('partner_cases.table.reference_fallback', ['id' => (string) $caseId]);
+                  $summary = trim((string) ($case['summary'] ?? ''));
+                  $partnerStatusLabel = (string) ($case['partner_status_label'] ?? 'Archiwum');
+                  $archivedAt = $case['details']['partner_workflow']['archived_at'] ?? null;
+                ?>
+                <tr>
+                  <td><?= htmlspecialchars($referenceLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td><span class="status-pill status-pill--neutral"><?= htmlspecialchars($partnerStatusLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span></td>
+                  <td><?= htmlspecialchars($summary !== '' ? $summary : '—', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars($formatDate($archivedAt ?? $case['updated_at'] ?? null), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                  <td class="text-right">
+                    <a class="btn btn--ghost" href="partner-case.php?id=<?= $caseId ?>">Podgląd</a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php endif; ?>
+      </details>
     </section>
   </main>
 </body>
